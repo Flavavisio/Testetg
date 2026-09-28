@@ -56,7 +56,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></noscript>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260928" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
@@ -96,7 +96,6 @@
     <div>
       <span class="eyebrow" style="display:inline-block;margin-bottom:10px;">Plataforma SaaS de Gestão Operacional</span>
       <h1 style="font-size:clamp(1.8rem,3.6vw,2.7rem);">Toda a sua operação. <span class="accent">Uma só plataforma.</span></h1>
-      <p class="lead">Gerencie equipas, serviços, manutenção, clientes e stock num único lugar — no escritório ou no telemóvel.<br>14 dias grátis. Experimente com toda a sua equipa.</p>
       <p class="lead">Ordens de serviço, equipas, manutenção, obras, stock e clientes num único sistema.<br>Experimente gratuitamente durante 14 dias com toda a sua equipa.</p>
       <div class="tagline">
         <svg viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 4 8-9" stroke="#f4520e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 7h4v4" stroke="#f4520e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1141,7 +1140,7 @@
                     </div>
                     <div class="card-principal" data-card="ferramentas" onclick="abrirSecao('ferramentas')">
                         <div class="icon"><i class="fas fa-toolbox"></i></div>
-                        <div class="info"><h3>Equipamentos (QR)</h3><p><span class="count" id="countFerramentas">0</span> registados</p></div>
+                        <div class="info"><h3>Ferramentas de trabalho (QR)</h3><p><span class="count" id="countFerramentas">0</span> registados</p></div>
                     </div>
                     <div class="card-principal" data-card="levantamento-qr" onclick="abrirSecao('levantamento-qr')">
                         <div class="icon"><i class="fas fa-qrcode"></i></div>
@@ -2757,7 +2756,8 @@
     <!-- EmailJS para envio de emails de pagamento -->
     <script src="emailjs-config.js"></script>
 
-    <script src="app-principal.js"></script>
+    <script src="navegacao-clientes.js?v=20260928"></script>
+    <script src="app-principal.js?v=20260928"></script>
 
     <div id="tg-addon-overlay" onclick="if(event.target===this) fecharDetalheAddon()">
       <div id="tg-addon-card">

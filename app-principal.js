@@ -5177,26 +5177,20 @@
             }).join('');
         }
 
-        // =====================================================================
-        //  WORKSPACE DO CLIENTE — Fase 1 (Resumo + Locais)
-        //  Ao clicar no nome de um cliente na lista, abre este painel em vez de
-        //  ir direto para a edição. Reúne o que já existe (locais, OS, contratos)
-        //  visto por cliente, com ações rápidas no topo. Os separadores que ainda
-        //  não têm conteúdo próprio (OS, Assistências, Contratos, Equipamentos,
-        //  Financeiro) mostram uma mensagem simples por agora — ficam para as
-        //  próximas fases, sem quebrar nada do que já existe nesses menus.
-        // =====================================================================
-        const WS_CLIENTE_ABAS = ['resumo', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'equipamentos', 'financeiro'];
-        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
+        // Ficha do cliente: navegação por contexto, com os formulários existentes.
+        const WS_CLIENTE_ABAS = ['resumo', 'locais', 'os', 'obras', 'contratos', 'documentos', 'financeiro'];
+        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', locais: 'Locais', os: 'Serviços', obras: 'Obras', contratos: 'Contratos', documentos: 'Documentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) return;
             let overlay = document.getElementById('wsClienteOverlay');
-            if (!overlay) { overlay = document.createElement('div'); overlay.id = 'wsClienteOverlay'; overlay.className = 'modal-overlay'; document.body.appendChild(overlay); }
+            if (!overlay) { overlay = document.createElement('div'); overlay.id = 'wsClienteOverlay'; overlay.className = 'modal-overlay tg-cliente-pagina'; document.body.appendChild(overlay); }
             overlay.classList.add('open');
             _wsClienteAba(clienteId, 'resumo');
         }
         function _wsClienteFechar() {
+            _tgClienteGuardarPosicao();
+            overlayRequestSequence++;
             const overlay = document.getElementById('wsClienteOverlay');
             overlay?.classList.remove('open');
             if (overlay) overlay.dataset.clienteAtual = ''; // força a refazer a "casca" na próxima vez que abrir (dados podem ter mudado entretanto)
@@ -5206,6 +5200,7 @@
         // lembrar-se de onde veio: quando esse modal fechar, o workspace reabre sozinho, na mesma
         // aba. Assim editar algo não te atira de volta para a lista de Clientes.
         function _wsSairPara(clienteId) {
+            _tgClienteGuardarPosicao();
             document.getElementById('wsClienteOverlay')?.classList.remove('open');
             window._wsVoltarCliente = { id: clienteId, aba: window._wsAbaAtual || 'resumo' };
         }
@@ -5225,8 +5220,10 @@
                 _wsClienteAba(alvo.id, alvo.aba);
             }, 350);
         }
+        let overlayRequestSequence = 0;
         async function _wsClienteAba(clienteId, aba) {
             const admin = adminAtual();
+            const abaPrincipal = _tgClienteAbaPrincipal(aba);
             // Cada separador só aparece se o módulo correspondente estiver mesmo ativo nesta
             // conta — Assistências precisa do Assist, Contratos e Equipamentos (que vivem dentro
             // de um contrato) precisam dos Contratos de Manutenção. Os restantes são sempre base.
@@ -5236,7 +5233,9 @@
                 if (a === 'obras') return moduloArmazemAtivo(admin);
                 return true;
             });
-            if (!abasVisiveis.includes(aba)) aba = 'resumo'; // a aba pedida já não está disponível
+            if (!abasVisiveis.includes(abaPrincipal) || !_tgClienteSubabaPermitida(aba, admin)) aba = 'resumo';
+            _tgClienteGuardarPosicao();
+            const pedido = ++overlayRequestSequence;
             window._wsAbaAtual = aba;
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             const overlay = document.getElementById('wsClienteOverlay');
@@ -5256,12 +5255,16 @@
                                 <div style="font-weight:700;font-size:1.15rem;">${escapeHtmlSimples(cliente.nome)}</div>
                                 <div style="font-size:.8rem;color:#64748b;">${cliente.nif ? 'NIF ' + escapeHtmlSimples(cliente.nif) + ' · ' : ''}${escapeHtmlSimples(cliente.cidade || cliente.endereco || '—')} · ${locaisCliente.length + 1} local${locaisCliente.length ? 'is' : ''}</div>
                             </div>
-                            <button class="close-modal" onclick="_wsClienteFechar()">&times;</button>
+                            <button type="button" class="btn btn-outline" onclick="_wsClienteFechar()"><i class="fas fa-arrow-left"></i> Clientes</button>
                         </div>
                         <div style="padding:14px 22px 0;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-                            <button class="btn btn-sm btn-primary" onclick="_wsMarcarOS('${clienteId}')"><i class="fas fa-clipboard-plus"></i> Marcar OS</button>
-                            ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="_wsMarcarAssistencia('${clienteId}')"><i class="fas fa-headset"></i> Marcar assistência</button>` : ''}
-                            <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-map-pin"></i> Novo local</button>
+                            <details class="tg-cliente-criar"><summary class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Criar</summary><div>
+                                <button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsMarcarOS('${clienteId}')">Ordem de serviço</button>
+                                ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsMarcarAssistencia('${clienteId}')">Assistência</button>` : ''}
+                                <button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')">Local</button>
+                                ${moduloArmazemAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsNovaObra('${clienteId}')">Obra</button>` : ''}
+                                ${moduloContratosAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsNovoContrato('${clienteId}')">Contrato</button>` : ''}
+                            </div></details>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModal('cliente','${clienteId}')"><i class="fas fa-edit"></i> Editar dados</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirHistoricoCliente('${clienteId}')"><i class="fas fa-clock-rotate-left"></i> Histórico completo</button>
                         </div>
@@ -5274,17 +5277,34 @@
             // A barra de separadores em si é barata de refazer (é só texto/botões) — atualiza-se
             // sempre, para o destaque do separador ativo mudar sem tocar no resto da "casca".
             const barraAbas = document.getElementById('wsClienteAbas');
-            if (barraAbas) barraAbas.innerHTML = abasVisiveis.map(a => `<button class="ws-cliente-aba-btn ${a === aba ? 'active' : ''}" onclick="_wsClienteAba('${clienteId}','${a}')">${WS_CLIENTE_ABAS_LABEL[a]}</button>`).join('');
+            if (barraAbas) barraAbas.innerHTML = abasVisiveis.map(a => `<button class="ws-cliente-aba-btn ${a === _tgClienteAbaPrincipal(aba) ? 'active' : ''}" onclick="_wsClienteAba('${clienteId}','${a}')">${WS_CLIENTE_ABAS_LABEL[a]}</button>`).join('');
+            let subnav = document.getElementById('wsClienteSubAbas');
+            if (!subnav) { subnav = document.createElement('div'); subnav.id = 'wsClienteSubAbas'; barraAbas.after(subnav); }
+            subnav.innerHTML = _tgClienteSubnav(clienteId, aba);
             const conteudo = document.getElementById('wsClienteConteudo');
-            if (aba === 'resumo') conteudo.innerHTML = await _wsResumoHtml(clienteId);
-            else if (aba === 'locais') conteudo.innerHTML = _wsLocaisHtml(clienteId);
-            else if (aba === 'os') conteudo.innerHTML = await _wsOsHtml(clienteId);
-            else if (aba === 'obras') conteudo.innerHTML = _wsObrasHtml(clienteId);
-            else if (aba === 'contratos') conteudo.innerHTML = _wsContratosHtml(clienteId);
-            else if (aba === 'assistencias') conteudo.innerHTML = _wsAssistenciasHtml(clienteId);
-            else if (aba === 'equipamentos') conteudo.innerHTML = _wsEquipamentosHtml(clienteId);
-            else if (aba === 'financeiro') conteudo.innerHTML = await _wsFinanceiroHtml(clienteId);
-            else conteudo.innerHTML = `<p class="help-text">Este separador ainda não está pronto nesta primeira fase do workspace — por agora, usa "${WS_CLIENTE_ABAS_LABEL[aba]}" no menu principal, já filtrando por este cliente se precisares.</p>`;
+            conteudo.innerHTML = '<p class="help-text" role="status">A carregar dados…</p>';
+            overlay.dataset.abaAtual = aba;
+            let html;
+            try {
+                if (aba === 'resumo') html = await _wsResumoHtml(clienteId);
+                else if (aba === 'locais') html = _wsLocaisHtml(clienteId);
+                else if (aba === 'os') html = await _wsOsHtml(clienteId, _tgClienteDatasOS[clienteId]);
+                else if (aba === 'obras') html = _wsObrasHtml(clienteId);
+                else if (aba === 'contratos') html = _wsContratosHtml(clienteId);
+                else if (aba === 'assistencias') html = _wsAssistenciasHtml(clienteId);
+                else if (aba === 'equipamentos') html = _wsEquipamentosHtml(clienteId);
+                else if (aba === 'manutencoes') html = _tgClienteManutencoes(clienteId);
+                else if (['documentos', 'personalizados', 'anexos', 'registos'].includes(aba)) html = await _tgClienteDocumentos(clienteId, aba);
+                else if (aba === 'financeiro') html = await _wsFinanceiroHtml(clienteId);
+            } catch (erro) {
+                console.error('Carregar ficha do cliente:', erro);
+                html = `<p role="alert">Não foi possível carregar esta área.</p><button class="btn btn-outline" onclick="_wsClienteAba('${clienteId}','${aba}')">Tentar novamente</button>`;
+            }
+            // Uma resposta lenta nunca substitui o cliente/separador entretanto escolhido.
+            if (pedido !== overlayRequestSequence || overlay.dataset.clienteAtual !== clienteId || !overlay.classList.contains('open')) return;
+            conteudo.innerHTML = html || '<p class="help-text">Sem registos.</p>';
+            conteudo.scrollTop = _tgClientePosicoes[clienteId + ':' + aba] || 0;
+
         }
         // Financeiro por cliente — usa o valor e o estado de pagamento já registados em cada OS
         // (o mesmo "€ Pago / Não pago" que já usas na ficha da OS). Não inventa nenhum dado novo,
@@ -5348,19 +5368,20 @@
             const blocoContratos = contratosComValor.length ? `
                 <div style="margin-top:20px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <div style="font-weight:600;font-size:.9rem;">Contratos com faturação recorrente</div>
+                        <div style="font-weight:600;font-size:.9rem;">Valores recorrentes dos contratos</div>
                         <div style="font-size:.8rem;color:#64748b;">≈ ${fmt(totalMensalRecorrente)}/mês</div>
                     </div>
                     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px 18px;">${linhasContratos}</div>
                 </div>` : '';
             return `
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
-                    ${osComValor.length ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Faturado em OS (12 meses)</div><div style="font-size:1.3rem;font-weight:700;">${fmt(totalFaturado)}</div></div>
+                    ${osComValor.length ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Valor das OS (12 meses)</div><div style="font-size:1.3rem;font-weight:700;">${fmt(totalFaturado)}</div></div>
                     <div style="background:${totalPorCobrar ? '#fef2f2' : '#f8fafc'};border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:${totalPorCobrar ? '#991b1b' : '#64748b'};">Por cobrar</div><div style="font-size:1.3rem;font-weight:700;color:${totalPorCobrar ? '#991b1b' : 'inherit'};">${fmt(totalPorCobrar)}</div></div>` : ''}
                     ${contratosComValor.length ? `<div style="background:#eff6ff;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#1e40af;">Recorrente (contratos)</div><div style="font-size:1.3rem;font-weight:700;color:#1e40af;">${fmt(totalMensalRecorrente)}<span style="font-size:.7rem;font-weight:400;">/mês</span></div></div>` : ''}
                 </div>
                 ${osComValor.length ? `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px 18px;">${linhas}</div>` : ''}
                 ${blocoContratos}
+                <p class="help-text">Valores das OS e estados de pagamento registados. Os valores recorrentes dos contratos são uma previsão; não confirmam a emissão de faturas.</p>
             `;
         }
         // Os equipamentos ligam-se a um Local (localId), não diretamente a um cliente — por isso
@@ -5669,7 +5690,7 @@
             await excluirEntidade('servico', osId);
             const conteudo = document.getElementById('wsClienteConteudo');
             if (conteudo && document.getElementById('wsClienteOverlay')?.classList.contains('open')) {
-                conteudo.innerHTML = await _wsOsHtml(clienteId);
+                _wsClienteAba(clienteId, 'os');
             }
         }
         function _wsOsBotaoCarregarMais(clienteId, desdeAtual) {
@@ -5685,7 +5706,9 @@
             const novoDesde = _dataCorteMeses(_mesesDesdeCorteAtual(desdeAtualStr) + 3);
             const n = await garantirServicosCarregados(novoDesde);
             const conteudo = document.getElementById('wsClienteConteudo');
-            if (conteudo) conteudo.innerHTML = await _wsOsHtml(clienteId, novoDesde);
+            _tgClienteDatasOS[clienteId] = novoDesde;
+            if (document.getElementById('wsClienteOverlay')?.dataset.clienteAtual !== clienteId || window._wsAbaAtual !== 'os') return;
+            await _wsClienteAba(clienteId, 'os');
             if (!n) {
                 const btn2 = document.getElementById('ws-os-carregar-mais');
                 if (btn2) {
@@ -14529,20 +14552,8 @@
             document.body.classList.add('tem-menu-inferior');
             if (grupos) grupos.style.display = 'none';
             nav.style.display = 'flex';
-            const gruposVisiveis = [...document.querySelectorAll('.grupo-cards')].filter(g =>
-                [...g.querySelectorAll('.card-principal')].some(c => !c.classList.contains('hidden-card'))
-            );
-            const itens = [`<div class="menu-inf-item ativo" id="menuInfHome" onclick="_voltarMeuDia()"><i class="fas fa-sun"></i><span>O Meu Dia</span></div>`];
-            if (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') {
-                itens.push(`<div class="menu-inf-item" id="menuInfDashboardCentral" onclick="_abrirDashboardCentralMobile()"><i class="fas fa-chart-line"></i><span>Dashboard</span></div>`);
-            }
-            gruposVisiveis.forEach(g => {
-                const chave = g.dataset.grupo;
-                const titulo = g.querySelector('.grupo-header h3')?.textContent?.trim() || chave;
-                const iconClass = g.querySelector('.grupo-header h3 i')?.className || 'fas fa-layer-group';
-                itens.push(`<div class="menu-inf-item" id="menuInf_${chave}" onclick="_abrirGrupoMobile('${chave}')"><i class="${iconClass}"></i><span>${escapeHtmlSimples(titulo)}</span></div>`);
-            });
-            nav.innerHTML = itens.join('');
+            nav.innerHTML = _tgMenuSimplesHTML(true);
+            _tgMarcarMenuSimples(_contextoAtual || '__inicio');
         }
         function _fecharSecaoAbertaMobile() {
             // Sempre que se navega dentro do menu inferior (troca de grupo ou volta a "O Meu
@@ -32323,7 +32334,8 @@ window._relPrefill = function(msg){
             return c ? c.textContent.trim() : (nome || '');
         }
         function _marcarNavAtivo(sec) {
-            document.querySelectorAll('#tgSidebarNav .tg-nav-item').forEach(el => el.classList.toggle('ativo', el.getAttribute('data-secao') === sec));
+            _tgMarcarMenuSimples(sec);
+            document.querySelectorAll('#tgSidebarNav .tg-nav-item').forEach(el => el.classList.toggle('ativo', el.getAttribute('data-secao') === sec || el.getAttribute('data-secao') === _tgGrupoDaSecao(sec)));
             // No acordeão "Foco", abre também o grupo que contém o item ativo, senão fica
             // escondido lá dentro sem se perceber onde está.
             const ativo = document.querySelector('#tgSidebarNav .tg-nav-item.ativo');
@@ -32402,13 +32414,13 @@ window._relPrefill = function(msg){
                     });
                 });
             }
-            nav.innerHTML = html;
+            nav.innerHTML = usuarioLogado.role === 'superadmin' ? html : _tgMenuSimplesHTML(false);
             const fu = document.getElementById('tgSideUser');
             if (fu) fu.innerHTML = `<i class="fas fa-user-circle"></i> ${usuarioLogado.nome || ''}<div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${_papelLabel(usuarioLogado.role)}</div>`;
             const sb = document.getElementById('tgSideBrandNome');
             if (sb) sb.textContent = (usuarioLogado.role === 'superadmin') ? 'Total Gest' : (adminAtual()?.empresa || 'Total Gest');
             _marcarNavAtivo(_contextoAtual || '__inicio');
-            if (!_contextoAtual || _contextoAtual === '__inicio') { _mostrarInicioConteudo(); _atualizarBreadcrumb('Início'); }
+            if (!_contextoAtual || _contextoAtual === '__inicio') { _mostrarInicioConteudo(); _atualizarBreadcrumb(usuarioLogado?.role === 'superadmin' ? 'Início' : 'Hoje'); }
         }
         // Acordeão do layout "Total Gest Foco" — clicar num grupo abre/fecha o submenu logo por
         // baixo dele (fecha os outros que estejam abertos, só um de cada vez), em vez do antigo
@@ -33493,11 +33505,12 @@ window._relPrefill = function(msg){
             }
         }
         function irParaInicio() {
+            _wsClienteFechar();
             _contextoAtual = '__inicio';
             document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
             _mostrarInicioConteudo();
             _marcarNavAtivo('__inicio');
-            _atualizarBreadcrumb('Início');
+            _atualizarBreadcrumb(usuarioLogado?.role === 'superadmin' ? 'Início' : 'Hoje');
             _fecharSidebarMobile();
             try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
         }
@@ -33561,6 +33574,7 @@ window._relPrefill = function(msg){
             else _voltarMeuDia();
         }
         function abrirSecao(nome) {
+            _wsClienteFechar();
             if (nome === 'exportar-dados') { abrirModalExportarImportar(); return; }
             _registarUsoSecao(nome);
             if (usuarioLogado && usuarioLogado.role === 'cliente' && !_licencaValidaTenant()) {

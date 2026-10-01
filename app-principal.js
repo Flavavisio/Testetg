@@ -2182,7 +2182,7 @@
         function renderizarTudo() {
             if (_renderAgendado) return;
             _renderAgendado = true;
-            const _run = () => { _renderAgendado = false; _renderizarTudoAgora(); };
+            const _run = () => { _renderAgendado = false; try { _renderizarTudoAgora(); } finally { document.dispatchEvent(new Event('tg:interface-updated')); } };
             (typeof queueMicrotask === 'function') ? queueMicrotask(_run) : Promise.resolve().then(_run);
         }
         function _notificarPorFaseVencimento(chaveBase, itemId, diasRestantes, callback) {
@@ -3994,7 +3994,10 @@
                             <td>
                                 <div class="acoes">
                                     ${pendentePagamento ? `<button class="btn btn-sm btn-success" onclick="ativarLicenca('${admin.id}')" title="Confirmar pagamento e ativar"><i class="fas fa-circle-check"></i> Ativar</button>` : ''}
-                                    ${admin.licenca ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="lembrarPagamentoLicenca('${admin.id}')" title="Enviar lembrete de pagamento (prazo de 48h)"><i class="fas fa-bell"></i> Lembrar</button>` : ''}
+                                    ${admin.lembretePagamentoEm ? `
+                                        <span class="lembrete-contador" data-lembrete-em="${admin.lembretePagamentoEm}" style="display:inline-flex;align-items:center;gap:6px;background:#fef3c7;color:#92400e;font-size:.78rem;font-weight:700;padding:5px 10px;border-radius:6px;" title="Tempo até a conta ser desativada automaticamente, se o pagamento não for confirmado"><i class="fas fa-hourglass-half"></i> —</span>
+                                        <button class="btn btn-sm btn-outline" onclick="cancelarLembretePagamento('${admin.id}')" title="Cancelar o prazo — a conta deixa de ser desativada automaticamente"><i class="fas fa-xmark"></i></button>
+                                    ` : (admin.licenca ? `<button class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="lembrarPagamentoLicenca('${admin.id}')" title="Enviar lembrete de pagamento (prazo de 48h)"><i class="fas fa-bell"></i> Lembrar</button>` : '')}
                                     ${admin.licenca ? `<button class="btn btn-sm btn-renovar" onclick="renovarLicenca('${admin.id}')" title="Renovar +${admin.licenca?.dias || PLANOS[admin.licenca?.plano]?.dias || 30} dias"><i class="fas fa-sync-alt"></i> Renovar</button>` : ''}
                                     ${admin.ativo ? `<button class="btn btn-sm btn-desativar" onclick="desativarAdmin('${admin.id}')"><i class="fas fa-toggle-off"></i></button>` :
                                     `<button class="btn btn-sm btn-reativar" onclick="reativarAdmin('${admin.id}')"><i class="fas fa-toggle-on"></i></button>`}
@@ -4005,6 +4008,7 @@
                         </tr>
                     `;
             }).join('');
+            _atualizarContadoresLembrete();
         }
 
         function renderizarLicencas() {
@@ -5177,20 +5181,26 @@
             }).join('');
         }
 
-        // Ficha do cliente: navegação por contexto, com os formulários existentes.
-        const WS_CLIENTE_ABAS = ['resumo', 'locais', 'os', 'obras', 'contratos', 'documentos', 'financeiro'];
-        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', locais: 'Locais', os: 'Serviços', obras: 'Obras', contratos: 'Contratos', documentos: 'Documentos', financeiro: 'Financeiro' };
+        // =====================================================================
+        //  WORKSPACE DO CLIENTE — Fase 1 (Resumo + Locais)
+        //  Ao clicar no nome de um cliente na lista, abre este painel em vez de
+        //  ir direto para a edição. Reúne o que já existe (locais, OS, contratos)
+        //  visto por cliente, com ações rápidas no topo. Os separadores que ainda
+        //  não têm conteúdo próprio (OS, Assistências, Contratos, Equipamentos,
+        //  Financeiro) mostram uma mensagem simples por agora — ficam para as
+        //  próximas fases, sem quebrar nada do que já existe nesses menus.
+        // =====================================================================
+        const WS_CLIENTE_ABAS = ['resumo', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
+        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) return;
             let overlay = document.getElementById('wsClienteOverlay');
-            if (!overlay) { overlay = document.createElement('div'); overlay.id = 'wsClienteOverlay'; overlay.className = 'modal-overlay tg-cliente-pagina'; document.body.appendChild(overlay); }
+            if (!overlay) { overlay = document.createElement('div'); overlay.id = 'wsClienteOverlay'; overlay.className = 'modal-overlay'; document.body.appendChild(overlay); }
             overlay.classList.add('open');
             _wsClienteAba(clienteId, 'resumo');
         }
         function _wsClienteFechar() {
-            _tgClienteGuardarPosicao();
-            overlayRequestSequence++;
             const overlay = document.getElementById('wsClienteOverlay');
             overlay?.classList.remove('open');
             if (overlay) overlay.dataset.clienteAtual = ''; // força a refazer a "casca" na próxima vez que abrir (dados podem ter mudado entretanto)
@@ -5200,7 +5210,6 @@
         // lembrar-se de onde veio: quando esse modal fechar, o workspace reabre sozinho, na mesma
         // aba. Assim editar algo não te atira de volta para a lista de Clientes.
         function _wsSairPara(clienteId) {
-            _tgClienteGuardarPosicao();
             document.getElementById('wsClienteOverlay')?.classList.remove('open');
             window._wsVoltarCliente = { id: clienteId, aba: window._wsAbaAtual || 'resumo' };
         }
@@ -5220,10 +5229,8 @@
                 _wsClienteAba(alvo.id, alvo.aba);
             }, 350);
         }
-        let overlayRequestSequence = 0;
         async function _wsClienteAba(clienteId, aba) {
             const admin = adminAtual();
-            const abaPrincipal = _tgClienteAbaPrincipal(aba);
             // Cada separador só aparece se o módulo correspondente estiver mesmo ativo nesta
             // conta — Assistências precisa do Assist, Contratos e Equipamentos (que vivem dentro
             // de um contrato) precisam dos Contratos de Manutenção. Os restantes são sempre base.
@@ -5231,11 +5238,10 @@
                 if (a === 'assistencias') return moduloAssistAtivo(admin);
                 if (a === 'contratos' || a === 'equipamentos') return moduloContratosAtivo(admin);
                 if (a === 'obras') return moduloArmazemAtivo(admin);
+                if (a === 'relatorios') return admin?.segurancaAtivo === true;
                 return true;
             });
-            if (!abasVisiveis.includes(abaPrincipal) || !_tgClienteSubabaPermitida(aba, admin)) aba = 'resumo';
-            _tgClienteGuardarPosicao();
-            const pedido = ++overlayRequestSequence;
+            if (!abasVisiveis.includes(aba)) aba = 'resumo'; // a aba pedida já não está disponível
             window._wsAbaAtual = aba;
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             const overlay = document.getElementById('wsClienteOverlay');
@@ -5255,16 +5261,12 @@
                                 <div style="font-weight:700;font-size:1.15rem;">${escapeHtmlSimples(cliente.nome)}</div>
                                 <div style="font-size:.8rem;color:#64748b;">${cliente.nif ? 'NIF ' + escapeHtmlSimples(cliente.nif) + ' · ' : ''}${escapeHtmlSimples(cliente.cidade || cliente.endereco || '—')} · ${locaisCliente.length + 1} local${locaisCliente.length ? 'is' : ''}</div>
                             </div>
-                            <button type="button" class="btn btn-outline" onclick="_wsClienteFechar()"><i class="fas fa-arrow-left"></i> Clientes</button>
+                            <button class="close-modal" onclick="_wsClienteFechar()">&times;</button>
                         </div>
                         <div style="padding:14px 22px 0;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
-                            <details class="tg-cliente-criar"><summary class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Criar</summary><div>
-                                <button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsMarcarOS('${clienteId}')">Ordem de serviço</button>
-                                ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsMarcarAssistencia('${clienteId}')">Assistência</button>` : ''}
-                                <button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')">Local</button>
-                                ${moduloArmazemAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsNovaObra('${clienteId}')">Obra</button>` : ''}
-                                ${moduloContratosAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="this.closest('details').open=false;_wsNovoContrato('${clienteId}')">Contrato</button>` : ''}
-                            </div></details>
+                            <button class="btn btn-sm btn-primary" onclick="_wsMarcarOS('${clienteId}')"><i class="fas fa-clipboard-plus"></i> Marcar OS</button>
+                            ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="_wsMarcarAssistencia('${clienteId}')"><i class="fas fa-headset"></i> Marcar assistência</button>` : ''}
+                            <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-map-pin"></i> Novo local</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModal('cliente','${clienteId}')"><i class="fas fa-edit"></i> Editar dados</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirHistoricoCliente('${clienteId}')"><i class="fas fa-clock-rotate-left"></i> Histórico completo</button>
                         </div>
@@ -5277,34 +5279,18 @@
             // A barra de separadores em si é barata de refazer (é só texto/botões) — atualiza-se
             // sempre, para o destaque do separador ativo mudar sem tocar no resto da "casca".
             const barraAbas = document.getElementById('wsClienteAbas');
-            if (barraAbas) barraAbas.innerHTML = abasVisiveis.map(a => `<button class="ws-cliente-aba-btn ${a === _tgClienteAbaPrincipal(aba) ? 'active' : ''}" onclick="_wsClienteAba('${clienteId}','${a}')">${WS_CLIENTE_ABAS_LABEL[a]}</button>`).join('');
-            let subnav = document.getElementById('wsClienteSubAbas');
-            if (!subnav) { subnav = document.createElement('div'); subnav.id = 'wsClienteSubAbas'; barraAbas.after(subnav); }
-            subnav.innerHTML = _tgClienteSubnav(clienteId, aba);
+            if (barraAbas) barraAbas.innerHTML = abasVisiveis.map(a => `<button class="ws-cliente-aba-btn ${a === aba ? 'active' : ''}" onclick="_wsClienteAba('${clienteId}','${a}')">${WS_CLIENTE_ABAS_LABEL[a]}</button>`).join('');
             const conteudo = document.getElementById('wsClienteConteudo');
-            conteudo.innerHTML = '<p class="help-text" role="status">A carregar dados…</p>';
-            overlay.dataset.abaAtual = aba;
-            let html;
-            try {
-                if (aba === 'resumo') html = await _wsResumoHtml(clienteId);
-                else if (aba === 'locais') html = _wsLocaisHtml(clienteId);
-                else if (aba === 'os') html = await _wsOsHtml(clienteId, _tgClienteDatasOS[clienteId]);
-                else if (aba === 'obras') html = _wsObrasHtml(clienteId);
-                else if (aba === 'contratos') html = _wsContratosHtml(clienteId);
-                else if (aba === 'assistencias') html = _wsAssistenciasHtml(clienteId);
-                else if (aba === 'equipamentos') html = _wsEquipamentosHtml(clienteId);
-                else if (aba === 'manutencoes') html = _tgClienteManutencoes(clienteId);
-                else if (['documentos', 'personalizados', 'anexos', 'registos'].includes(aba)) html = await _tgClienteDocumentos(clienteId, aba);
-                else if (aba === 'financeiro') html = await _wsFinanceiroHtml(clienteId);
-            } catch (erro) {
-                console.error('Carregar ficha do cliente:', erro);
-                html = `<p role="alert">Não foi possível carregar esta área.</p><button class="btn btn-outline" onclick="_wsClienteAba('${clienteId}','${aba}')">Tentar novamente</button>`;
-            }
-            // Uma resposta lenta nunca substitui o cliente/separador entretanto escolhido.
-            if (pedido !== overlayRequestSequence || overlay.dataset.clienteAtual !== clienteId || !overlay.classList.contains('open')) return;
-            conteudo.innerHTML = html || '<p class="help-text">Sem registos.</p>';
-            conteudo.scrollTop = _tgClientePosicoes[clienteId + ':' + aba] || 0;
-
+            if (aba === 'resumo') conteudo.innerHTML = await _wsResumoHtml(clienteId);
+            else if (aba === 'locais') conteudo.innerHTML = _wsLocaisHtml(clienteId);
+            else if (aba === 'os') conteudo.innerHTML = await _wsOsHtml(clienteId);
+            else if (aba === 'obras') conteudo.innerHTML = _wsObrasHtml(clienteId);
+            else if (aba === 'contratos') conteudo.innerHTML = _wsContratosHtml(clienteId);
+            else if (aba === 'relatorios') conteudo.innerHTML = _wsRelatoriosHtml(clienteId);
+            else if (aba === 'assistencias') conteudo.innerHTML = _wsAssistenciasHtml(clienteId);
+            else if (aba === 'equipamentos') conteudo.innerHTML = _wsEquipamentosHtml(clienteId);
+            else if (aba === 'financeiro') conteudo.innerHTML = await _wsFinanceiroHtml(clienteId);
+            else conteudo.innerHTML = `<p class="help-text">Este separador ainda não está pronto nesta primeira fase do workspace — por agora, usa "${WS_CLIENTE_ABAS_LABEL[aba]}" no menu principal, já filtrando por este cliente se precisares.</p>`;
         }
         // Financeiro por cliente — usa o valor e o estado de pagamento já registados em cada OS
         // (o mesmo "€ Pago / Não pago" que já usas na ficha da OS). Não inventa nenhum dado novo,
@@ -5368,20 +5354,19 @@
             const blocoContratos = contratosComValor.length ? `
                 <div style="margin-top:20px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <div style="font-weight:600;font-size:.9rem;">Valores recorrentes dos contratos</div>
+                        <div style="font-weight:600;font-size:.9rem;">Contratos com faturação recorrente</div>
                         <div style="font-size:.8rem;color:#64748b;">≈ ${fmt(totalMensalRecorrente)}/mês</div>
                     </div>
                     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px 18px;">${linhasContratos}</div>
                 </div>` : '';
             return `
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
-                    ${osComValor.length ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Valor das OS (12 meses)</div><div style="font-size:1.3rem;font-weight:700;">${fmt(totalFaturado)}</div></div>
+                    ${osComValor.length ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Faturado em OS (12 meses)</div><div style="font-size:1.3rem;font-weight:700;">${fmt(totalFaturado)}</div></div>
                     <div style="background:${totalPorCobrar ? '#fef2f2' : '#f8fafc'};border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:${totalPorCobrar ? '#991b1b' : '#64748b'};">Por cobrar</div><div style="font-size:1.3rem;font-weight:700;color:${totalPorCobrar ? '#991b1b' : 'inherit'};">${fmt(totalPorCobrar)}</div></div>` : ''}
                     ${contratosComValor.length ? `<div style="background:#eff6ff;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#1e40af;">Recorrente (contratos)</div><div style="font-size:1.3rem;font-weight:700;color:#1e40af;">${fmt(totalMensalRecorrente)}<span style="font-size:.7rem;font-weight:400;">/mês</span></div></div>` : ''}
                 </div>
                 ${osComValor.length ? `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px 18px;">${linhas}</div>` : ''}
                 ${blocoContratos}
-                <p class="help-text">Valores das OS e estados de pagamento registados. Os valores recorrentes dos contratos são uma previsão; não confirmam a emissão de faturas.</p>
             `;
         }
         // Os equipamentos ligam-se a um Local (localId), não diretamente a um cliente — por isso
@@ -5604,6 +5589,32 @@
                 if (typeof onClienteObraChange === 'function') onClienteObraChange();
             }, 150);
         }
+        // Relatórios de especialidade do cliente (REX, RBI, etc.), com os locais — inclui
+        // rascunhos, com um aviso próprio, tal como o Historico/Auditoria já fazia. Cada linha
+        // tem os dois botões que pediste: ver o relatório em si, e ver a OS de onde saiu.
+        function _wsRelatoriosHtml(clienteId) {
+            const locaisCliente = (dados.locais || []).filter(l => l.clienteId === clienteId);
+            const nomeLocal = localId => localId ? (locaisCliente.find(l => l.id === localId)?.nome || 'Local') : 'Sede';
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação' };
+            const relCliente = (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === clienteId).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+            const cabecalho = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div class="help-text" style="margin:0;">Relatórios de especialidade deste cliente, incluindo rascunhos. Para preencher um relatório, abra a OS correspondente.</div>
+                    <button class="btn btn-sm btn-primary" onclick="_wsSairPara('${clienteId}');abrirSecao('servicos')" title="Ir a Ordens de Serviço"><i class="fas fa-clipboard-list"></i> Abrir serviços</button>
+                </div>`;
+            if (!relCliente.length) return cabecalho + `<p class="help-text">Este cliente ainda não tem nenhum relatório de especialidade.</p>`;
+            const linhas = relCliente.map(r => `
+                <div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f1f5f9;">
+                    <i class="fas fa-file-shield" style="color:#94a3b8;width:18px;"></i>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:.86rem;font-weight:600;text-align:left;">${escapeHtmlSimples(nomesRelatorio[r.tipo] || r.tipo)} · ${escapeHtmlSimples(r.numeroDocumento || '—')}${r.rascunho ? ' <span style="font-size:.68rem;font-weight:600;color:#92400e;background:#fef3c7;padding:2px 7px;border-radius:5px;">Rascunho</span>' : ''}</div>
+                        <div style="font-size:.76rem;color:#64748b;text-align:left;">${(r.data || '').split('-').reverse().join('/')} · ${escapeHtmlSimples(nomeLocal(r.localId))}</div>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="_verRelatorioEspecialidadeSnapshot('${r.id}', false)"><i class="fas fa-file-lines"></i> Ver relatório</button>
+                    ${r.servicoId ? `<button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirVerOS('${r.servicoId}')"><i class="fas fa-clipboard-list"></i> Ver OS</button>` : ''}
+                </div>`).join('');
+            return cabecalho + `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0 18px;">${linhas}</div>`;
+        }
         function _wsContratosHtml(clienteId) {
             const contratosCliente = (dados.contratos || []).filter(c => c.clienteId === clienteId).sort((a, b) => (a.validadeContrato || '9999').localeCompare(b.validadeContrato || '9999'));
             if (!contratosCliente.length) return `<p class="help-text">Este cliente ainda não tem nenhum contrato de manutenção registado.</p><button class="btn btn-sm btn-primary" onclick="_wsNovoContrato('${clienteId}')"><i class="fas fa-plus"></i> Novo contrato</button>`;
@@ -5690,7 +5701,7 @@
             await excluirEntidade('servico', osId);
             const conteudo = document.getElementById('wsClienteConteudo');
             if (conteudo && document.getElementById('wsClienteOverlay')?.classList.contains('open')) {
-                _wsClienteAba(clienteId, 'os');
+                conteudo.innerHTML = await _wsOsHtml(clienteId);
             }
         }
         function _wsOsBotaoCarregarMais(clienteId, desdeAtual) {
@@ -5706,9 +5717,7 @@
             const novoDesde = _dataCorteMeses(_mesesDesdeCorteAtual(desdeAtualStr) + 3);
             const n = await garantirServicosCarregados(novoDesde);
             const conteudo = document.getElementById('wsClienteConteudo');
-            _tgClienteDatasOS[clienteId] = novoDesde;
-            if (document.getElementById('wsClienteOverlay')?.dataset.clienteAtual !== clienteId || window._wsAbaAtual !== 'os') return;
-            await _wsClienteAba(clienteId, 'os');
+            if (conteudo) conteudo.innerHTML = await _wsOsHtml(clienteId, novoDesde);
             if (!n) {
                 const btn2 = document.getElementById('ws-os-carregar-mais');
                 if (btn2) {
@@ -6643,7 +6652,7 @@
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
             }
 
-            doc.save(`relatorio_${paraCliente ? 'cliente' : 'interno'}_OS_${(os.numeroRegisto || os.id)}_${_hoje10()}.pdf`);
+            _tgGuardarPdf(doc, `relatorio_${paraCliente ? 'cliente' : 'interno'}_OS_${(os.numeroRegisto || os.id)}_${_hoje10()}.pdf`);
         }
         // Pequeno popup para escolher qual dos dois relatórios gerar da OS — o interno (com
         // valores/margens) ou o do cliente (sem nenhum valor) — mesmo padrão já usado nas Obras.
@@ -7530,6 +7539,92 @@
             document.getElementById('modalFolhaOverlay').classList.remove('open');
         }
 
+        // ===== PDF no telemóvel: nunca sair da app =====
+        // Problema: doc.save() num telemóvel — sobretudo num iPhone com a app instalada — abre o
+        // PDF NO LUGAR da app, sem barra do browser nem botão de voltar; a única saída era fechar
+        // a app. Aqui o PDF abre dentro de uma camada da própria app (a app nunca é substituída),
+        // com um botão "Voltar" bem à vista, e o botão/gesto de voltar do telemóvel também a fecha.
+        // No computador nada muda: continua a descarregar o ficheiro como sempre.
+        function _tgEhTelemovel() {
+            const ua = navigator.userAgent || '';
+            return /Android|iPhone|iPad|iPod/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
+        }
+        function _tgGuardarPdf(doc, nome) {
+            if (!_tgEhTelemovel()) { doc.save(nome); return; }
+            try {
+                _tgMostrarPdfNoTelemovel(doc.output('blob'), nome);
+            } catch (e) {
+                console.warn('Visualizador de PDF falhou — a descarregar normalmente:', e);
+                doc.save(nome);
+            }
+        }
+        let _tgPdfViewer = null;
+        function _tgMostrarPdfNoTelemovel(blob, nome) {
+            if (_tgPdfViewer) _tgPdfViewer.fechar(false);
+            const ua = navigator.userAgent || '';
+            const ehAndroid = /Android/i.test(ua);
+            const ehIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua));
+            const url = URL.createObjectURL(blob);
+            const ficheiro = new File([blob], nome, { type: 'application/pdf' });
+            const podePartilhar = !!(navigator.canShare && navigator.canShare({ files: [ficheiro] }));
+            // O Android não mostra PDFs dentro de uma página (só o iPhone/iPad o faz), por isso aí
+            // a camada mostra uma mensagem e os botões em vez de uma pré-visualização em branco.
+            const botaoCss = 'flex:1;min-height:48px;border:none;border-radius:10px;font-weight:700;font-size:.95rem;cursor:pointer;';
+            const el = document.createElement('div');
+            el.id = 'tgPdfViewer';
+            el.style.cssText = 'position:fixed;inset:0;z-index:700000;background:#f1f5f9;display:flex;flex-direction:column;';
+            el.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));background:#152a52;color:#fff;flex-shrink:0;">
+                    <button type="button" data-acao="voltar" style="min-height:44px;padding:0 16px;border:none;border-radius:10px;background:#fff;color:#152a52;font-weight:700;font-size:.95rem;cursor:pointer;flex-shrink:0;">← Voltar</button>
+                    <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.85rem;font-weight:600;">${escapeHtmlSimples(nome)}</div>
+                </div>
+                <div style="flex:1;min-height:0;">
+                    ${ehAndroid
+                        ? `<div style="padding:40px 24px;text-align:center;color:#334155;"><div style="font-size:2.6rem;color:#dc2626;"><i class="fas fa-file-pdf"></i></div><div style="font-weight:700;font-size:1.05rem;margin:12px 0 6px;">PDF pronto</div><div style="font-size:.88rem;color:#64748b;">O Android não mostra PDFs dentro da app. Usa os botões em baixo.</div></div>`
+                        : `<iframe src="${url}" title="${escapeHtmlSimples(nome)}" style="width:100%;height:100%;border:0;background:#fff;"></iframe>`}
+                </div>
+                <div style="display:flex;gap:10px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0;">
+                    ${podePartilhar ? `<button type="button" data-acao="partilhar" style="${botaoCss}background:#f4520e;color:#fff;"><i class="fas fa-share-nodes"></i> Partilhar / Guardar</button>` : ''}
+                    ${(ehAndroid || !podePartilhar) ? `<button type="button" data-acao="descarregar" style="${botaoCss}background:#152a52;color:#fff;"><i class="fas fa-download"></i> Descarregar</button>` : ''}
+                </div>`;
+            const descarregar = () => {
+                const a = document.createElement('a');
+                a.href = url; a.download = nome;
+                document.body.appendChild(a); a.click(); a.remove();
+            };
+            const partilhar = async () => {
+                try {
+                    await navigator.share({ files: [ficheiro], title: nome });
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return; // a pessoa fechou a folha de partilha — normal
+                    // Num iPhone, descarregar por link pode voltar a tirar a pessoa da app — por isso aí só se avisa.
+                    if (ehIOS) alert('Não foi possível partilhar este PDF neste dispositivo.'); else descarregar();
+                }
+            };
+            const aoVoltarDoTelemovel = () => viewer.fechar(false); // gesto/botão "atrás" do telemóvel
+            const viewer = {
+                fechar(porBotao) {
+                    window.removeEventListener('popstate', aoVoltarDoTelemovel);
+                    el.remove();
+                    try { URL.revokeObjectURL(url); } catch (e) {}
+                    if (_tgPdfViewer === viewer) _tgPdfViewer = null;
+                    // Se foi o botão que fechou, desfaz a entrada de histórico que abrimos (senão o
+                    // "atrás" do telemóvel ficava com um passo a mais).
+                    if (porBotao && history.state && history.state.tgPdf) history.back();
+                }
+            };
+            el.addEventListener('click', ev => {
+                const acao = ev.target.closest('button[data-acao]')?.dataset.acao;
+                if (acao === 'voltar') viewer.fechar(true);
+                else if (acao === 'partilhar') partilhar();
+                else if (acao === 'descarregar') descarregar();
+            });
+            document.body.appendChild(el);
+            history.pushState({ tgPdf: true }, '');
+            window.addEventListener('popstate', aoVoltarDoTelemovel);
+            _tgPdfViewer = viewer;
+        }
+        // ===== fim PDF no telemóvel =====
         function gerarPDFFolhaAtual(tipo) {
             if (folhaAtualId) gerarPDFFolha(folhaAtualId, tipo);
         }
@@ -7773,7 +7868,7 @@
                 if (ultAtual) doc.text('Última atualização: ' + ultAtual, 15, 289);
                 doc.text('Gerado por ' + (emp.nome || 'Totalgest') + ' em ' + new Date().toLocaleDateString('pt-PT'), 195, 289, { align: 'right' });
                 const sufixo = tipo === 'empresa' ? '_interno' : '_cliente';
-                doc.save('folha_' + (obraNome || 'obra').replace(/[^a-z0-9]/gi, '_').slice(0, 40) + sufixo + '.pdf');
+                _tgGuardarPdf(doc, 'folha_' + (obraNome || 'obra').replace(/[^a-z0-9]/gi, '_').slice(0, 40) + sufixo + '.pdf');
             };
             if (emp.logo) {
                 const img = new Image();
@@ -10742,7 +10837,7 @@
                 doc.setFontSize(8); doc.setTextColor(150);
                 doc.text('Documento para efeitos de certificação/seguro.', 15, 291);
                 _pdfRodape(doc, _corRel);
-                doc.save(`relatorio_${(cli.nome || 'cliente').replace(/[^a-z0-9]/gi, '_').slice(0, 30)}_${ano}.pdf`);
+                _tgGuardarPdf(doc, `relatorio_${(cli.nome || 'cliente').replace(/[^a-z0-9]/gi, '_').slice(0, 30)}_${ano}.pdf`);
             };
             if (emp.logo) {
                 const img = new Image();
@@ -10863,7 +10958,7 @@
                     });
                 }
                 _pdfRodape(doc, _corRel);
-                doc.save(`${tipoRelatorio}_${(labelCategoria || 'todas').replace(/[^a-z0-9]/gi, '_').slice(0, 24)}_${ano}.pdf`);
+                _tgGuardarPdf(doc, `${tipoRelatorio}_${(labelCategoria || 'todas').replace(/[^a-z0-9]/gi, '_').slice(0, 24)}_${ano}.pdf`);
             };
             corpo(20);
         }
@@ -12908,7 +13003,7 @@
                 }
             });
             _pdfRodape(doc, _corRel);
-            doc.save(`assiduidade_${ini}_a_${fim}.pdf`);
+            _tgGuardarPdf(doc, `assiduidade_${ini}_a_${fim}.pdf`);
         }
         function assExcel(relatorios, ini, fim, extras, avancado) {
             if (typeof XLSX === 'undefined') { alert('Biblioteca de Excel não carregada. Verifique a ligação à internet.'); return; }
@@ -13048,7 +13143,7 @@
                 margin: { bottom: 16 }
             });
             _pdfRodape(doc, _corRel);
-            doc.save(`relatorio_os_${new Date().toISOString().slice(0, 10)}.pdf`);
+            _tgGuardarPdf(doc, `relatorio_os_${new Date().toISOString().slice(0, 10)}.pdf`);
         }
         function rosExcel(rows, periodo, resumo) {
             if (typeof XLSX === 'undefined') { alert('Biblioteca de Excel não carregada.'); return; }
@@ -13961,7 +14056,7 @@
         function gerarNotaEncomenda(encId) {
             const e = dados.encomendas?.find(x => x.id === encId); if (!e) return;
             const doc = _montarPdfNotaEncomenda(encId); if (!doc) return;
-            doc.save((e.numero || 'nota_encomenda') + '.pdf');
+            _tgGuardarPdf(doc, (e.numero || 'nota_encomenda') + '.pdf');
         }
         // Não envia nada pelo nosso servidor — descarrega o PDF e abre o programa de email do
         // próprio computador (Outlook, Mail, Gmail no browser, etc.) já com o destinatário e
@@ -13974,7 +14069,7 @@
             if (!fornecedor?.email) { alert('Este fornecedor não tem email registado.'); return; }
             const doc = _montarPdfNotaEncomenda(encId); if (!doc) return;
             const nomeFicheiro = (e.numero || 'nota_encomenda') + '.pdf';
-            doc.save(nomeFicheiro);
+            _tgGuardarPdf(doc, nomeFicheiro);
             const assunto = encodeURIComponent('Nota de Encomenda ' + (e.numero || ''));
             const corpo = encodeURIComponent('Boa tarde,\n\nSegue em anexo a Nota de Encomenda ' + (e.numero || '') + '.\n\n(O ficheiro "' + nomeFicheiro + '" foi descarregado agora — anexe-o antes de enviar.)\n\nCom os melhores cumprimentos,');
             alert('📄 PDF descarregado ("' + nomeFicheiro + '"). Vais agora abrir o teu programa de email — não te esqueças de anexar esse ficheiro antes de enviar.');
@@ -14257,7 +14352,7 @@
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
             }
 
-            doc.save(`relatorio_${paraCliente ? 'cliente' : 'interno'}_obra_${(obra.nome || 'obra').replace(/[^a-z0-9]+/gi, '_')}_${_hoje10()}.pdf`);
+            _tgGuardarPdf(doc, `relatorio_${paraCliente ? 'cliente' : 'interno'}_obra_${(obra.nome || 'obra').replace(/[^a-z0-9]+/gi, '_')}_${_hoje10()}.pdf`);
         }
         let _picandoEntradaObraLonga = false;
         async function obraLongaPicarEntrada(obraId) {
@@ -14552,8 +14647,20 @@
             document.body.classList.add('tem-menu-inferior');
             if (grupos) grupos.style.display = 'none';
             nav.style.display = 'flex';
-            nav.innerHTML = _tgMenuSimplesHTML(true);
-            _tgMarcarMenuSimples(_contextoAtual || '__inicio');
+            const gruposVisiveis = [...document.querySelectorAll('.grupo-cards')].filter(g =>
+                [...g.querySelectorAll('.card-principal')].some(c => !c.classList.contains('hidden-card'))
+            );
+            const itens = [`<div class="menu-inf-item ativo" id="menuInfHome" onclick="_voltarMeuDia()"><i class="fas fa-sun"></i><span>O Meu Dia</span></div>`];
+            if (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') {
+                itens.push(`<div class="menu-inf-item" id="menuInfDashboardCentral" onclick="_abrirDashboardCentralMobile()"><i class="fas fa-chart-line"></i><span>Dashboard</span></div>`);
+            }
+            gruposVisiveis.forEach(g => {
+                const chave = g.dataset.grupo;
+                const titulo = g.querySelector('.grupo-header h3')?.textContent?.trim() || chave;
+                const iconClass = g.querySelector('.grupo-header h3 i')?.className || 'fas fa-layer-group';
+                itens.push(`<div class="menu-inf-item" id="menuInf_${chave}" onclick="_abrirGrupoMobile('${chave}')"><i class="${iconClass}"></i><span>${escapeHtmlSimples(titulo)}</span></div>`);
+            });
+            nav.innerHTML = itens.join('');
         }
         function _fecharSecaoAbertaMobile() {
             // Sempre que se navega dentro do menu inferior (troca de grupo ou volta a "O Meu
@@ -15971,7 +16078,7 @@
             doc.text('TOTAL: ' + _finEur(a.valorTotal), 140, y, { align: 'right' });
             doc.setFont(undefined, 'normal');
 
-            doc.save(`auto-medicao-${a.numero}-${obra.nome.replace(/[^a-z0-9]+/gi, '-')}.pdf`);
+            _tgGuardarPdf(doc, `auto-medicao-${a.numero}-${obra.nome.replace(/[^a-z0-9]+/gi, '-')}.pdf`);
         }
         function verDetalheAutoMedicao(autoId) {
             const a = (dados.autosMedicao || []).find(x => x.id === autoId); if (!a) return;
@@ -17962,7 +18069,7 @@
                 body: arts.map(a => { const st = stockAtualArtigo(a.id); const falta = a.stockMinimo != null && st <= a.stockMinimo; return [a.nome, a.referencia || '-', a.unidade || 'un', String(st), a.stockMinimo != null ? String(a.stockMinimo) : '-', falta ? 'Repor' : 'OK']; }),
                 startY, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel }
             });
-            doc.save(`stock_${_hoje10()}.pdf`);
+            _tgGuardarPdf(doc, `stock_${_hoje10()}.pdf`);
         }
 
         function relMovimentosPDF() {
@@ -17977,7 +18084,7 @@
                 body: movs.map(m => [m.data || '-', _nomeArtigoStock(m.artigoId), tipoLabel[m.tipo] || m.tipo, String(m.quantidade), m.obraId ? _nomeObraStock(m.obraId) : '-', m.origemTipo || '-']),
                 startY, styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: _corRel }
             });
-            doc.save(`movimentos_${_hoje10()}.pdf`);
+            _tgGuardarPdf(doc, `movimentos_${_hoje10()}.pdf`);
         }
         function relMovimentosExcel() {
             if (typeof XLSX === 'undefined') { alert('Biblioteca de Excel não carregada.'); return; }
@@ -18006,7 +18113,7 @@
             const obras = obraId ? [dados.obras.find(o => o.id === obraId)].filter(Boolean) : (dados.obras || []).filter(o => o.adminId === adminId);
             let startY = _pdfArmHeader(doc, 'Materiais por Obra — Previsto vs Consumido');
             const _corRel = _hexParaRgb(dados.administradores?.find(a => a.id === adminId)?.corCorporativa);
-            if (!obras.length) { doc.text('Sem obras.', 14, startY); doc.save(`materiais_obra_${_hoje10()}.pdf`); return; }
+            if (!obras.length) { doc.text('Sem obras.', 14, startY); _tgGuardarPdf(doc, `materiais_obra_${_hoje10()}.pdf`); return; }
             obras.forEach((o, idx) => {
                 const rows = _obraMatRows(o.id);
                 if (startY > 180) { doc.addPage(); startY = 20; }
@@ -18019,7 +18126,7 @@
                 });
                 startY = (doc.lastAutoTable ? doc.lastAutoTable.finalY : startY) + 12;
             });
-            doc.save(`materiais_obra_${_hoje10()}.pdf`);
+            _tgGuardarPdf(doc, `materiais_obra_${_hoje10()}.pdf`);
         }
         function relObraExcel(obraId) {
             if (typeof XLSX === 'undefined') { alert('Biblioteca de Excel não carregada.'); return; }
@@ -18111,7 +18218,7 @@
             const porCli = {}; concl.forEach(s => { const n = obterNomeCliente(s.clienteId) || '-'; porCli[n] = (porCli[n] || 0) + (Number(s.valor) || 0); });
             const rows = Object.entries(porCli).filter(([k, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([n, v]) => [n, eur(v)]);
             if (rows.length) doc.autoTable({ startY: doc.lastAutoTable.finalY + 8, head: [['Cliente', 'Faturado']], body: rows, styles: { fontSize: 10 } });
-            doc.save('financeiro_' + _hoje10() + '.pdf');
+            _tgGuardarPdf(doc, 'financeiro_' + _hoje10() + '.pdf');
         }
 
         // ===== Despesas da Empresa =====
@@ -18344,7 +18451,7 @@
             doc.autoTable({ startY: y, head: [['Categoria', ...nomesMeses, 'Total']], body, styles: { fontSize: 7 }, headStyles: { fillColor: [220, 38, 38] } });
             const totaisMes = [1,2,3,4,5,6,7,8,9,10,11,12].map(m => _despesasTotalMes(_despesasAno, m));
             doc.autoTable({ startY: doc.lastAutoTable.finalY + 8, head: [['Total Geral por Mês', ...nomesMeses, 'Ano']], body: [['EUR', ...totaisMes.map(v => v.toFixed(0)), totaisMes.reduce((a,b)=>a+b,0).toFixed(2)]], styles: { fontSize: 8 }, headStyles: { fillColor: [21, 42, 82] } });
-            doc.save('despesas_' + _despesasAno + '_' + _hoje10() + '.pdf');
+            _tgGuardarPdf(doc, 'despesas_' + _despesasAno + '_' + _hoje10() + '.pdf');
         }
 
         // ===== Dashboard Analítico =====
@@ -19175,7 +19282,7 @@
             doc.autoTable({ startY: y, head: [['Empresa', 'Admin', 'Plano', 'Func', 'Enc', 'Contr', 'Frota', 'Arm', 'CRM+Assist', 'ERP', 'Receita']], body: rows, styles: { fontSize: 7 }, headStyles: { fillColor: _corRel }, margin: { bottom: 16 } });
             doc.autoTable({ startY: doc.lastAutoTable.finalY + 8, head: [['Receita por modulo', 'Valor']], body: [['Licencas base', eur(recBase)], ['Contratos', eur(recContr)], ['Frota', eur(recFrota)], ['Armazem', eur(recArm)], ['CRM + Assist', eur(recCrm)], ['ERP', eur(recErp)], ['TOTAL', eur(recTotal)]], styles: { fontSize: 9 }, headStyles: { fillColor: _corRel }, footStyles: { fontStyle: 'bold' }, margin: { bottom: 16 } });
             _pdfRodape(doc, _corRel);
-            doc.save('superadmin_' + new Date().toISOString().slice(0, 10) + '.pdf');
+            _tgGuardarPdf(doc, 'superadmin_' + new Date().toISOString().slice(0, 10) + '.pdf');
         }
 
         function toggleGuiaItem(btn) {
@@ -20408,6 +20515,22 @@
                 const permitidosDistribuidor = ['distribuicao', 'ajuda-peticoes', 'auditoria', 'licencas', 'licencas-vencer', 'reports'];
                 cards.forEach(card => {
                     card.classList.toggle('hidden-card', !permitidosDistribuidor.includes(card.dataset.card));
+                });
+                return;
+            }
+
+            // Super Admin: não gere a sua própria empresa dentro desta app — gere a plataforma
+            // (contas, licenças, pagamentos). Nada do menu operacional de um tenant (Clientes,
+            // OS, Obras, Frota, Armazém, Financeiro, Relatórios Personalizados, etc.) faz
+            // sentido para ele. Antes, cada cartão desses só ficava escondido se alguém tivesse
+            // pensado nisso ao escrevê-lo — vários (Relatórios Personalizados, Levantamento e
+            // Devolução de Ferramentas, entre outros) nunca tinham essa regra e ficavam visíveis
+            // por omissão. Agora é ao contrário: só entra o que estiver nesta lista; tudo o resto
+            // fica escondido de raiz, mesmo que apareçam cartões novos no futuro.
+            if (isSuperAdmin) {
+                const permitidosSuperAdmin = ['superadmin', 'analytics', 'licencas', 'licencas-vencer', 'pedidos-renovacao', 'licencas-distribuidor', 'historico-licencas', 'uso-cards', 'auditoria', 'ajuda-peticoes', 'online-admins'];
+                cards.forEach(card => {
+                    card.classList.toggle('hidden-card', !permitidosSuperAdmin.includes(card.dataset.card));
                 });
                 return;
             }
@@ -22608,6 +22731,16 @@ async function salvarAdmin(e) {
                 const scrollMedio = Math.round(comScroll.reduce((s, v) => s + v.scroll_maximo_pct, 0) / comScroll.length);
                 cards.push({ n: scrollMedio + '%', l: 'Scroll médio da página' });
             }
+            // Taxa de rejeição: visita curta (menos de 15s) E que quase não desceu a página
+            // (menos de 25% de scroll) — as duas condições juntas, para não confundir alguém
+            // que leu tudo rápido (scroll alto, tempo curto) com quem saiu logo sem interesse.
+            // Só entra em conta quem já tem os dois valores gravados.
+            const comAmbos = visitas.filter(v => v.duracao_segundos != null && v.scroll_maximo_pct != null);
+            if (comAmbos.length) {
+                const rejeicoes = comAmbos.filter(v => v.duracao_segundos < 15 && v.scroll_maximo_pct < 25).length;
+                const taxaRejeicao = Math.round((rejeicoes / comAmbos.length) * 100);
+                cards.push({ n: taxaRejeicao + '%', l: 'Taxa de rejeição' });
+            }
             document.getElementById('an_resumo').innerHTML = cards.map(c => `
                 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;">
                     <div style="font-size:1.5rem;font-weight:800;color:#152a52;">${c.n}</div>
@@ -22871,6 +23004,36 @@ async function salvarAdmin(e) {
                 alert('⚠️ Não foi possível enviar: ' + (e.message || e.erro || 'erro desconhecido'));
             }
         }
+        // Cancela o prazo das 48h sem confirmar pagamento — para quando o Super Admin decide,
+        // por qualquer motivo, não avançar com a desativação automática (ex.: falou com o
+        // cliente e ficou combinado outro prazo). Diferente de "Ativar"/"Renovar": não marca
+        // nada como pago, só desarma o relógio.
+        async function cancelarLembretePagamento(adminId) {
+            const admin = dados.administradores?.find(a => a.id === adminId);
+            if (!admin) return;
+            if (!confirm(`Cancelar o prazo de 48h de ${admin.nome}? A conta deixa de ser desativada automaticamente — o "Lembrar" fica disponível outra vez, se precisares.`)) return;
+            admin.lembretePagamentoEm = null;
+            guardarDados(dados);
+            renderizarTudo();
+        }
+        // Atualiza o texto de todos os contadores visíveis (chamado a cada renderização da
+        // tabela e depois de x em x tempo, para não ficar parado enquanto o ecrã está aberto).
+        function _atualizarContadoresLembrete() {
+            document.querySelectorAll('.lembrete-contador[data-lembrete-em]').forEach(el => {
+                const enviadoEm = parseInt(el.dataset.lembreteEm, 10);
+                if (!enviadoEm) return;
+                const restanteMs = (enviadoEm + 48 * 60 * 60 * 1000) - Date.now();
+                if (restanteMs <= 0) {
+                    el.innerHTML = '<i class="fas fa-hourglass-end"></i> A aguardar a próxima verificação…';
+                    el.style.background = '#fee2e2'; el.style.color = '#991b1b';
+                    return;
+                }
+                const h = Math.floor(restanteMs / 3600000);
+                const m = Math.floor((restanteMs % 3600000) / 60000);
+                el.innerHTML = `<i class="fas fa-hourglass-half"></i> ${h}h ${String(m).padStart(2, '0')}min restantes`;
+            });
+        }
+        if (typeof window !== 'undefined') { setInterval(_atualizarContadoresLembrete, 30000); }
         async function lembrarPagamentoLicenca(adminId) {
             const admin = dados.administradores?.find(a => a.id === adminId);
             if (!admin || !admin.licenca) return;
@@ -22931,6 +23094,9 @@ async function salvarAdmin(e) {
             admin.licenca.ativa = true;
             admin.licenca.aguardaPagamento = !pagamentoConfirmado;
             admin.notificarAprovacao = true;
+            // Confirmar o pagamento cancela qualquer prazo de 48h que estivesse a contar — senão
+            // a conta seria desativada mais tarde pela Edge Function mesmo já estando paga.
+            if (pagamentoConfirmado) admin.lembretePagamentoEm = null;
             registarHistoricoLicenca(admin.id, 'ativacao', (PLANOS[admin.licenca.plano]?.label || admin.licenca.plano) + (distribuidor ? ' (via distribuidor ' + distribuidor.nome + ')' : ''), valorACobrar);
             guardarDados(dados);
             renderizarTudo();
@@ -23028,6 +23194,10 @@ async function salvarAdmin(e) {
             const novaExpiracao = baseDate + (plano.dias * 24 * 60 * 60 * 1000);
             admin.licenca.dataExpiracao = novaExpiracao;
             admin.licenca.dataInicio = now;
+            admin.licenca.ativa = true;
+            admin.licenca.aguardaPagamento = false;
+            // Renovar é a confirmação de pagamento por outra via — cancela o prazo de 48h.
+            admin.lembretePagamentoEm = null;
             _reiniciarAvisoLicencaExpirar(admin.id);
             guardarDados(dados);
             renderizarTudo();
@@ -24412,6 +24582,9 @@ async function salvarAdmin(e) {
                 return null;
             }
             admin.notificarAprovacao = true;
+            // Aprovar qualquer pedido é uma confirmação de pagamento — cancela o prazo de 48h do
+            // botão "Lembrar", se estivesse a contar.
+            admin.lembretePagamentoEm = null;
             // Helper partilhado: se o que está a ser renovado ainda não expirou, a nova validade
             // soma-se ao que falta (não recomeça do zero a partir de "agora"). Mesma lógica já usada
             // em renovarLicenca() (renovação manual do Super Admin) — faltava aqui na aprovação de
@@ -27414,6 +27587,72 @@ async function salvarAdmin(e) {
         // Seguro globalmente porque nenhum código depende do valor de retorno do alert() nativo (é sempre undefined).
         // Usa a fila acima, por isso vários alert() seguidos aparecem um de cada vez, nunca sobrepostos.
         window.alert = function (mensagem) { tgAlert(mensagem); };
+
+        // ===== ESC fecha o que estiver por cima =====
+        // Regra: o Esc só age sobre a camada MAIS À FRENTE (a de maior z-index; em empate, a
+        // que vem depois no HTML), e nunca em duas ao mesmo tempo:
+        //  • caixa de diálogo própria (tgAlert/tgConfirm/...): o Esc responde-lhe a ela — cancela
+        //    uma confirmação, dispensa um aviso — e nunca fecha o modal que está por baixo;
+        //  • ecrãs que não se dispensam (a carregar, aviso de sessão, tour, quiosque, painel TV,
+        //    gestão de licença do cliente, e os modais de notificação/cancelamento): o Esc ignora;
+        //  • modais normais (.modal-overlay.open): o Esc "clica" no botão de fechar do próprio
+        //    modal, em vez de o esconder à força — assim cada modal corre o seu fecho, incluindo
+        //    as confirmações que já tem (ex.: "Fechar sem gravar?" no relatório de especialidade).
+        // Dentro de um campo de texto, o 1.º Esc só tira o cursor do campo e o 2.º é que fecha —
+        // senão, quem carrega em Esc para dispensar a lista de sugestões de um campo perdia o
+        // formulário inteiro a meio.
+        (function () {
+            const BLOQUEIAM_O_ESC = ['tgCarregandoOverlay', 'avisoSessaoOverlay', 'tourOverlay', 'tgQuiosqueOverlay', 'tgPainelTVOverlay', 'renovClienteOverlay', 'modalNotifOverlay', 'modalNotifMassaOverlay', 'modalCancelamentoOverlay', 'modalClassifFaltaOverlay'];
+            const NAO_FECHAR_COM_ESC = ['modalFolhaObrigOverlay', 'onbOverlay', 'modalAvisoLicencaOverlay', 'modalSimNaoOverlay'];
+            const FECHOS_CONHECIDOS = /^_?fechar(Modal|Scanner|Veiculo|GerarOS|AlterarPlano|DetalheAddon|WizardCalc)/;
+            const visivel = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+            const ehCampoDeTexto = el => {
+                if (!el) return false;
+                if (el.isContentEditable) return true;
+                if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+                if (el.tagName === 'INPUT') return !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'image'].includes((el.type || '').toLowerCase());
+                return false;
+            };
+            document.addEventListener('keydown', function (ev) {
+                if ((ev.key !== 'Escape' && ev.key !== 'Esc') || ev.repeat || ev.isComposing || ev.defaultPrevented) return;
+                const camadas = [];
+                const dlg = document.getElementById('tgAlertOverlay');
+                if (dlg && dlg.classList.contains('aberto') && visivel(dlg)) camadas.push({ el: dlg, tipo: 'dialogo' });
+                BLOQUEIAM_O_ESC.forEach(id => { const el = document.getElementById(id); if (visivel(el)) camadas.push({ el, tipo: 'bloqueio' }); });
+                document.querySelectorAll('.modal-overlay.open').forEach(el => { if (visivel(el)) camadas.push({ el, tipo: 'modal' }); });
+                if (!camadas.length) return;
+                const z = k => parseInt(getComputedStyle(k.el).zIndex, 10) || 0;
+                const topo = camadas.reduce((a, b) => (z(b) > z(a) || (z(b) === z(a) && (a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING))) ? b : a);
+
+                if (topo.tipo === 'bloqueio') return;
+
+                if (topo.tipo === 'dialogo') {
+                    const cancelar = document.getElementById('tgAlertBtnCancelar');
+                    const ok = document.getElementById('tgAlertBtnOk');
+                    const escolhas = document.getElementById('tgAlertEscolhas');
+                    let alvo = null;
+                    if (visivel(cancelar)) alvo = cancelar;                      // confirmação ou pergunta → cancela
+                    else if (visivel(escolhas)) {                                // lista de opções → só se tiver "Cancelar"
+                        alvo = [...escolhas.querySelectorAll('button')].reverse().find(b => b.textContent.trim() === 'Cancelar') || null;
+                    } else if (visivel(ok)) alvo = ok;                           // aviso simples → dispensa
+                    if (alvo) { ev.preventDefault(); alvo.click(); }
+                    return;
+                }
+
+                const modal = topo.el;
+                if (NAO_FECHAR_COM_ESC.includes(modal.id)) return;
+                const foco = document.activeElement;
+                if (foco && modal.contains(foco) && ehCampoDeTexto(foco)) { ev.preventDefault(); foco.blur(); return; }
+                const botoes = [...modal.querySelectorAll('button')].filter(visivel);
+                // 1.ª escolha: o botão de fechar do próprio modal. 2.ª (só se não houver nenhum):
+                // um botão com o texto exato "Cancelar" — é o que têm os formulários simples
+                // (Permissões, Crédito, Painel TV...) e todos eles só fecham o modal.
+                const botao = botoes.find(b => b.classList.contains('close-modal') || b.title === 'Fechar' || FECHOS_CONHECIDOS.test(b.getAttribute('onclick') || ''))
+                           || botoes.find(b => b.textContent.trim() === 'Cancelar');
+                if (botao) { ev.preventDefault(); botao.click(); }
+            });
+        })();
+        // ===== fim ESC =====
         function perguntarSaidaObra(texto) {
             return new Promise(resolve => {
                 _modalSimNaoResolve = resolve;
@@ -32334,8 +32573,7 @@ window._relPrefill = function(msg){
             return c ? c.textContent.trim() : (nome || '');
         }
         function _marcarNavAtivo(sec) {
-            _tgMarcarMenuSimples(sec);
-            document.querySelectorAll('#tgSidebarNav .tg-nav-item').forEach(el => el.classList.toggle('ativo', el.getAttribute('data-secao') === sec || el.getAttribute('data-secao') === _tgGrupoDaSecao(sec)));
+            document.querySelectorAll('#tgSidebarNav .tg-nav-item').forEach(el => el.classList.toggle('ativo', el.getAttribute('data-secao') === sec));
             // No acordeão "Foco", abre também o grupo que contém o item ativo, senão fica
             // escondido lá dentro sem se perceber onde está.
             const ativo = document.querySelector('#tgSidebarNav .tg-nav-item.ativo');
@@ -32414,13 +32652,13 @@ window._relPrefill = function(msg){
                     });
                 });
             }
-            nav.innerHTML = usuarioLogado.role === 'superadmin' ? html : _tgMenuSimplesHTML(false);
+            nav.innerHTML = html;
             const fu = document.getElementById('tgSideUser');
             if (fu) fu.innerHTML = `<i class="fas fa-user-circle"></i> ${usuarioLogado.nome || ''}<div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${_papelLabel(usuarioLogado.role)}</div>`;
             const sb = document.getElementById('tgSideBrandNome');
             if (sb) sb.textContent = (usuarioLogado.role === 'superadmin') ? 'Total Gest' : (adminAtual()?.empresa || 'Total Gest');
             _marcarNavAtivo(_contextoAtual || '__inicio');
-            if (!_contextoAtual || _contextoAtual === '__inicio') { _mostrarInicioConteudo(); _atualizarBreadcrumb(usuarioLogado?.role === 'superadmin' ? 'Início' : 'Hoje'); }
+            if (!_contextoAtual || _contextoAtual === '__inicio') { _mostrarInicioConteudo(); _atualizarBreadcrumb('Início'); }
         }
         // Acordeão do layout "Total Gest Foco" — clicar num grupo abre/fecha o submenu logo por
         // baixo dele (fecha os outros que estejam abertos, só um de cada vez), em vez do antigo
@@ -33505,12 +33743,11 @@ window._relPrefill = function(msg){
             }
         }
         function irParaInicio() {
-            _wsClienteFechar();
             _contextoAtual = '__inicio';
             document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
             _mostrarInicioConteudo();
             _marcarNavAtivo('__inicio');
-            _atualizarBreadcrumb(usuarioLogado?.role === 'superadmin' ? 'Início' : 'Hoje');
+            _atualizarBreadcrumb('Início');
             _fecharSidebarMobile();
             try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
         }
@@ -33574,7 +33811,6 @@ window._relPrefill = function(msg){
             else _voltarMeuDia();
         }
         function abrirSecao(nome) {
-            _wsClienteFechar();
             if (nome === 'exportar-dados') { abrirModalExportarImportar(); return; }
             _registarUsoSecao(nome);
             if (usuarioLogado && usuarioLogado.role === 'cliente' && !_licencaValidaTenant()) {
@@ -34578,3 +34814,11 @@ window._relPrefill = function(msg){
 
 
     
+// Assistente TG: módulo isolado, carregado apenas nesta aplicação.
+(() => {
+    if (document.getElementById('tg-assistente-script')) return;
+    const script = document.createElement('script');
+    script.id = 'tg-assistente-script';
+    script.src = new URL('tg-assistente.js', document.currentScript.src).href;
+    document.head.appendChild(script);
+})();

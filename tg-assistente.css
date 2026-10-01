@@ -1,0 +1,36 @@
+#tg-assistente{--tg-ink:#162b4f;--tg-paper:#fff;--tg-soft:#f2f5fa;--tg-line:#dce4ee;position:fixed;right:22px;bottom:22px;z-index:950;font-family:Inter,system-ui,sans-serif;color:var(--tg-ink);font-size:14px;line-height:1.5}
+#tg-assistente[hidden],#tg-assistente [hidden]{display:none!important}
+#tg-assistente *{box-sizing:border-box}
+#tg-assistente button,#tg-assistente input{font:inherit}
+#tg-assistente button{cursor:pointer}
+#tg-assistente button:focus-visible,#tg-assistente input:focus-visible{outline:3px solid #ff8e30;outline-offset:3px}
+#tg-assistente .tg-launcher{position:relative;display:flex;justify-content:flex-end}
+#tg-assistente .tg-open{background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;color:var(--tg-ink)}
+#tg-assistente .tg-open img{width:104px;height:123px;object-fit:contain;filter:drop-shadow(0 5px 6px #162b4f22)}
+#tg-assistente .tg-open span{background:var(--tg-paper);border:1px solid var(--tg-line);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:650;box-shadow:0 3px 12px #162b4f10}
+#tg-assistente .tg-minimize{position:absolute;right:-5px;top:0;width:26px;height:26px;border:1px solid var(--tg-line);border-radius:50%;background:var(--tg-paper);color:var(--tg-ink);line-height:1}
+#tg-assistente.tg-compact .tg-open img{display:none}
+#tg-assistente.tg-compact .tg-minimize{top:-17px;right:-10px}
+#tg-assistente .tg-chat{position:absolute;bottom:165px;right:0;width:360px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 200px);display:flex;flex-direction:column;background:var(--tg-paper);border:1px solid var(--tg-line);border-radius:20px;overflow:hidden;box-shadow:0 18px 60px #10223f30}
+#tg-assistente.tg-compact .tg-chat{bottom:52px;max-height:calc(100dvh - 90px)}
+#tg-assistente header{padding:18px;background:#172c50;color:white;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+#tg-assistente header strong{font-size:15px}
+#tg-assistente header small{display:block;color:#d1ddeb;font-size:12px;margin-top:3px}
+#tg-assistente .tg-close{background:#ffffff15;border:0;color:#fff;border-radius:9px;min-width:32px;height:32px;font-size:23px;line-height:1}
+#tg-assistente .tg-messages{overflow-y:auto;overscroll-behavior:contain;padding:16px;min-height:80px;max-height:290px;scroll-behavior:smooth}
+#tg-assistente .tg-message{background:var(--tg-soft);padding:11px 13px;margin:0 20px 12px 0;border-radius:12px 12px 12px 3px;overflow-wrap:anywhere;font-size:13px}
+#tg-assistente .tg-message p{margin:0}
+#tg-assistente .tg-from-user{margin:0 0 12px 25px;background:#eaf1ff;border-radius:12px 12px 3px 12px;color:#163866}
+#tg-assistente .tg-message button,#tg-assistente .tg-shortcuts button{border:1px solid var(--tg-line);background:var(--tg-paper);color:var(--tg-ink);padding:7px 10px;border-radius:9px;font-size:12px;text-align:left}
+#tg-assistente .tg-message button{display:block;width:100%;margin-top:8px}
+#tg-assistente .tg-message button:hover,#tg-assistente .tg-shortcuts button:hover{border-color:#f1842b;background:#fff4e9;color:#633109}
+#tg-assistente .tg-shortcuts{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px}
+#tg-assistente .tg-form{display:flex;gap:7px;padding:12px 14px;border-top:1px solid var(--tg-line);margin:0}
+#tg-assistente input{min-width:0;flex:1;border:1px solid var(--tg-line);border-radius:10px;padding:10px;background:var(--tg-paper);color:var(--tg-ink);font-size:14px}
+#tg-assistente .tg-form button{border:0;border-radius:10px;width:42px;background:#f1842b;color:#172c50;font-size:22px}
+#tg-assistente footer{padding:0 14px 12px;font-size:10px;text-align:center;opacity:.7}
+#tg-assistente .tg-sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#24364e;--tg-line:#3a4d66}
+@media(max-width:600px){#tg-assistente{right:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px))}#tg-assistente .tg-open img{width:76px;height:90px}#tg-assistente .tg-open span{font-size:11px;padding:5px 10px}#tg-assistente .tg-chat{bottom:128px;max-height:calc(100dvh - 230px)}#tg-assistente input{font-size:16px}#tg-assistente.tg-is-open .tg-open img{display:none}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
+@media(prefers-reduced-motion:reduce){#tg-assistente .tg-messages{scroll-behavior:auto}}
+@media print{#tg-assistente{display:none!important}}

@@ -1,48 +1,56 @@
-# Assistente TG — integração de 1 de outubro de 2026
+# TG Smart 2.0 — 1 de outubro de 2026
 
-## Instalação
+Assistente local dentro da Total Gest, após login. Sem IA externa e sem custo
+por tokens. Reutiliza os dados carregados pela aplicação; não altera registos,
+não envia conversas nem faz novas consultas ao backend.
 
-Substituir os ficheiros do projeto pelos deste ZIP, mantendo a pasta assets.
-O index.html mantém o conteúdo original. O app-principal.js carrega o módulo
-tg-assistente.js, que carrega os estilos e as imagens locais. Publicar também
-os ficheiros novos, não apenas app-principal.js.
+## Novidades
 
-Se a PWA apresentar o aviso de atualização, guardar o trabalho e clicar em
-Atualizar. O service worker foi versionado sem forçar recarregamentos.
+- Mascote original transparente: movimento contínuo e reações distintas a
+  abertura, consulta, sucesso e alerta. A animação também aparece no cabeçalho.
+- Balão proativo com contador de alertas, dispensa e silêncio por uma hora.
+- OS atrasadas, excluindo concluídas/canceladas.
+- OS de hoje, amanhã, ontem e de hoje até domingo; seguimento “e amanhã?”.
+- Contratos expirados e a vencer nos próximos 30 dias, pela validade contratual.
+- Stock abaixo do mínimo para artigos com alertaStock ativo. Soma o stock
+  inicial e os movimentos da empresa, incluindo devoluções e ajustes.
+- Pesquisa de clientes por nome, empresa e número, sem distinguir acentos.
+- Resumo do dia, listas até seis registos e atalhos para os módulos existentes.
 
-## O que está incluído
+## Permissões e limites
 
-- Mascote TG original animada, com transparência e sem moldura.
-- Foi usado o conjunto original idle/adeus com tablet. A antiga animação
-  sentada tinha fundo visível e não foi usada. Não foi redesenhada a mascote.
-- Painel de conversa em português, atalhos e navegação por pedidos escritos.
-- Apenas após autenticação, para os perfis internos; oculto no portal do
-  cliente e no modo quiosque.
-- As ações reutilizam os cartões disponíveis do próprio perfil e os seus
-  handlers, conservando as verificações de acesso e licença da aplicação.
-- A conversa fica apenas em memória e é apagada ao mudar de utilizador.
-- Minimização, fecho por Escape, adaptação ao telemóvel, modo escuro e
-  imagem estática para quem usa a preferência de reduzir movimento.
-- Sem chamadas a IA externa e sem custos por tokens.
+Os administradores/subadministradores consultam apenas a própria empresa e
+os módulos disponíveis. Funcionários veem OS atribuídas a si ou a Todos.
+Encarregados veem as OS da sua equipa segundo as regras atuais da aplicação.
+Pesquisa de clientes, contratos e stock fica limitada a administradores e
+subadministradores com acesso ao módulo. Super Admin e Vendedor mantêm apenas
+os atalhos, sem agregação de dados de outras empresas. Sem assistente no portal
+cliente ou quiosque. As consultas dependem também da validade da licença.
 
-## Limites desta versão
+O balão reavalia os dados em memória após a renderização da aplicação e a cada
+minuto com a página visível. Não funciona com a aplicação fechada. Os números
+refletem os dados carregados; o histórico de OS pode ser parcial conforme a
+sincronização atual da plataforma. Não confirma disponibilidade de técnicos:
+para isso seria necessário cruzar serviços, férias e horários.
 
-O TG encontra e abre áreas. Ainda não consulta os registos para calcular OS
-atrasadas, disponibilidade de técnicos, contratos a vencer ou stock baixo.
-Esses pedidos apresentam um encaminhamento explícito para o respetivo módulo.
-Não cria, modifica ou elimina registos, nem envia mensagens.
+Texto livre é interpretado por regras; não se trata de um modelo generativo.
+As preferências e conversa duram apenas a sessão da página. O histórico é
+limpo ao trocar de utilizador/empresa/perfil ou terminar sessão.
 
-## Ficheiros alterados
+## Publicação
 
-- app-principal.js: evento após renderização e carregamento do módulo.
-- sw.js: versão da cache.
-- Novos: tg-assistente.js, tg-assistente.css, assets/tg-mascote-idle.webp,
-  assets/tg-mascote-adeus.webp, assets/tg-mascote-ola.png e este documento.
+Publicar em conjunto app-principal.js, tg-smart-engine.js, tg-assistente.js,
+tg-assistente.css, sw.js e assets/tg-mascote-alerta.webp (além dos assets já
+existentes). A versão de cache e os URLs dos módulos foram atualizados.
+O index e as restantes funcionalidades não foram substituídos pelo ZIP antigo.
 
-## Validação
+## Testes
 
-Verificação de sintaxe JavaScript executada nos três ficheiros de código.
-Testes DOM passaram: sessão, logout, mudança de conta, quiosque, portal cliente,
-permissões, navegação, texto seguro, Escape, minimização e instalação única.
-Não foi efetuado login numa conta real nem publicação no site.
-A validação visual num navegador não ficou disponível neste ambiente.
+Executar `node --test tests/tg-smart.test.cjs` para verificar empresa/perfil,
+licença, módulos, datas, stock, intenções e ausência de alterações nos dados.
+Há três falhas preexistentes em tests/navigation-logic.test.cjs, confirmadas
+também no commit de base, sem relação com a integração TG.
+
+Validação em Chromium com dados sintéticos: alertas proativos, estados visuais,
+contagens, seguimento, layout móvel, silêncio, troca de conta, logout, quiosque
+e preferência de movimento reduzido passaram. Não foi usado login real.

@@ -34,3 +34,35 @@ body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#243
 @media(max-width:600px){#tg-assistente{right:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px))}#tg-assistente .tg-open img{width:76px;height:90px}#tg-assistente .tg-open span{font-size:11px;padding:5px 10px}#tg-assistente .tg-chat{bottom:128px;max-height:calc(100dvh - 230px)}#tg-assistente input{font-size:16px}#tg-assistente.tg-is-open .tg-open img{display:none}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
 @media(prefers-reduced-motion:reduce){#tg-assistente .tg-messages{scroll-behavior:auto}}
 @media print{#tg-assistente{display:none!important}}
+/* TG Smart 2 — reações visíveis, respeitando reduzir movimento */
+#tg-assistente .tg-open{position:relative}
+#tg-assistente .tg-open img{transform-origin:50% 90%;animation:tg-breathe 4s ease-in-out infinite}
+#tg-assistente[data-state="wave"] .tg-open img,#tg-assistente[data-state="success"] .tg-open img{animation:tg-wave .65s ease-in-out 4}
+#tg-assistente[data-state="alert"] .tg-open img{animation:tg-attention .7s ease-in-out 5;filter:drop-shadow(0 0 12px #f1842b77)}
+#tg-assistente[data-state="thinking"] .tg-open img{animation:tg-think .8s ease-in-out infinite}
+#tg-assistente .tg-badge{position:absolute;top:20px;right:7px;min-width:25px;height:25px;padding:2px 5px;border:2px solid white;border-radius:20px;background:#dd4d29;color:white;font-size:12px;box-shadow:0 3px 10px #172c5022}
+#tg-assistente.tg-compact .tg-badge{top:-13px;right:10px}
+#tg-assistente .tg-proactive{position:absolute;bottom:164px;right:0;width:260px;display:flex;align-items:flex-start;background:var(--tg-paper);border:1px solid #f1842b;border-radius:15px 15px 3px 15px;padding:12px;box-shadow:0 10px 30px #172c5022}
+#tg-assistente .tg-alert-open{background:none;border:0;color:var(--tg-ink);text-align:left;font-size:13px;padding:0;line-height:1.5}
+#tg-assistente .tg-alert-dismiss{border:0;background:transparent;font-size:20px;color:var(--tg-ink);padding:0 0 0 8px}
+#tg-assistente.tg-compact .tg-proactive{bottom:52px}
+#tg-assistente .tg-tools{display:flex;gap:6px;padding:0 16px 10px;flex-wrap:wrap}
+#tg-assistente .tg-tools button{border:1px solid var(--tg-line);border-radius:8px;background:var(--tg-soft);color:var(--tg-ink);padding:6px 9px;font-size:11px}
+#tg-assistente .tg-tools .tg-snooze{margin-left:auto}
+#tg-assistente .tg-message p{white-space:pre-line}
+#tg-assistente .tg-form button:disabled{opacity:.5;cursor:wait}
+#tg-assistente.tg-is-open .tg-chat{bottom:52px;max-height:calc(100dvh - 100px)}
+#tg-assistente.tg-is-open .tg-launcher .tg-open img{display:none}
+@keyframes tg-breathe{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
+@keyframes tg-wave{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) translateY(-5px)}75%{transform:rotate(8deg) translateY(-5px)}}
+@keyframes tg-attention{0%,100%{transform:translateY(0)}35%{transform:translateY(-12px) rotate(-5deg)}65%{transform:translateY(-6px) rotate(5deg)}}
+@keyframes tg-think{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg) translateY(-3px)}}
+@media(max-width:600px){#tg-assistente .tg-proactive{bottom:128px;max-width:calc(100vw - 30px)}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
+@media(prefers-reduced-motion:reduce){#tg-assistente .tg-open img{animation:none!important}}
+
+#tg-assistente .tg-header-mascot{object-fit:contain;flex:none;animation:tg-breathe 4s ease-in-out infinite}
+#tg-assistente header>div{flex:1}
+#tg-assistente[data-state="thinking"] .tg-header-mascot{animation:tg-think .8s ease-in-out infinite}
+#tg-assistente[data-state="alert"] .tg-header-mascot{animation:tg-attention .7s ease-in-out 5}
+#tg-assistente[data-state="success"] .tg-header-mascot,#tg-assistente[data-state="wave"] .tg-header-mascot{animation:tg-wave .65s ease-in-out 4}
+@media(prefers-reduced-motion:reduce){#tg-assistente .tg-header-mascot{animation:none!important}}

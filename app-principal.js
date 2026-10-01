@@ -34819,6 +34819,11 @@ window._relPrefill = function(msg){
     if (document.getElementById('tg-assistente-script')) return;
     const script = document.createElement('script');
     script.id = 'tg-assistente-script';
-    script.src = new URL('tg-assistente.js', document.currentScript.src).href;
-    document.head.appendChild(script);
+    const base = new URL('.', document.currentScript.src);
+    script.src = new URL('tg-assistente.js?v=2.0.0', base).href;
+    const engine = document.createElement('script');
+    engine.src = new URL('tg-smart-engine.js?v=2.0.0', base).href;
+    engine.onload = () => document.head.appendChild(script);
+    engine.onerror = () => document.head.appendChild(script);
+    document.head.appendChild(engine);
 })();

@@ -8986,6 +8986,7 @@
             const nomeProvider = nomes[cfg.provider] || cfg.provider;
             const ligadoToc = cfg.provider === 'toconline' && !!cfg.toconline?.accessToken;
             campos.innerHTML = `
+                <button type="button" class="btn btn-outline" style="width:100%;margin:12px 0;" onclick="window.TGPHC ? TGPHC.open() : alert('O módulo PHC está a carregar. Tenta novamente.')"><i class="fas fa-plug"></i> Preparar ligação PHC GO / PHC CS</button>
                 <div style="text-align:center;padding:10px 0 4px;">
                     <div style="font-size:2rem;color:#16a34a;margin-bottom:8px;"><i class="fas fa-circle-check"></i></div>
                     <div style="font-weight:700;font-size:1.05rem;color:#152a52;">Software configurado: ${nomeProvider}</div>
@@ -9000,8 +9001,8 @@
         }
         function _fatApagarConfig() {
             const admin = adminAtual(); if (!admin) return;
-            if (!confirm('Apagar a configuração de faturação? Todos os dados guardados (Client ID/Secret, ligação à TOConline, etc.) são removidos, e é preciso configurar tudo de novo depois.')) return;
-            admin.integracaoFaturacao = null;
+            if (!confirm('Apagar a configuração do fornecedor de faturação atual? Será necessário voltar a ligá-lo. Os rascunhos de preparação PHC são mantidos.')) return;
+            admin.integracaoFaturacao = admin.integracaoFaturacao?.phcDrafts ? { phcDrafts: admin.integracaoFaturacao.phcDrafts } : null;
             guardarDados(dados);
             document.getElementById('modalGenericoOverlay').classList.remove('open');
             alert('✅ Configuração de faturação apagada.');
@@ -9017,6 +9018,7 @@
             if (acoes) acoes.style.display = ''; // repõe o rodapé Cancelar/Guardar, escondido no ecrã de resumo
             campos.innerHTML = `
                 <div class="form-group">
+<button type="button" class="btn btn-outline" style="width:100%;margin:12px 0;" onclick="window.TGPHC ? TGPHC.open() : alert('O módulo PHC está a carregar. Tenta novamente.')"><i class="fas fa-plug"></i> Preparar ligação PHC GO / PHC CS</button>
                     <label>Qual o software de faturação que tens?</label>
                     <div style="display:flex;gap:8px;">
                         <button type="button" class="btn btn-sm ${provider === 'moloni' ? 'btn-primary' : 'btn-outline'}" onclick="_fatEscolherProvider('moloni')" style="flex:1;">Moloni</button>
@@ -9089,6 +9091,7 @@
                 const anterior = admin.integracaoFaturacao?.toconline || {};
                 admin.integracaoFaturacao = {
                     provider: 'toconline',
+                    phcDrafts: admin.integracaoFaturacao?.phcDrafts || {},
                     simulacao: document.getElementById('fat_simulacao')?.checked !== false,
                     toconline: { ...anterior, clientId, clientSecret }
                 };
@@ -9102,6 +9105,7 @@
             if (!companyId) { alert('O ID da Empresa na Moloni é obrigatório.'); return; }
             admin.integracaoFaturacao = {
                 provider: 'moloni',
+                phcDrafts: admin.integracaoFaturacao?.phcDrafts || {},
                 simulacao: document.getElementById('fat_simulacao').checked,
                 moloni: {
                     clientId: document.getElementById('fat_client_id').value.trim(),
@@ -34826,4 +34830,14 @@ window._relPrefill = function(msg){
     engine.onload = () => document.head.appendChild(script);
     engine.onerror = () => document.head.appendChild(script);
     document.head.appendChild(engine);
+})();
+
+// Preparação PHC por empresa: carrega apenas metadados e simulação local.
+(() => {
+    if (document.getElementById('tg-phc-script')) return;
+    const base = new URL('.', document.currentScript.src);
+    const core = document.createElement('script'); core.id = 'tg-phc-script';
+    core.src = new URL('phc-core.js?v=1', base).href;
+    core.onload = () => { const ui=document.createElement('script');ui.src=new URL('phc-integracao.js?v=1',base).href;document.head.appendChild(ui); };
+    document.head.appendChild(core);
 })();

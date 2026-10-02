@@ -29472,8 +29472,7 @@ window._relPrefill = function(msg){
             if (!algumaIntervencao) h += '<p style="color:#64748b;margin-top:10px;">Ainda não há intervenções registadas.</p>';
 
             if (containerId) {
-                const morada = [grupo.morada, grupo.numeroPorta, grupo.codigoPostal, grupo.cidade, grupo.freguesia].filter(Boolean).join(', ');
-                h += `${comoCliente ? '<details style="margin-top:14px;border:1px solid #dbe3ed;border-radius:12px;padding:14px;"><summary style="cursor:pointer;">' : '<div style="margin-top:14px;">' }
+                h += `<div style="margin-top:14px;">
                     <button class="btn btn-sm" id="btn-carregar-mais-${containerId}" style="background:#f1f5f9;color:#334155;" onclick="_historicoCarregarMaisAntigo('${clienteId}', ${comoCliente === true}, '${containerId}', '${desde}')">
                         <i class="fas fa-clock-rotate-left"></i> Carregar dados antigos (+3 meses)
                     </button>

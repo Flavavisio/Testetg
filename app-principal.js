@@ -19620,7 +19620,9 @@
             return (dados.clientes || []).find(c => c.id === usuarioLogado.clienteId && c.adminId === usuarioLogado.adminId) || null;
         }
         function _portalAssistLocais(cli) {
-            return (dados.locais || []).filter(l => l.clienteId === cli.id && l.adminId === cli.adminId);
+            const instalacoes = (dados.locais || []).filter(l => l.clienteId === cli.id && l.adminId === cli.adminId);
+            const sede = { id: '__sede_cliente__', sedeCliente: true, nome: 'Sede', morada: cli.morada || '', numeroPorta: cli.numeroPorta || '', codigoPostal: cli.codigoPostal || '', cidade: cli.cidade || '', freguesia: cli.freguesia || '' };
+            return [sede, ...instalacoes];
         }
         function portalPedirAssistencia() {
             const cli = _portalAssistCliente(); if (!cli) return;
@@ -19676,7 +19678,7 @@
             ov.dataset.enviando = '1'; btn.disabled = true; estado.textContent = 'A enviar o pedido…';
             dados.servicos = dados.servicos || [];
             // A descrição preserva a urgência no esquema atual e torna-a visível na aprovação e no histórico.
-            const pedido = { id: ov.dataset.pedidoId || gerarId(), adminId: cli.adminId, clienteId: cli.id, localId: local.id, morada: local.morada || '', numeroPorta: local.numeroPorta || '', codigoPostal: local.codigoPostal || '', cidade: local.cidade || '', freguesia: local.freguesia || '', descricao: '[Pedido do cliente] Urgência: ' + prioridades[urgencia] + '\nLocal: ' + (local.nome || 'Local') + '\nProblema: ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' };
+            const pedido = { id: ov.dataset.pedidoId || gerarId(), adminId: cli.adminId, clienteId: cli.id, localId: local.sedeCliente ? null : local.id, morada: local.morada || '', numeroPorta: local.numeroPorta || '', codigoPostal: local.codigoPostal || '', cidade: local.cidade || '', freguesia: local.freguesia || '', descricao: '[Pedido do cliente] Urgência: ' + prioridades[urgencia] + '\nLocal: ' + (local.nome || 'Local') + '\nProblema: ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' };
             ov.dataset.pedidoId = pedido.id;
             const existente = dados.servicos.find(p => p.id === pedido.id && p.clienteId === cli.id && p.adminId === cli.adminId);
             if (existente) Object.assign(existente, pedido); else dados.servicos.push(pedido);
@@ -29412,12 +29414,13 @@ window._relPrefill = function(msg){
         function _gerarHTMLIntervencoesPorLocal(clienteId, comoCliente, desdeStr, containerId) {
             const cli = dados.clientes?.find(c => c.id === clienteId);
             if (!cli) return '<p style="color:#64748b;">Cliente não encontrado.</p>';
+            if (comoCliente && (usuarioLogado?.role !== 'cliente' || usuarioLogado.clienteId !== cli.id || usuarioLogado.adminId !== cli.adminId)) return '';
             const desde = desdeStr || _dataCorteMeses(12); // último ano por defeito
-            const oss = (dados.servicos || []).filter(s => s.clienteId === clienteId && (s.status !== 'concluído' || (s.data || '') >= desde));
-            const folhas = (dados.folhasObra || []).filter(f => oss.some(s => s.id === f.servicoId) && f.descricao);
+            const oss = (dados.servicos || []).filter(s => s.adminId === cli.adminId && s.clienteId === clienteId && (s.status !== 'concluído' || (s.data || '') >= desde));
+            const folhas = (dados.folhasObra || []).filter(f => oss.some(s => s.id === f.servicoId) && (!comoCliente || _portalFolhaVisivel(f, cli)));
             const locaisCliente = (dados.locais || []).filter(l => l.adminId === cli.adminId && l.clienteId === clienteId);
             const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio (SADI)', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância (CCTV)', RIN: 'Deteção de Intrusão / Alarme', RDI: 'Declaração de Instalação' };
-            const grupos = [{ id: '', nome: 'Sede' }, ...locaisCliente.map(l => ({ id: l.id, nome: l.nome }))];
+            const grupos = [{ ...cli, id: '', nome: 'Sede' }, ...locaisCliente];
 
             let h = '';
             let algumaIntervencao = false;
@@ -29428,14 +29431,15 @@ window._relPrefill = function(msg){
                 // consegue editá-lo ou sequer confirmar que ficou bem gravado.
                 algumaIntervencao = true;
                 const podeGerirLocal = !comoCliente && grupo.id && (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin');
-                h += `<div style="margin-top:14px;">
+                const morada = [grupo.morada, grupo.numeroPorta, grupo.codigoPostal, grupo.cidade, grupo.freguesia].filter(Boolean).join(', ');
+                h += `${comoCliente ? '<details style="margin-top:14px;border:1px solid #dbe3ed;border-radius:12px;padding:14px;"><summary style="cursor:pointer;">' : '<div style="margin-top:14px;">' }
                     <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #e2e8f0;padding-bottom:4px;margin-bottom:8px;">
-                        <div style="font-weight:700;font-size:.92rem;color:#0b3b5c;"><i class="fas fa-map-marker-alt"></i> ${grupo.nome}</div>
+                        <div style="font-weight:700;font-size:.92rem;color:#0b3b5c;"><i class="fas fa-map-marker-alt"></i> ${escapeHtmlSimples(grupo.nome || 'Instalação')}<div style="font-size:.82rem;font-weight:400;color:#64748b;margin-top:5px;">${escapeHtmlSimples(morada || 'Morada não indicada')}</div>${comoCliente ? '<small>Ver histórico e relatórios</small>' : ''}</div>
                         ${podeGerirLocal ? `<div style="display:flex;gap:6px;">
                             <button class="btn btn-sm" style="background:#0f766e;color:#fff;" onclick="abrirModalEditarLocalCliente('${grupo.id}','${clienteId}')" title="Editar morada desta instalação"><i class="fas fa-pen"></i></button>
                             <button class="btn btn-sm btn-danger" onclick="eliminarLocalCliente('${grupo.id}','${clienteId}')" title="Eliminar esta instalação"><i class="fas fa-trash"></i></button>
                         </div>` : ''}
-                    </div>`;
+                    </div>${comoCliente ? '</summary>' : ''}`;
                 if (!ossGrupo.length) {
                     h += `<p style="color:#94a3b8;font-size:.82rem;margin:4px 0 0;">Ainda não há intervenções registadas nesta instalação.</p>`;
                 }
@@ -29450,31 +29454,26 @@ window._relPrefill = function(msg){
                             <div style="font-size:.78rem;color:#64748b;">${(s.status || 'pendente')}</div>
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">`;
-                    if (especialidades.length) {
-                        especialidades.forEach(tipo => {
-                            const rel = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === s.id && r.tipo === tipo);
-                            if (rel) {
-                                h += `<button class="btn btn-sm" style="background:#0f6b5c;color:#fff;" onclick="_verRelatorioEspecialidadeSnapshot('${rel.id}', ${comoCliente === true})"><i class="fas fa-file-arrow-down"></i> ${nomesRelatorio[tipo] || tipo}</button>`;
-                            } else {
-                                h += `<span style="font-size:.72rem;color:#94a3b8;"><i class="fas fa-hourglass-half"></i> ${nomesRelatorio[tipo] || tipo} pendente</span>`;
-                            }
-                        });
-                    } else {
-                        const folha = folhas.find(f => f.servicoId === s.id);
-                        if (folha) {
-                            h += `<button class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="abrirFolhaDetalhe('${folha.id}')"><i class="fas fa-clipboard-check"></i> Folha de obra</button>`;
-                        } else {
-                            h += `<span style="font-size:.72rem;color:#94a3b8;">Sem folha de obra ainda</span>`;
-                        }
-                    }
+                    const relatorios = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === s.id && (!r.adminId || r.adminId === cli.adminId) && (!r.clienteId || r.clienteId === cli.id) && (!comoCliente || !r.rascunho));
+                    relatorios.forEach(rel => {
+                        h += `<button class="btn btn-sm" style="background:#0f6b5c;color:#fff;" onclick="_verRelatorioEspecialidadeSnapshot('${escapeHtmlSimples(rel.id)}', false)"><i class="fas fa-file-arrow-down"></i> ${escapeHtmlSimples(nomesRelatorio[rel.tipo] || rel.tipo || 'Relatório')}</button>`;
+                    });
+                    folhas.filter(f => f.servicoId === s.id).forEach(folha => {
+                        h += `<button class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="abrirFolhaDetalhe('${escapeHtmlSimples(folha.id)}')"><i class="fas fa-clipboard-check"></i> Folha de obra</button>`;
+                    });
                     h += `</div></div>`;
                 });
-                h += `</div>`;
+                const relatoriosLocal = (dados.relatoriosEspecialidade || []).filter(r => !r.servicoId && r.adminId === cli.adminId && r.clienteId === cli.id && (r.localId || '') === grupo.id && (!comoCliente || !r.rascunho));
+                relatoriosLocal.forEach(r => {
+                    h += `<p><button class="btn btn-sm btn-outline" onclick="_verRelatorioEspecialidadeSnapshot('${escapeHtmlSimples(r.id)}', false)"><i class="fas fa-file-alt"></i> ${escapeHtmlSimples(nomesRelatorio[r.tipo] || r.tipo || 'Relatório')} · ${escapeHtmlSimples(r.data || '')}</button></p>`;
+                });
+                h += comoCliente ? '</details>' : '</div>';
             });
             if (!algumaIntervencao) h += '<p style="color:#64748b;margin-top:10px;">Ainda não há intervenções registadas.</p>';
 
             if (containerId) {
-                h += `<div style="margin-top:14px;">
+                const morada = [grupo.morada, grupo.numeroPorta, grupo.codigoPostal, grupo.cidade, grupo.freguesia].filter(Boolean).join(', ');
+                h += `${comoCliente ? '<details style="margin-top:14px;border:1px solid #dbe3ed;border-radius:12px;padding:14px;"><summary style="cursor:pointer;">' : '<div style="margin-top:14px;">' }
                     <button class="btn btn-sm" id="btn-carregar-mais-${containerId}" style="background:#f1f5f9;color:#334155;" onclick="_historicoCarregarMaisAntigo('${clienteId}', ${comoCliente === true}, '${containerId}', '${desde}')">
                         <i class="fas fa-clock-rotate-left"></i> Carregar dados antigos (+3 meses)
                     </button>

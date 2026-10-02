@@ -27,7 +27,7 @@ function warehouseRow(value={}){
 function render(){
  const cfg=drafts[edition]||{};
  box.innerHTML=`<header><div><span class="phc-eyebrow">INTEGRAÇÕES · PREPARAÇÃO</span><h2 id="phc-title">PHC — faturação e stock</h2><p class="phc-company-name"></p></div><button type="button" data-close aria-label="Fechar">×</button></header>
- <nav aria-label="Versão do PHC"><button type="button" data-edition="go">PHC GO</button><button type="button" data-edition="cs">PHC CS</button></nav>
+ <p><strong>${edition==='go'?'PHC GO':'PHC CS'}</strong> · software selecionado para esta empresa</p>
  <div class="phc-notice"><strong>Rascunho · ainda sem ligação ao PHC</strong><p>Prepara as opções da tua empresa. A simulação usa dados fictícios; não emite documentos nem altera stock real.</p></div>
  <form><div class="phc-fields"><label>URL da instalação / serviço<input id="phc-url" type="url" maxlength="500" placeholder="https://…"></label><label>Código da empresa no PHC<input id="phc-company" maxlength="160"></label>
  ${edition==='go'?'<label>App ID da integração<input id="phc-app" maxlength="160"></label>':'<label>Versão e gama PHC CS<input id="phc-version" maxlength="160" placeholder="Ex.: versão / Advanced ou Enterprise"></label><label>Código de script acordado com o parceiro<input id="phc-script" maxlength="160"></label>'}
@@ -69,10 +69,12 @@ function simulate(){
  const r=simulator.run(),money=c=>(c/100).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
  $('.phc-demo-result').textContent=`SIMULAÇÃO — ${r.documentId}\n${r.duplicate?'Pedido repetido: foi reutilizado o resultado da simulação, sem novo movimento.':'Foi simulado um documento, sem comunicação ao PHC.'}\nBase: ${money(r.netCents)} · IVA de exemplo: ${money(r.taxCents)} · Total: ${money(r.totalCents)}\nStock fictício inicial: 5 · Antes da fatura: ${r.quantityBeforeInvoice} · Final: ${r.quantityAfter}\nMovimento único ${policy==='invoice'?'na faturação':'no consumo da OS'}.`;
 }
-function open(){
+function open(requestedEdition){
  const c=context();if(!c){alert('A configuração PHC está disponível ao administrador da empresa.');return;}
  if(!window.TGPHCCore){alert('O módulo PHC ainda está a carregar. Tenta novamente.');return;}
- if(box.open)return;owner=c;edition='go';dirty=false;drafts=JSON.parse(JSON.stringify(c.admin.integracaoFaturacao?.phcDrafts||{}));simulator=null;simKey='';render();box.showModal();
+ const selected=c.admin.integracaoFaturacao?.provider;
+ if(!['phc_go','phc_cs'].includes(selected)){alert('Seleciona e guarda primeiro o software PHC no menu de faturação.');return;}
+ if(box.open)return;owner=c;edition=selected==='phc_cs'?'cs':'go';dirty=false;drafts=JSON.parse(JSON.stringify(c.admin.integracaoFaturacao?.phcDrafts||{}));simulator=null;simKey='';render();box.showModal();
 }
 box.addEventListener('cancel',e=>{e.preventDefault();close();});
 document.addEventListener('tg:interface-updated',()=>{if(box.open)authorised();});

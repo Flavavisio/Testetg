@@ -6049,6 +6049,7 @@
                                             if (_provVerOs === 'toconline') {
                                                 return `<button class="btn btn-sm" style="background:${s.faturaTOConlineId ? '#64748b' : '#0f766e'};color:#fff;" onclick="faturarOSViaTOConline('${s.id}')" title="${s.faturaTOConlineId ? 'Já faturado — clica para faturar de novo' : 'Faturar via TOConline'}"><i class="fas fa-file-invoice"></i> ${s.faturaTOConlineId ? 'Faturado' : 'Faturar'}</button>`;
                                             }
+                                            if (_provVerOs !== 'moloni') return '';
                                             return `<button class="btn btn-sm" style="background:${s.faturaMoloniId ? '#64748b' : '#7c3aed'};color:#fff;" onclick="faturarOSViaMoloni('${s.id}')" title="${s.faturaMoloniId ? 'Já faturado — clica para faturar de novo' : 'Faturar via Moloni'}"><i class="fas fa-file-invoice"></i> ${s.faturaMoloniId ? 'Faturado' : 'Faturar'}</button>`;
                                         })()}
                                         ${s.faturaMoloniUrl ? `<a href="${s.faturaMoloniUrl}" target="_blank" class="btn btn-sm btn-outline" title="Abrir o PDF da fatura na Moloni"><i class="fas fa-file-pdf"></i> Fatura</a>` : ''}
@@ -8982,16 +8983,18 @@
             const campos = document.getElementById('modalGenericoCampos'); if (!campos) return;
             const acoes = document.getElementById('modalGenericoAcoes');
             if (acoes) acoes.style.display = 'none'; // este ecrã não tem nada para "Guardar" — só Editar/Apagar
-            const nomes = { moloni: 'Moloni', toconline: 'TOConline' };
+            const nomes = { moloni: 'Moloni', toconline: 'TOConline', phc_go: 'PHC GO', phc_cs: 'PHC CS' };
+            const phc = ['phc_go', 'phc_cs'].includes(cfg.provider);
             const nomeProvider = nomes[cfg.provider] || cfg.provider;
             const ligadoToc = cfg.provider === 'toconline' && !!cfg.toconline?.accessToken;
             campos.innerHTML = `
-                <button type="button" class="btn btn-outline" style="width:100%;margin:12px 0;" onclick="window.TGPHC ? TGPHC.open() : alert('O módulo PHC está a carregar. Tenta novamente.')"><i class="fas fa-plug"></i> Preparar ligação PHC GO / PHC CS</button>
+
                 <div style="text-align:center;padding:10px 0 4px;">
-                    <div style="font-size:2rem;color:#16a34a;margin-bottom:8px;"><i class="fas fa-circle-check"></i></div>
-                    <div style="font-weight:700;font-size:1.05rem;color:#152a52;">Software configurado: ${nomeProvider}</div>
+                    <div style="font-size:2rem;color:${phc ? '#92400e' : '#16a34a'};margin-bottom:8px;"><i class="fas ${phc ? 'fa-clock' : 'fa-circle-check'}"></i></div>
+                    <div style="font-weight:700;font-size:1.05rem;color:#152a52;">Software selecionado: ${nomeProvider}</div>
                     ${cfg.provider === 'toconline' ? `<div style="margin-top:6px;font-size:.85rem;color:${ligadoToc ? '#16a34a' : '#92400e'};">${ligadoToc ? '✅ Ligado à TOConline' : '⚠️ Ainda falta ligar (OAuth)'}</div>` : ''}
-                    ${cfg.simulacao !== false ? `<div style="margin-top:4px;font-size:.8rem;color:#92400e;">⚠️ Modo simulação ainda ativo — não emite faturas reais.</div>` : ''}
+                    ${phc ? `<div style="margin-top:8px;color:#92400e;">Ligação PHC por validar. Faturação e stock reais ainda indisponíveis.</div><button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="TGPHC.open('${cfg.provider === 'phc_cs' ? 'cs' : 'go'}')">Preparar ligação ${nomeProvider}</button>` : ''}
+                    ${!phc && cfg.simulacao !== false ? `<div style="margin-top:4px;font-size:.8rem;color:#92400e;">⚠️ Modo simulação ainda ativo — não emite faturas reais.</div>` : ''}
                 </div>
                 <div style="display:flex;gap:8px;margin-top:16px;">
                     <button type="button" class="btn btn-outline" style="flex:1;" onclick="_fatMostrarWizardEscolha()"><i class="fas fa-pen"></i> Editar</button>
@@ -9017,14 +9020,13 @@
             const acoes = document.getElementById('modalGenericoAcoes');
             if (acoes) acoes.style.display = ''; // repõe o rodapé Cancelar/Guardar, escondido no ecrã de resumo
             campos.innerHTML = `
-                <div class="form-group">
-<button type="button" class="btn btn-outline" style="width:100%;margin:12px 0;" onclick="window.TGPHC ? TGPHC.open() : alert('O módulo PHC está a carregar. Tenta novamente.')"><i class="fas fa-plug"></i> Preparar ligação PHC GO / PHC CS</button>
-                    <label>Qual o software de faturação que tens?</label>
-                    <div style="display:flex;gap:8px;">
-                        <button type="button" class="btn btn-sm ${provider === 'moloni' ? 'btn-primary' : 'btn-outline'}" onclick="_fatEscolherProvider('moloni')" style="flex:1;">Moloni</button>
-                        <button type="button" class="btn btn-sm ${provider === 'toconline' ? 'btn-primary' : 'btn-outline'}" onclick="_fatEscolherProvider('toconline')" style="flex:1;">TOConline</button>
+                <fieldset style="border:0;padding:0;margin:0 0 18px;">
+                    <legend style="font-weight:700;margin-bottom:10px;">Qual o software de faturação que tens?</legend>
+                    <p class="help-text">Seleciona apenas um software para esta empresa.</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+                        ${[['moloni','Moloni'],['toconline','TOConline'],['phc_go','PHC GO'],['phc_cs','PHC CS']].map(([id,nome]) => `<label style="display:flex;align-items:center;gap:8px;padding:14px;border:1px solid #cbd5e1;border-radius:10px;cursor:pointer;"><input type="radio" name="fat_provider" value="${id}" ${provider === id ? 'checked' : ''} onchange="_fatEscolherProvider(this.value)" style="width:auto;margin:0;">${nome}</label>`).join('')}
                     </div>
-                </div>
+                </fieldset>
                 <div id="fatCamposProvider"></div>
             `;
             _fatRenderCamposProvider(provider, cfg);
@@ -9032,17 +9034,17 @@
         function _fatEscolherProvider(provider) {
             const admin = adminAtual(); if (!admin) return;
             const cfg = admin.integracaoFaturacao || {};
-            document.querySelectorAll('#modalGenericoCampos .form-group:first-child .btn').forEach(b => b.classList.remove('btn-primary'));
+            if (!['moloni','toconline','phc_go','phc_cs'].includes(provider)) return;
+            document.querySelectorAll('input[name="fat_provider"]').forEach(r => { r.checked = r.value === provider; });
             _fatRenderCamposProvider(provider, cfg);
-            document.querySelectorAll('#modalGenericoCampos .form-group:first-child .btn').forEach(b => {
-                const ativoMoloni = b.textContent.trim() === 'Moloni' && provider === 'moloni';
-                const ativoToc = b.textContent.trim() === 'TOConline' && provider === 'toconline';
-                b.classList.toggle('btn-primary', ativoMoloni || ativoToc);
-                b.classList.toggle('btn-outline', !(ativoMoloni || ativoToc));
-            });
         }
+
         function _fatRenderCamposProvider(provider, cfg) {
             const alvo = document.getElementById('fatCamposProvider'); if (!alvo) return;
+            if (['phc_go','phc_cs'].includes(provider)) {
+                alvo.innerHTML = `<div style="padding:14px;background:#fef3c7;color:#92400e;border-radius:10px;"><strong>${provider === 'phc_go' ? 'PHC GO' : 'PHC CS'} · ligação por validar</strong><p>Guarda a escolha para esta empresa. Depois poderás preparar os dados da ligação. A emissão de faturas e a sincronização de stock reais ainda não estão disponíveis.</p></div>`;
+                return;
+            }
             if (provider === 'toconline') {
                 const toc = cfg.toconline || {};
                 const ligado = !!toc.accessToken;
@@ -9083,7 +9085,15 @@
         function salvarConfigFaturacao(ligarDepois) {
             const admin = adminAtual();
             if (!admin) return;
-            const provider = document.getElementById('fat_toc_client_id') ? 'toconline' : 'moloni';
+            if (!['admin','subadmin'].includes(usuarioLogado?.role)) return;
+            const provider = document.querySelector('input[name="fat_provider"]:checked')?.value;
+            if (!['moloni','toconline','phc_go','phc_cs'].includes(provider)) { alert('Seleciona um software de faturação.'); return; }
+            if (['phc_go','phc_cs'].includes(provider)) {
+                admin.integracaoFaturacao = { provider, simulacao: true, phcDrafts: admin.integracaoFaturacao?.phcDrafts || {} };
+                guardarDados(dados);
+                _fatMostrarResumo(admin.integracaoFaturacao);
+                return;
+            }
             if (provider === 'toconline') {
                 const clientId = document.getElementById('fat_toc_client_id').value.trim();
                 const clientSecret = document.getElementById('fat_toc_client_secret').value.trim();

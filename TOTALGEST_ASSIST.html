@@ -451,8 +451,8 @@
             },
             assistencias: {
                 tabela: 'assistencias',
-                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, notas: Array.isArray(r.notas) ? r.notas : (r.notas ? JSON.parse(r.notas) : []), dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, notas: o.notas || [], data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, notas: Array.isArray(r.notas) ? r.notas : (r.notas ? JSON.parse(r.notas) : []), dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, notas: o.notas || [], data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
             },
         };
 
@@ -729,12 +729,27 @@
                 return `<tr style="cursor:pointer;" onclick="mudarTabCRM('assistencias');setTimeout(()=>abrirModalAssistencia('${a.id}'),60);">
                     <td>${escapeHtmlSimples(a.numero || '—')}</td>
                     <td>${escapeHtmlSimples(obterNomeCliente(a.clienteId))}</td>
-                    <td>${escapeHtmlSimples(a.assunto || '')}</td>
+                    <td>${_assistResumoHtml(a)}</td>
                     <td><span class="badge" style="background:${pri.cor}22;color:${pri.cor};">${pri.label}</span></td>
                     <td><span class="badge" style="background:${est.bg};color:${est.cor};">${est.label}</span></td>
                     <td>${a.dataCriacao ? new Date(a.dataCriacao).toLocaleDateString('pt-PT') : '—'}</td>
                 </tr>`;
             }).join('');
+        }
+        function _assistResumoDados(a) {
+            const cliente = (dados.clientes || []).find(c => c.id === a.clienteId && c.adminId === a.adminId);
+            const os = (dados.servicos || []).find(s => s.id === a.osGeradaId && s.adminId === a.adminId);
+            const localId = a.localId || os?.localId;
+            const local = (dados.locais || []).find(l => l.id === localId && l.adminId === a.adminId && l.clienteId === a.clienteId);
+            const localTexto = String(a.descricao || '').match(/^Local:\s*(.+)$/m)?.[1];
+            return { cliente: cliente?.nome || a.nomeCliente || 'Sem cliente', local: local?.nome || localTexto || (localId ? (os?.morada || 'Instalação') : (a.clienteId ? 'Sede' : 'Local não indicado')), urgencia: ({baixa:'Baixa',normal:'Normal',alta:'Alta',urgente:'Urgente'})[a.prioridade] || 'Normal' };
+        }
+        function _assistResumoHtml(a) {
+            const d = _assistResumoDados(a);
+            return `<div style="white-space:normal;line-height:1.45;text-align:left;padding:4px 0;"><strong>${escapeHtmlSimples(a.assunto || a.numero || 'Assistência')}</strong><div style="font-size:.75rem;color:var(--hsub,#64748b);">${escapeHtmlSimples(d.cliente)}</div><div style="font-size:.72rem;">${escapeHtmlSimples(d.local)} · Urgência: <b>${escapeHtmlSimples(d.urgencia)}</b></div>${a.origem === 'portal' ? '<span style="display:inline-block;margin-top:4px;background:#e0f2fe;color:#075985;border-radius:6px;padding:2px 6px;font-size:.68rem;">Portal do Cliente</span>' : ''}</div>`;
+        }
+        function _assistPortalPorTratar(adminId) {
+            return (dados.assistencias || []).filter(a => a.adminId === adminId && a.origem === 'portal' && !a.apagadoSuperAdmin && (a.estado || 'aberta') === 'aberta' && !a.osGeradaId && !a.atribuidoId);
         }
         function obterNomeCliente(id) {
             if (!id) return '—';
@@ -757,7 +772,7 @@
                 return `<tr>
                     <td>${escapeHtmlSimples(a.numero || '—')}${foraSla ? ' <i class="fas fa-triangle-exclamation" style="color:#d1342f;" title="Aberta há mais de 48h"></i>' : ''}</td>
                     <td>${escapeHtmlSimples(obterNomeCliente(a.clienteId))}</td>
-                    <td>${escapeHtmlSimples(a.assunto || '')}</td>
+                    <td>${_assistResumoHtml(a)}</td>
                     <td><span class="badge" style="background:${pri.cor}22;color:${pri.cor};">${pri.label}</span></td>
                     <td><span class="badge" style="background:${est.bg};color:${est.cor};">${est.label}</span></td>
                     <td>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId))}</td>
@@ -888,13 +903,14 @@
         }
         // SLA visual: quantas horas está aberta, com aviso se passar de 48h sem resolver
         function _assistBadgeSLA(item) {
+            const portal = item.origem === 'portal' ? '<div style="padding:8px 12px;background:#e0f2fe;color:#075985;border-radius:8px;margin-bottom:8px;">Pedido recebido pelo Portal do Cliente</div>' : '';
             if (['resolvida', 'fechada'].includes(item.estado)) {
                 const horas = item.dataModificacao ? Math.round((item.dataModificacao - item.dataCriacao) / 3600000) : null;
-                return horas != null ? `<div class="help-text" style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--green);"></i> Resolvida em ${horas < 24 ? horas + 'h' : Math.round(horas / 24) + ' dia(s)'}.</div>` : '';
+                return portal + (horas != null ? `<div class="help-text" style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--green);"></i> Resolvida em ${horas < 24 ? horas + 'h' : Math.round(horas / 24) + ' dia(s)'}.</div>` : '');
             }
             const horasAberta = Math.round((Date.now() - (item.dataCriacao || Date.now())) / 3600000);
             const critico = horasAberta >= 48;
-            return `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:${critico ? 'var(--red-bg)' : 'var(--blue-bg)'};color:${critico ? 'var(--red)' : 'var(--blue)'};font-size:.82rem;font-weight:600;">
+            return portal + `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:${critico ? 'var(--red-bg)' : 'var(--blue-bg)'};color:${critico ? 'var(--red)' : 'var(--blue)'};font-size:.82rem;font-weight:600;">
                 <i class="fas ${critico ? 'fa-triangle-exclamation' : 'fa-clock'}"></i> Aberta há ${horasAberta < 24 ? horasAberta + ' hora(s)' : Math.round(horasAberta / 24) + ' dia(s)'}${critico ? ' — fora do SLA de 48h' : ''}
             </div>`;
         }

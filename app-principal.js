@@ -5519,6 +5519,21 @@
             if (conteudo) conteudo.innerHTML = _wsAssistenciasHtml(clienteId);
         }
         // Mesma lógica de numeração já usada no Total Gest Assist (AST-<iniciais><mm><aa>-N).
+        function _assistResumoDados(a) {
+            const cliente = (dados.clientes || []).find(c => c.id === a.clienteId && c.adminId === a.adminId);
+            const os = (dados.servicos || []).find(s => s.id === a.osGeradaId && s.adminId === a.adminId);
+            const localId = a.localId || os?.localId;
+            const local = (dados.locais || []).find(l => l.id === localId && l.adminId === a.adminId && l.clienteId === a.clienteId);
+            const localTexto = String(a.descricao || '').match(/^Local:\s*(.+)$/m)?.[1];
+            return { cliente: cliente?.nome || a.nomeCliente || 'Sem cliente', local: local?.nome || localTexto || (localId ? (os?.morada || 'Instalação') : (a.clienteId ? 'Sede' : 'Local não indicado')), urgencia: ({baixa:'Baixa',normal:'Normal',alta:'Alta',urgente:'Urgente'})[a.prioridade] || 'Normal' };
+        }
+        function _assistResumoHtml(a) {
+            const d = _assistResumoDados(a);
+            return `<div style="white-space:normal;line-height:1.45;text-align:left;padding:4px 0;"><strong>${escapeHtmlSimples(a.assunto || a.numero || 'Assistência')}</strong><div style="font-size:.75rem;color:var(--hsub,#64748b);">${escapeHtmlSimples(d.cliente)}</div><div style="font-size:.72rem;">${escapeHtmlSimples(d.local)} · Urgência: <b>${escapeHtmlSimples(d.urgencia)}</b></div>${a.origem === 'portal' ? '<span style="display:inline-block;margin-top:4px;background:#e0f2fe;color:#075985;border-radius:6px;padding:2px 6px;font-size:.68rem;">Portal do Cliente</span>' : ''}</div>`;
+        }
+        function _assistPortalPorTratar(adminId) {
+            return (dados.assistencias || []).filter(a => a.adminId === adminId && a.origem === 'portal' && !a.apagadoSuperAdmin && (a.estado || 'aberta') === 'aberta' && !a.osGeradaId && !a.atribuidoId);
+        }
         function _wsGerarNumeroAssistencia() {
             const admin = dados.administradores?.find(a => a.id === _tenantId());
             const iniciais = _empresaIniciais(admin?.empresa || admin?.nome || '');
@@ -13330,6 +13345,8 @@
             const osPend = (dados.servicos || []).filter(s => s.adminId === adminId && (s.status || 'pendente') === 'pendente').length;
             if (osPend) alertas.push({ tipo: 'info', titulo: `${osPend} ${osPend === 1 ? 'ordem de serviço pendente' : 'ordens de serviço pendentes'}`, sub: 'Atribua ou inicie as ordens para manter o fluxo.', acao: "abrirSecao('agenda-obras')" });
 
+            const assistPortal = moduloAssistAtivo(dados.administradores?.find(a => a.id === adminId)) ? _assistPortalPorTratar(adminId) : [];
+            if (assistPortal.length) alertas.push({tipo:'warning',titulo: `${assistPortal.length} assistência(s) do Portal do Cliente por tratar`,sub:assistPortal.slice(0,3).map(a => {const d=_assistResumoDados(a);return `${d.cliente} · ${d.local} · ${d.urgencia}`;}).join(' | '),acao:'_abrirAssistGeral()'});
             const assistPend = (dados.servicos || []).filter(s => s.adminId === adminId && s.status === 'por aprovar').length;
             if (assistPend) alertas.push({ tipo: 'warning', titulo: `${assistPend} ${assistPend === 1 ? 'pedido de assistência por aprovar' : 'pedidos de assistência por aprovar'}`, sub: 'Pedidos enviados pelos clientes no Portal. Aprove ou rejeite.', acao: "abrirSecao('servicos')" });
 
@@ -19056,19 +19073,20 @@
                         // disparar também o clique do cartão (que abre o Assist normal por baixo).
                         const _linhaSemOS = (a) => {
                             const nomeCli = a.clienteId ? _nomeClienteOS(a.clienteId) : (a.nomeCliente || 'Sem cliente');
-                            return `<a href="TOTALGEST_ASSIST.html?criarOS=${a.id}" target="_blank" rel="noopener" onclick="event.stopPropagation();return _abrirAssist(event);" style="display:block;font-size:.72rem;color:var(--htxt);text-decoration:none;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Criar OS a partir desta assistência">${escapeHtmlSimples(a.assunto || nomeCli)}</a>`;
+                            return `<a href="TOTALGEST_ASSIST.html?criarOS=${a.id}" target="_blank" rel="noopener" onclick="event.stopPropagation();return _abrirAssist(event);" style="display:block;font-size:.72rem;color:var(--htxt);text-decoration:none;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Criar OS a partir desta assistência">${_assistResumoHtml(a)}</a>`;
                         };
                         const _linhaComOS = (a) => {
                             const nomeCli = a.clienteId ? _nomeClienteOS(a.clienteId) : (a.nomeCliente || 'Sem cliente');
-                            return `<div onclick="event.stopPropagation();abrirVerOS('${a.osGeradaId}')" style="font-size:.72rem;color:var(--htxt);cursor:pointer;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Ver resumo da OS desta assistência">${escapeHtmlSimples(a.assunto || nomeCli)}</div>`;
+                            return `<div onclick="event.stopPropagation();abrirVerOS('${a.osGeradaId}')" style="font-size:.72rem;color:var(--htxt);cursor:pointer;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Ver resumo da OS desta assistência">${_assistResumoHtml(a)}</div>`;
                         };
                         const _lista = (arr, fn, vazioTxt) => !arr.length
                             ? `<div style="font-size:.72rem;color:var(--hsub);padding:4px 0;">${vazioTxt}</div>`
                             : arr.slice(0, _LIMITE_LISTA).map(fn).join('') + (arr.length > _LIMITE_LISTA ? `<div style="font-size:.68rem;color:var(--hb);padding:3px 0;">+ ${arr.length - _LIMITE_LISTA} mais</div>` : '');
                         return `<div class="hdc-card" onclick="_abrirAssistGeral()" style="cursor:pointer;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
                             <h4><i class="fas fa-headset"></i> Assistências</h4>
-                            <div style="display:flex;gap:16px;font-size:.72rem;color:var(--hsub);margin:6px 0 2px;">
-                                <span>Criadas: <b class="hdc-num-animado" data-final="${_assistTodas.length}" style="color:var(--htxt);">0</b></span>
+                            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:.72rem;color:var(--hsub);margin:6px 0 2px;">
+                                <span>Total de assistências: <b class="hdc-num-animado" data-final="${_assistTodas.length}" style="color:var(--htxt);">0</b></span>
+                                <span>Por realizar: <b class="hdc-num-animado" data-final="${_assistTodasAbertas.length}" style="color:var(--htxt);">0</b></span>
                                 <span>Concluídas: <b class="hdc-num-animado" data-final="${_assistConcluidas.length}" style="color:var(--hg);">0</b></span>
                             </div>
                             ${_assistUrgentes ? `<div style="font-size:.76rem;color:var(--hr);margin:4px 0;"><i class="fas fa-triangle-exclamation"></i> ${_assistUrgentes} sem OS de prioridade alta/urgente</div>` : ''}
@@ -19532,7 +19550,7 @@
                 signatures: folhas.filter(f => !(f.assinatura || f.assinaturaPath)).length,
                 assistAtivo,
                 pendingRequests: pedidosAssist.filter(a => a.estado === 'aberta').length,
-                requests: pedidosAssist.map(a => ({numero:a.numero, data:new Date(a.dataCriacao).toLocaleDateString('sv-SE'),descricao:a.descricao,status:({aberta:'Aberto',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[a.estado] || a.estado}))
+                requests: pedidosAssist.map(a => ({numero:a.numero, data:new Date(a.dataCriacao).toLocaleDateString('sv-SE'),descricao:a.descricao,status:({aberta:'Aberto',andamento:'Em atendimento',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[a.estado] || a.estado}))
             });
         }
 
@@ -20285,6 +20303,8 @@
             }
             if (u.role !== 'admin' && u.role !== 'subadmin' && u.role !== 'encarregado') return [];
             const aid = (u.role === 'admin' || u.role === 'subadmin') ? (u.role === 'admin' ? u.id : u.adminId) : u.adminId;
+            const portalPend = moduloAssistAtivo(dados.administradores?.find(a => a.id === aid)) ? _assistPortalPorTratar(aid).length : 0;
+            if (portalPend) itens.push({icon:'fa-headset',titulo:`${portalPend} assistência(s) do Portal do Cliente`,sub:'Novos pedidos por tratar',secao:'assist-portal',count:portalPend});
             const assist = (dados.servicos || []).filter(s => s.adminId === aid && s.status === 'por aprovar').length;
             if (assist) itens.push({ icon: 'fa-headset', titulo: `${assist} ${assist === 1 ? 'pedido de assistência' : 'pedidos de assistência'}`, sub: 'Do Portal do Cliente — aprovar/rejeitar', secao: 'servicos', count: assist });
             const reqs = (dados.requisicoes || []).filter(r => r.adminId === aid && (r.status || 'pendente') === 'pendente').length;
@@ -20427,6 +20447,7 @@
             }
         }
         function sinoIr(secao) {
+            if (secao === 'assist-portal') { const dd = document.getElementById('sinoDropdown'); if (dd) dd.style.display = 'none'; _abrirAssistGeral(); return; }
             const dd = document.getElementById('sinoDropdown'); if (dd) dd.style.display = 'none';
             abrirSecao(secao);
         }
@@ -29236,7 +29257,7 @@ window._relPrefill = function(msg){
             }
             const linhas = pedidos.length ? pedidos.map(p => {
                 let estadoTxt, estadoCor, estadoFundo;
-                estadoTxt = ({aberta:'Aberto',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[p.estado] || p.estado; estadoCor='#1e40af'; estadoFundo='#dbeafe';
+                estadoTxt = ({aberta:'Aberto',andamento:'Em atendimento',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[p.estado] || p.estado; estadoCor='#1e40af'; estadoFundo='#dbeafe';
                 const desc = (p.descricao || '').replace(/^\[Pedido do cliente\]\s*/, '');
                 return `<div style="border:1px solid #e6eaf2;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">

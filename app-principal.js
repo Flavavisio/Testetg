@@ -19615,38 +19615,82 @@
             alert('✅ Folha assinada. Obrigado!');
         }
 
+        function _portalAssistCliente() {
+            if (usuarioLogado?.role !== 'cliente') return null;
+            return (dados.clientes || []).find(c => c.id === usuarioLogado.clienteId && c.adminId === usuarioLogado.adminId) || null;
+        }
+        function _portalAssistLocais(cli) {
+            return (dados.locais || []).filter(l => l.clienteId === cli.id && l.adminId === cli.adminId);
+        }
         function portalPedirAssistencia() {
+            const cli = _portalAssistCliente(); if (!cli) return;
             let ov = document.getElementById('portalAjudaOverlay');
+            if (ov?.dataset.enviando === '1') return;
             if (!ov) {
-                ov = document.createElement('div');
-                ov.id = 'portalAjudaOverlay';
-                ov.className = 'modal-overlay';
-                ov.innerHTML = `<div class="modal" style="max-width:460px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                        <h3><i class="fas fa-headset"></i> Pedir assistência</h3>
-                        <button class="close-modal" onclick="portalFecharAjuda()">&times;</button>
-                    </div>
-                    <div class="form-group"><label>Descreva o que precisa *</label><textarea id="portalAjudaDesc" rows="4" placeholder="Ex.: o sensor da porta da loja deixou de funcionar."></textarea></div>
-                    <button class="btn btn-primary" style="width:100%;" onclick="portalEnviarAssistencia()"><i class="fas fa-paper-plane"></i> Enviar pedido</button>
-                </div>`;
+                ov = document.createElement('div'); ov.id = 'portalAjudaOverlay'; ov.className = 'modal-overlay';
                 document.body.appendChild(ov);
             }
-            const ta = document.getElementById('portalAjudaDesc'); if (ta) ta.value = '';
+            const locais = _portalAssistLocais(cli);
+            delete ov.dataset.pedidoId;
+            ov.dataset.cliente = cli.id; ov.dataset.admin = cli.adminId;
+            ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="portalAjudaTitulo" style="max-width:540px;max-height:90vh;overflow-y:auto;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <h3 id="portalAjudaTitulo"><i class="fas fa-headset"></i> Pedir assistência</h3>
+                    <button type="button" class="close-modal" aria-label="Fechar" onclick="portalFecharAjuda()">&times;</button>
+                </div>
+                <p style="color:#64748b;">Indique onde precisa de assistência e o que aconteceu.</p>
+                <form onsubmit="event.preventDefault();portalEnviarAssistencia();">
+                    <div class="form-group"><label for="portalAjudaLocal">Local *</label>
+                        <select id="portalAjudaLocal" required ${locais.length === 1 ? 'disabled' : ''}>
+                            ${locais.length !== 1 ? '<option value="">Selecione o local</option>' : ''}
+                            ${locais.map(l => `<option value="${escapeHtmlSimples(l.id)}">${escapeHtmlSimples(l.nome || 'Local')} — ${escapeHtmlSimples(l.morada || l.cidade || 'Morada não indicada')}</option>`).join('')}
+                        </select>
+                        <small style="color:#64748b;">${locais.length === 1 ? 'O seu único local foi selecionado automaticamente.' : locais.length ? 'Escolha o local onde ocorre o problema.' : 'Ainda não tem locais registados. Contacte a empresa para adicionar o local.'}</small>
+                    </div>
+                    <div class="form-group"><label for="portalAjudaUrgencia">Urgência *</label>
+                        <select id="portalAjudaUrgencia" required><option value="">Selecione a urgência</option><option value="baixa">Baixa — pode aguardar</option><option value="normal">Normal — necessita de assistência</option><option value="alta">Alta — afeta o funcionamento</option><option value="urgente">Urgente — serviço parado</option></select>
+                    </div>
+                    <div class="form-group"><label for="portalAjudaDesc">Qual é o problema? *</label><textarea id="portalAjudaDesc" rows="4" maxlength="4000" required placeholder="Descreva o equipamento afetado, o que acontece e desde quando. Ex.: o sensor da porta deixou de funcionar esta manhã."></textarea></div>
+                    <p id="portalAjudaEstado" role="status" aria-live="polite"></p>
+                    <button id="portalAjudaEnviar" type="submit" class="btn btn-primary" style="width:100%;" ${!locais.length ? 'disabled' : ''}><i class="fas fa-paper-plane"></i> Enviar pedido</button>
+                </form>
+            </div>`;
             ov.classList.add('open');
         }
-        function portalFecharAjuda() { const ov = document.getElementById('portalAjudaOverlay'); if (ov) ov.classList.remove('open'); }
-        function portalEnviarAssistencia() {
+        function portalFecharAjuda() {
+            const ov = document.getElementById('portalAjudaOverlay');
+            if (ov && ov.dataset.enviando !== '1') { ov.classList.remove('open'); ov.replaceChildren(); }
+        }
+        async function portalEnviarAssistencia() {
+            const cli = _portalAssistCliente(), ov = document.getElementById('portalAjudaOverlay');
+            if (!cli || !ov || ov.dataset.enviando === '1') return;
+            if (ov.dataset.cliente !== cli.id || ov.dataset.admin !== cli.adminId) { portalFecharAjuda(); return; }
+            const local = _portalAssistLocais(cli).find(l => l.id === document.getElementById('portalAjudaLocal')?.value);
+            const urgencia = document.getElementById('portalAjudaUrgencia')?.value;
+            const prioridades = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
             const desc = (document.getElementById('portalAjudaDesc')?.value || '').trim();
-            if (!desc) { alert('Por favor descreva o que precisa.'); return; }
-            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado?.clienteId && c.adminId === usuarioLogado?.adminId);
-            if (!cli) return;
+            if (!local) { alert('Selecione um local válido.'); return; }
+            if (!Object.prototype.hasOwnProperty.call(prioridades, urgencia)) { alert('Indique a urgência do pedido.'); return; }
+            if (!desc || desc.length > 4000) { alert('Descreva o problema (até 4000 caracteres).'); return; }
+            const btn = document.getElementById('portalAjudaEnviar'), estado = document.getElementById('portalAjudaEstado');
+            ov.dataset.enviando = '1'; btn.disabled = true; estado.textContent = 'A enviar o pedido…';
             dados.servicos = dados.servicos || [];
-            dados.servicos.push({ id: gerarId(), adminId: cli.adminId, clienteId: cli.id, descricao: '[Pedido do cliente] ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' });
-            guardarDados(dados);
-            _notificarAdminESubadmin(cli.adminId, '🆘 Novo pedido de assistência', 'Cliente ' + _clienteLabel(cli) + ' enviou um novo pedido pelo Portal.', "abrirSecao('servicos')");
-            portalFecharAjuda();
-            renderizarPortalCliente();
-            alert('✅ Pedido enviado à empresa. Entraremos em contacto.');
+            // A descrição preserva a urgência no esquema atual e torna-a visível na aprovação e no histórico.
+            const pedido = { id: ov.dataset.pedidoId || gerarId(), adminId: cli.adminId, clienteId: cli.id, localId: local.id, morada: local.morada || '', numeroPorta: local.numeroPorta || '', codigoPostal: local.codigoPostal || '', cidade: local.cidade || '', freguesia: local.freguesia || '', descricao: '[Pedido do cliente] Urgência: ' + prioridades[urgencia] + '\nLocal: ' + (local.nome || 'Local') + '\nProblema: ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' };
+            ov.dataset.pedidoId = pedido.id;
+            const existente = dados.servicos.find(p => p.id === pedido.id && p.clienteId === cli.id && p.adminId === cli.adminId);
+            if (existente) Object.assign(existente, pedido); else dados.servicos.push(pedido);
+            try {
+                await guardarDados(dados);
+                _notificarAdminESubadmin(cli.adminId, '🆘 Novo pedido de assistência', 'Cliente ' + _clienteLabel(cli) + ' · ' + (local.nome || 'Local') + ' · Urgência: ' + prioridades[urgencia], "abrirSecao('servicos')");
+                ov.dataset.enviando = ''; delete ov.dataset.pedidoId; portalFecharAjuda();
+                if (_portalAssistCliente()?.id === cli.id && _portalAssistCliente()?.adminId === cli.adminId) {
+                    renderizarPortalCliente();
+                    alert(navigator.onLine ? '✅ Pedido enviado à empresa. Entraremos em contacto.' : 'Pedido guardado neste dispositivo. Será sincronizado quando houver ligação à internet.');
+                }
+            } catch (err) {
+                estado.textContent = 'Não foi possível confirmar o envio. Tente novamente; o mesmo pedido será reutilizado.';
+            } finally { ov.dataset.enviando = ''; btn.disabled = false; }
         }
 
         function renderizarAuditoria() {

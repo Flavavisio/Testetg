@@ -5,8 +5,8 @@
 #tg-assistente button{cursor:pointer}
 #tg-assistente button:focus-visible,#tg-assistente input:focus-visible{outline:3px solid #ff8e30;outline-offset:3px}
 #tg-assistente .tg-launcher{position:relative;display:flex;justify-content:flex-end}
-#tg-assistente .tg-open{background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;color:var(--tg-ink)}
-#tg-assistente .tg-open img{width:104px;height:123px;object-fit:contain;filter:drop-shadow(0 5px 6px #162b4f22)}
+#tg-assistente .tg-open{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;display:flex;flex-direction:column;align-items:center;color:var(--tg-ink)}
+#tg-assistente .tg-open img{width:124px;height:132px;background:transparent;border:0;border-radius:0;object-fit:contain;filter:drop-shadow(0 5px 6px #162b4f22)}
 #tg-assistente .tg-open span{background:var(--tg-paper);border:1px solid var(--tg-line);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:650;box-shadow:0 3px 12px #162b4f10}
 #tg-assistente .tg-minimize{position:absolute;right:-5px;top:0;width:26px;height:26px;border:1px solid var(--tg-line);border-radius:50%;background:var(--tg-paper);color:var(--tg-ink);line-height:1}
 #tg-assistente.tg-compact .tg-open img{display:none}
@@ -31,7 +31,7 @@
 #tg-assistente footer{padding:0 14px 12px;font-size:10px;text-align:center;opacity:.7}
 #tg-assistente .tg-sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#24364e;--tg-line:#3a4d66}
-@media(max-width:600px){#tg-assistente{right:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px))}#tg-assistente .tg-open img{width:76px;height:90px}#tg-assistente .tg-open span{font-size:11px;padding:5px 10px}#tg-assistente .tg-chat{bottom:128px;max-height:calc(100dvh - 230px)}#tg-assistente input{font-size:16px}#tg-assistente.tg-is-open .tg-open img{display:none}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
+@media(max-width:600px){#tg-assistente{right:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px))}#tg-assistente .tg-open img{width:90px;height:96px}#tg-assistente .tg-open span{font-size:11px;padding:5px 10px}#tg-assistente .tg-chat{bottom:128px;max-height:calc(100dvh - 230px)}#tg-assistente input{font-size:16px}#tg-assistente.tg-is-open .tg-open img{display:none}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
 @media(prefers-reduced-motion:reduce){#tg-assistente .tg-messages{scroll-behavior:auto}}
 @media print{#tg-assistente{display:none!important}}
 /* TG Smart 2 — reações visíveis, respeitando reduzir movimento */

@@ -34929,7 +34929,7 @@ window._relPrefill = function(msg){
     const script = document.createElement('script');
     script.id = 'tg-assistente-script';
     const base = new URL('.', document.currentScript.src);
-    script.src = new URL('tg-assistente.js?v=2.0.0', base).href;
+    script.src = new URL('tg-assistente.js?v=3.0.0-toto', base).href;
     const engine = document.createElement('script');
     engine.src = new URL('tg-smart-engine.js?v=2.0.0', base).href;
     engine.onload = () => document.head.appendChild(script);

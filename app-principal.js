@@ -25184,7 +25184,7 @@ async function salvarAdmin(e) {
                                 <div class="form-group ff-span2">
                                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                         <input type="checkbox" id="c_portal_ativo" ${item && item.portalAtivo ? 'checked' : ''} style="width:auto;margin:0;" />
-                                        Ativar o Portal do Cliente para este cliente (entra com o email acima)
+                                        Ativar o Portal do Cliente para este cliente (entra com o NIF e a senha do portal)
                                     </label>
                                 </div>
                                 <div class="form-group ff-span2">
@@ -26610,9 +26610,10 @@ async function salvarAdmin(e) {
         }
         async function _salvarFormularioInterno(e) {
             const ent = entidadeAtual;
+            const idRegistoEmEdicao = idEditando; // Preservar antes de fecharModal limpar o estado global.
             if (!ent) return;
             let obj = {};
-            const isEdit = !!idEditando;
+            const isEdit = !!idRegistoEmEdicao;
 
             // Validação de formato — telefone (indicativo + 9 dígitos) e código postal (0000-000),
             // em qualquer um dos campos que existir no formulário atual.
@@ -26638,8 +26639,8 @@ async function salvarAdmin(e) {
                 // aviso claro.
                 const _emailNovoFunc = (document.getElementById('f_email')?.value || '').trim().toLowerCase();
                 if (_emailNovoFunc) {
-                    const _emailJaUsado = (dados.funcionarios || []).some(f => f.id !== idEditando && (f.email || '').trim().toLowerCase() === _emailNovoFunc)
-                        || (dados.encarregados || []).some(e => e.id !== idEditando && (e.email || '').trim().toLowerCase() === _emailNovoFunc);
+                    const _emailJaUsado = (dados.funcionarios || []).some(f => f.id !== idRegistoEmEdicao && (f.email || '').trim().toLowerCase() === _emailNovoFunc)
+                        || (dados.encarregados || []).some(e => e.id !== idRegistoEmEdicao && (e.email || '').trim().toLowerCase() === _emailNovoFunc);
                     if (_emailJaUsado) {
                         mostrarErro(`Já existe uma conta com o email "${_emailNovoFunc}". Usa outro email para este funcionário.`);
                         return;
@@ -26744,16 +26745,16 @@ async function salvarAdmin(e) {
                 if (podeAssinarEl) obj.podeAssinarRelatorios = podeAssinarEl.checked;
                 const dfEl = document.getElementById('f_dias_ferias');
                 if (dfEl && dfEl.value !== '') obj.diasFerias = parseInt(dfEl.value) || 0;
-                else if (isEdit) { const _ex = dados.funcionarios?.find(x => x.id === idEditando); if (_ex && _ex.diasFerias != null) obj.diasFerias = _ex.diasFerias; }
+                else if (isEdit) { const _ex = dados.funcionarios?.find(x => x.id === idRegistoEmEdicao); if (_ex && _ex.diasFerias != null) obj.diasFerias = _ex.diasFerias; }
                 if (obj.veiculoId) {
-                    const ocupado = veiculoJaAtribuido(obj.veiculoId, 'func', isEdit ? idEditando : null);
+                    const ocupado = veiculoJaAtribuido(obj.veiculoId, 'func', isEdit ? idRegistoEmEdicao : null);
                     if (ocupado) { alert('Esse carro já está atribuído a ' + ocupado + '. Um carro só pode ser atribuído a uma pessoa.'); return; }
                 }
                 if (!obj.nome || !obj.cargo || !obj.email || (!isEdit && !obj.senha) || !obj.morada || !obj.codigoPostal || !document.getElementById('f_horas').value) {
                     alert('Preencha os campos obrigatórios: Nome, Cargo, Email, Senha, Morada, Código Postal e Horas Semanais.');
                     return;
                 }
-                if (await emailJaRegistado(obj.email, isEdit ? idEditando : null)) {
+                if (await emailJaRegistado(obj.email, isEdit ? idRegistoEmEdicao : null)) {
                     alert('Já existe um utilizador com este email (' + obj.email + '). Use um email diferente.');
                     return;
                 }
@@ -26796,7 +26797,7 @@ async function salvarAdmin(e) {
                 const _NIF_CONSUMIDOR_FINAL = '999999990';
                 {
                     const _outroComMesmoNif = obj.nif !== _NIF_CONSUMIDOR_FINAL
-                        ? (dados.clientes || []).find(c => c.adminId === obj.adminId && c.nif === obj.nif && c.id !== idEditando)
+                        ? (dados.clientes || []).find(c => c.adminId === obj.adminId && c.nif === obj.nif && c.id !== idRegistoEmEdicao)
                         : null;
                     if (_outroComMesmoNif) {
                         if (confirm(`Já existe um cliente com este NIF: "${_outroComMesmoNif.nome}". Cada cliente precisa de um NIF diferente — é o que identifica o login no Portal.\n\nQueres abrir esse cliente agora, para veres/editares?`)) {
@@ -26859,7 +26860,7 @@ async function salvarAdmin(e) {
                     const funcObj = dados.funcionarios?.find(f => f.id === usuarioLogado.id);
                     if (funcObj) adminId = funcObj.adminId;
                 }
-                const _osExist = isEdit ? (dados.servicos || []).find(x => x.id === idEditando) : null;
+                const _osExist = isEdit ? (dados.servicos || []).find(x => x.id === idRegistoEmEdicao) : null;
                 let _sLocalIdResolvido = document.getElementById('s_local') ? document.getElementById('s_local').value : (_osExist ? _osExist.localId : null);
                 if (_sLocalIdResolvido === '__novo__') {
                     const nomeNovoLocal = (document.getElementById('s_local_nome')?.value || '').trim();
@@ -26921,7 +26922,7 @@ async function salvarAdmin(e) {
                     tiposTrabalho: _sTiposTrabalhoSelecionados(),
                     adminId: adminId
                 };
-                obj._eraAprovacaoAssistencia = !!(_aprovandoAssistenciaId && idEditando === _aprovandoAssistenciaId && (obj.status === 'por aprovar' || !obj.status));
+                obj._eraAprovacaoAssistencia = !!(_aprovandoAssistenciaId && idRegistoEmEdicao === _aprovandoAssistenciaId && (obj.status === 'por aprovar' || !obj.status));
                 if (obj._eraAprovacaoAssistencia) { obj.status = 'pendente'; }
                 if (_bloquearSeAusenteEmOS([...(obj.funcionariosIds || []), obj.funcionarioId].filter(Boolean), obj.data)) return;
                 if (!obj.clienteId) { alert('Selecione um cliente.'); return; }
@@ -26930,7 +26931,7 @@ async function salvarAdmin(e) {
                 // relatórios iguais (ex.: duas RIE do mesmo edifício no mesmo dia).
                 if (!isEdit && obj.localId && obj.data && (obj.tiposTrabalho || []).length) {
                     const outrasNoMesmoDia = (dados.servicos || []).filter(s =>
-                        s.id !== idEditando && s.clienteId === obj.clienteId && s.localId === obj.localId && s.data === obj.data
+                        s.id !== idRegistoEmEdicao && s.clienteId === obj.clienteId && s.localId === obj.localId && s.data === obj.data
                     );
                     const tiposRepetidos = obj.tiposTrabalho.filter(t => outrasNoMesmoDia.some(s => (s.tiposTrabalho || []).includes(t)));
                     if (tiposRepetidos.length) {
@@ -26945,7 +26946,7 @@ async function salvarAdmin(e) {
                     const inicioNova = _horaMin(obj.hora);
                     const fimNova = inicioNova + (parseInt(obj.duracao, 10) || 60);
                     const outras = (dados.servicos || []).filter(s =>
-                        s.id !== idEditando && s.funcionarioId === obj.funcionarioId && s.data === obj.data && s.hora
+                        s.id !== idRegistoEmEdicao && s.funcionarioId === obj.funcionarioId && s.data === obj.data && s.hora
                     );
                     const emConflito = outras.find(s => {
                         const ini2 = _horaMin(s.hora);
@@ -27017,7 +27018,7 @@ async function salvarAdmin(e) {
                 }
 
                 const _foAssinaturaBase64 = capturarAssinatura() || null;
-                const _foFolhaId = idEditando || gerarId();
+                const _foFolhaId = idRegistoEmEdicao || gerarId();
                 let _foAssinaturaPath = null;
                 if (_foAssinaturaBase64) {
                     const ok = await _uploadImagemStorage(`${_foAdminId}/folhas/${_foFolhaId}.png`, _foAssinaturaBase64);
@@ -27134,7 +27135,7 @@ async function salvarAdmin(e) {
                     reader.readAsDataURL(fileInput.files[0]);
                     return;
                 } else {
-                    const reqAtual = dados.requisicoes?.find(x => x.id === idEditando);
+                    const reqAtual = dados.requisicoes?.find(x => x.id === idRegistoEmEdicao);
                     obj.anexo = reqAtual && reqAtual.anexo ? reqAtual.anexo : null;
                     finalizarRequisicao(obj);
                     return;
@@ -27142,7 +27143,7 @@ async function salvarAdmin(e) {
                 function finalizarRequisicao(objFinal) {
                     let lista = dados.requisicoes || [];
                     if (isEdit) {
-                        const idx = lista.findIndex(i => i.id === idEditando);
+                        const idx = lista.findIndex(i => i.id === idRegistoEmEdicao);
                         if (idx !== -1) lista[idx] = { ...lista[idx], ...objFinal };
                     } else {
                         objFinal.id = gerarId();
@@ -27172,7 +27173,7 @@ async function salvarAdmin(e) {
                 const _arRefNova = document.getElementById('ar_ref').value.trim();
                 if (_arRefNova) {
                     const _arRefDuplicada = (dados.artigos || []).some(a =>
-                        a.adminId === _arAdminId && a.id !== idEditando &&
+                        a.adminId === _arAdminId && a.id !== idRegistoEmEdicao &&
                         (a.referencia || '').trim().toLowerCase() === _arRefNova.toLowerCase()
                     );
                     if (_arRefDuplicada) {
@@ -27204,8 +27205,8 @@ async function salvarAdmin(e) {
                 }
                 const novoEstado = document.getElementById('ob_estado').value;
                 let estadoAnterior = null;
-                if (isEdit) { const ex = dados.obras?.find(o => o.id === idEditando); estadoAnterior = ex ? ex.estado : null; }
-                const obraId = idEditando;
+                if (isEdit) { const ex = dados.obras?.find(o => o.id === idRegistoEmEdicao); estadoAnterior = ex ? ex.estado : null; }
+                const obraId = idRegistoEmEdicao;
                 const _obClienteId = document.getElementById('ob_cliente').value || null;
                 const _obCliente = _obClienteId ? dados.clientes?.find(c => c.id === _obClienteId) : null;
                 const _obAdminId = (usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId);
@@ -27259,7 +27260,7 @@ async function salvarAdmin(e) {
             let _servicoAntigo = null;
             let _funcAntesDeEditar = null;
             if (isEdit) {
-                const idx = lista.findIndex(i => i.id === idEditando);
+                const idx = lista.findIndex(i => i.id === idRegistoEmEdicao);
                 if (idx !== -1) {
                     if (ent === 'servico') _servicoAntigo = { ...lista[idx] };
                     if (ent === 'funcionario') _funcAntesDeEditar = { ...lista[idx] };
@@ -27317,7 +27318,7 @@ async function salvarAdmin(e) {
             }
             else if (ent === 'folha') dados.folhasObra = lista;
             if (ent === 'folha') {
-                const folhaId = isEdit ? idEditando : obj.id;
+                const folhaId = isEdit ? idRegistoEmEdicao : obj.id;
                 _aplicarConsumoFolha(folhaId, obj.obraId || null, _folhaConsumoPendente);
                 _folhaConsumoPendente = [];
                 if (!isEdit && obj.servicoId) {
@@ -27378,7 +27379,7 @@ async function salvarAdmin(e) {
             } catch (err) {
                 alert(`⚠️ Ficou no ecrã, mas ainda não foi possível confirmar a gravação no servidor (${err && err.message ? err.message : err}).\n\nVerifica a ligação à internet — se o erro persistir, este registo pode desaparecer ao recarregar a página. Tenta guardar de novo.`);
             }
-            registarAuditoria(isEdit ? 'editar' : 'criar', ent, isEdit ? idEditando : obj.id, (obj.nome || obj.descricao || obj.numero || obj.obraDescricao || ''));
+            registarAuditoria(isEdit ? 'editar' : 'criar', ent, isEdit ? idRegistoEmEdicao : obj.id, (obj.nome || obj.descricao || obj.numero || obj.obraDescricao || ''));
             if (ent === 'servico' && _novaOSObraId) window._osObraCriadaComSucesso = true;
             fecharModal();
             renderizarTudo();
@@ -27391,7 +27392,7 @@ async function salvarAdmin(e) {
                     return;
                 }
                 const _papelConta = obj.role === 'subadmin' ? 'subadmin' : (obj.role === 'vigilante' || obj.role === 'supervisor_vigilantes') ? obj.role : 'funcionario';
-                criarUtilizadorAuth(obj.email, obj.senha, _papelConta, obj.adminId, (isEdit ? idEditando : obj.id), obj.nome).then(r => {
+                criarUtilizadorAuth(obj.email, obj.senha, _papelConta, obj.adminId, (isEdit ? idRegistoEmEdicao : obj.id), obj.nome).then(r => {
                     if (!r.ok) alert('✅ Funcionário guardado.\n⚠️ A conta de login não foi criada/atualizada automaticamente: ' + r.erro + '\n\nSe o email já tiver sido usado antes (ex.: um funcionário apagado há mais tempo), a conta pode ter ficado "presa" de uma eliminação antiga que falhou. Contacta o suporte técnico para a removerem de vez, ou tenta apagar este registo e voltar a criar (a partir de agora, a app avisa logo se uma eliminação de conta falhar).');
                 });
             }
@@ -27403,9 +27404,12 @@ async function salvarAdmin(e) {
                     return;
                 }
                 const _emailContaCliente = _emailFantasmaCliente(obj.nif, obj.adminId);
-                criarUtilizadorAuth(_emailContaCliente, obj.senha, 'cliente', obj.adminId, (isEdit ? idEditando : obj.id), obj.nome).then(r => {
-                    if (!r.ok) alert('✅ Cliente criado.\n⚠️ A conta do portal não foi criada automaticamente: ' + r.erro + '\n\nSe o NIF já tiver sido usado antes (ex.: um cliente apagado há mais tempo), a conta pode ter ficado "presa" de uma eliminação antiga que falhou. Contacta o suporte técnico para a removerem de vez, ou tenta apagar este registo e voltar a criar (a partir de agora, a app avisa logo se uma eliminação de conta falhar).');
-                });
+                const resultadoPortal = await criarUtilizadorAuth(_emailContaCliente, obj.senha, 'cliente', obj.adminId, (isEdit ? idRegistoEmEdicao : obj.id), obj.nome);
+                if (!resultadoPortal.ok) {
+                    alert('⚠️ Cliente guardado, mas não foi possível ativar ou atualizar o acesso ao portal: ' + resultadoPortal.erro + '\n\nNão apagues o cliente. Volta a editar a ficha, define a senha do portal e clica em Atualizar para tentar novamente.');
+                } else {
+                    alert('✅ Acesso ao portal atualizado. O cliente entra com o NIF e a senha definida.');
+                }
             }
         }
         // Os clientes entram no Portal com o NIF, não com email (a maioria não tem email

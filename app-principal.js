@@ -19325,9 +19325,23 @@
         function _portalBadgeOS(st) {
             const m = { 'pendente': ['#92400e', '#fef3c7'], 'em andamento': ['#1e40af', '#dbeafe'], 'concluído': ['#166534', '#dcfce7'], 'concluido': ['#166534', '#dcfce7'], 'por aprovar': ['#92400e', '#fde68a'], 'recusado': ['#991b1b', '#fee2e2'] };
             const c = m[st] || ['#475569', '#e2e8f0'];
-            return `<span style="background:${c[1]};color:${c[0]};padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:600;">${st || '—'}</span>`;
+            return `<span style="background:${c[1]};color:${c[0]};padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:600;">${escapeHtmlSimples(st || '—')}</span>`;
+        }
+        let _portalRenderSeq = 0;
+        function _portalFolhaVisivel(f, cli) {
+            if (!f || !cli || (f.adminId && f.adminId !== cli.adminId)) return false;
+            const sv = (dados.servicos || []).find(s => s.id === f.servicoId && s.adminId === cli.adminId && s.clienteId === cli.id);
+            const obra = (dados.obras || []).find(o => o.id === (f.obraId || sv?.obraId) && o.adminId === cli.adminId && o.clienteId === cli.id);
+            if (obra?.longaDuracao) return f.folhaFinal === true;
+            return !!sv || (dados.contratos || []).some(c => c.id === f.contratoId && c.adminId === cli.adminId && c.clienteId === cli.id);
+        }
+        function _portalUrlDocumento(raw) {
+            try { const u = new URL(raw); return u.protocol === 'https:' && !u.username && !u.password ? escapeHtmlSimples(u.href) : ''; } catch { return ''; }
         }
         async function renderizarPortalCliente() {
+            if (usuarioLogado?.role !== 'cliente') return;
+            const requestSeq = ++_portalRenderSeq;
+            const portalKey = [usuarioLogado.id, usuarioLogado.adminId, usuarioLogado.clienteId].join(':');
             const cont = document.getElementById('portal-cliente'); if (!cont) return;
             // Reforço: sempre que o portal do cliente é desenhado, garante que o painel
             // interno da empresa (cardsGrid) e os grupos "sistema" ficam mesmo escondidos —
@@ -19336,35 +19350,27 @@
             document.body.classList.add('is-cliente-portal'); // reforço extra em CSS — ver regra "!important" abaixo
             document.querySelectorAll('.grupo-cards[data-grupo="sistema"]').forEach(el => { el.style.display = 'none'; });
             cont.style.display = 'block';
-            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado.clienteId);
+            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado?.clienteId && c.adminId === usuarioLogado?.adminId);
             if (!cli) { cont.innerHTML = '<div class="section-container active"><p>Cliente não encontrado.</p></div>'; return; }
             await garantirServicosCarregados(_dataCorteMeses(12));
             await garantirFolhasCarregadas(_dataCorteMeses(12));
+            if (requestSeq !== _portalRenderSeq || usuarioLogado?.role !== 'cliente' || portalKey !== [usuarioLogado.id, usuarioLogado.adminId, usuarioLogado.clienteId].join(':')) return;
             const adminCli = (dados.administradores || []).find(a => a.id === cli.adminId);
             const empresa = adminCli ? (adminCli.empresa || adminCli.nome) : 'Empresa';
             const oss = (dados.servicos || []).filter(s => s.adminId === cli.adminId && s.clienteId === cli.id).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
             const contratos = (dados.contratos || []).filter(c => c.adminId === cli.adminId && c.clienteId === cli.id);
-            const folhas = (dados.folhasObra || []).filter(f => {
-                const sv = (dados.servicos || []).find(s => s.id === f.servicoId);
-                const obraLigadaId = f.obraId || sv?.obraId || null;
-                const obraLigada = obraLigadaId ? (dados.obras || []).find(o => o.id === obraLigadaId) : null;
-                // Obras de longa duração podem gerar muitas folhas internas (uma por sessão de
-                // trabalho) — o cliente só deve ver UMA: a folha final, assinada remotamente,
-                // criada quando o funcionário responsável marca "Sim, terminei a obra".
-                if (obraLigada && obraLigada.longaDuracao) return obraLigada.clienteId === cli.id && f.folhaFinal === true;
-                return (sv && sv.clienteId === cli.id) || (f.contratoId && contratos.some(c => c.id === f.contratoId));
-            }).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-
-            const faturasCliente = (dados.servicos || [])
-                .filter(s => s.clienteId === cli.id && s.faturaMoloniId)
-                .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+            const folhas = (dados.folhasObra || []).filter(f => _portalFolhaVisivel(f, cli)).sort((a,b) => (b.data || '').localeCompare(a.data || ''));
+            const faturasCliente = oss.flatMap(s => [
+                { provider: 'Moloni', id: s.faturaMoloniId, url: s.faturaMoloniUrl, receipt: s.reciboMoloniUrl },
+                { provider: 'TOConline', id: s.faturaTOConlineId, url: s.faturaTOConlineUrl, receipt: null }
+            ].filter(f => f.id).map(f => ({...s, _portalFatura: f})));
 
             // Intervenções agendadas nos próximos 10 dias (todas, não só a mais próxima;
             // cada uma deixa de aparecer sozinha assim que o seu dia passar)
             const _hojeStr = getDataHoje();
-            const _daqui10dias = (() => { const d = new Date(); d.setDate(d.getDate() + 10); return d.toISOString().slice(0, 10); })();
+            const _daqui10dias = (() => { const d = new Date(); d.setDate(d.getDate() + 10); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); })();
             const proximasInts = oss
-                .filter(s => !['concluído', 'concluido', 'por aprovar', 'recusado'].includes(s.status) && s.data && s.data >= _hojeStr && s.data <= _daqui10dias)
+                .filter(s => !['concluído', 'concluido', 'por aprovar', 'recusado', 'cancelado'].includes(s.status) && s.data && s.data >= _hojeStr && s.data <= _daqui10dias)
                 .sort((a, b) => (a.data + (a.hora || '')).localeCompare(b.data + (b.hora || '')));
             let bannerProxima = '';
             if (proximasInts.length) {
@@ -19373,14 +19379,14 @@
                     const nomeLocal = int.localId ? ((dados.locais || []).find(l => l.id === int.localId)?.nome || 'Instalação') : 'Sede';
                     return `<div style="background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;border-radius:12px;padding:12px 18px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                         <i class="fas fa-calendar-check" style="font-size:1.2rem;"></i>
-                        <div><strong>Próxima intervenção agendada:</strong> ${dataFmt}${int.hora ? ' às ' + int.hora : ' (hora a confirmar)'} — Local: ${nomeLocal}</div>
+                        <div><strong>Próxima intervenção agendada:</strong> ${dataFmt}${int.hora ? ' às ' + int.hora : ' (hora a confirmar)'} — Local: ${escapeHtmlSimples(nomeLocal)}</div>
                     </div>`;
                 }).join('') + '<div style="margin-bottom:10px;"></div>';
             }
 
             let h = '';
             const notifsCliente = (dados.notificacoes || [])
-                .filter(n => n.destinatarioId === cli.id && !n.lida)
+                .filter(n => n.destinatarioId === cli.id && (!n.adminId || n.adminId === cli.adminId) && !n.lida)
                 .sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
             if (notifsCliente.length) {
                 h += notifsCliente.map(n => `
@@ -19394,8 +19400,8 @@
                         <button type="button" onclick="_marcarNotifPessoalLida('${n.id}'); renderizarPortalCliente();" title="Marcar como lida" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0;"><i class="fas fa-xmark"></i></button>
                     </div>`).join('');
             }
-            h += `<div style="background:linear-gradient(135deg,#0b3b5c,#1a5f7a);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-                <div><div style="font-size:.85rem;opacity:.85;">Área de Cliente · ${empresa}</div><div style="font-size:1.3rem;font-weight:800;">Olá, ${cli.nome}</div></div>
+            h += `<div data-portal-hero style="background:linear-gradient(135deg,#0b3b5c,#1a5f7a);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                <div><div style="font-size:.85rem;opacity:.85;">Área de Cliente · ${escapeHtmlSimples(empresa)}</div><div style="font-size:1.3rem;font-weight:800;">Olá, ${escapeHtmlSimples(cli.nome)}</div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button class="btn" style="background:#fff;color:#0b3b5c;font-weight:700;" onclick="portalPedirAssistencia()"><i class="fas fa-headset"></i> Pedir assistência</button>
                     <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;font-weight:700;" onclick="abrirHistoricoPedidosAssistencia('${cli.id}')"><i class="fas fa-clock-rotate-left"></i> Histórico de pedidos</button>
@@ -19430,7 +19436,7 @@
                 hContratos = `<div class="table-wrapper"><table><thead><tr><th>Contrato</th><th>Tipo</th><th>Periodicidade</th><th>Próxima intervenção</th></tr></thead><tbody>`;
                 contratos.forEach(c => {
                     const prox = c.proximaManutencao ? new Date(c.proximaManutencao).toLocaleDateString('pt-PT') : '—';
-                    hContratos += `<tr><td>${c.numero || c.marca || '—'}</td><td>${c.tipo || c.tipoIntervencao || '—'}</td><td>${c.periodicidade || '—'}</td><td>${prox}</td></tr>`;
+                    hContratos += `<tr><td>${escapeHtmlSimples(c.numero || c.marca || '—')}</td><td>${escapeHtmlSimples(c.tipo || c.tipoIntervencao || '—')}</td><td>${escapeHtmlSimples(c.periodicidade || '—')}</td><td>${prox}</td></tr>`;
                 });
                 hContratos += `</tbody></table></div>`;
             }
@@ -19491,14 +19497,16 @@
             if (!faturasCliente.length) {
                 hFaturas = `<p style="color:#64748b;">Ainda não há faturas emitidas.</p>`;
             } else {
-                hFaturas = `<div class="table-wrapper"><table><thead><tr><th>Data</th><th>OS</th><th>Valor</th><th>Fatura</th><th>Recibo</th></tr></thead><tbody>`;
+                hFaturas = `<div class="table-wrapper"><table><thead><tr><th>Data</th><th>OS</th><th>Valor da OS</th><th>Fatura</th><th>Recibo</th></tr></thead><tbody>`;
                 faturasCliente.forEach(s => {
-                    const linkFatura = s.faturaMoloniUrl
-                        ? `<a href="${s.faturaMoloniUrl}" target="_blank" class="btn btn-sm" style="background:#7c3aed;color:#fff;"><i class="fas fa-file-pdf"></i> Ver</a>`
+                    const invoiceUrl = _portalUrlDocumento(s._portalFatura.url);
+                    const receiptUrl = _portalUrlDocumento(s._portalFatura.receipt);
+                    const linkFatura = invoiceUrl
+                        ? `<a href="${invoiceUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background:#7c3aed;color:#fff;">Ver · ${s._portalFatura.provider}</a>`
+                        : `<span style="color:#64748b;">${s._portalFatura.provider} · documento emitido, link indisponível</span>`;
+                    const linkRecibo = receiptUrl
+                        ? `<a href="${receiptUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background:#16a34a;color:#fff;">Ver recibo</a>`
                         : `<span style="color:#94a3b8;">—</span>`;
-                    const linkRecibo = s.reciboMoloniUrl
-                        ? `<a href="${s.reciboMoloniUrl}" target="_blank" class="btn btn-sm" style="background:#16a34a;color:#fff;"><i class="fas fa-receipt"></i> Ver</a>`
-                        : (s.pago === true ? `<span style="color:#94a3b8;">A processar…</span>` : `<span style="color:#94a3b8;">—</span>`);
                     hFaturas += `<tr><td>${s.data || '—'}</td><td>${s.numeroRegisto ? 'OS ' + s.numeroRegisto : '—'}</td><td>${s.valor != null ? _finEur(s.valor) : '—'}</td><td>${linkFatura}</td><td>${linkRecibo}</td></tr>`;
                 });
                 hFaturas += `</tbody></table></div>`;
@@ -19506,14 +19514,21 @@
             h += _portalAccordion('faturas', 'fa-file-invoice-dollar', `Faturas (${faturasCliente.length})`, hFaturas, false);
 
             cont.innerHTML = h;
+            window.TGPortal?.mount({key: portalKey, nome: cli.nome, empresa,
+                upcoming: proximasInts.length,
+                openServices: oss.filter(s => !['concluído','concluido','cancelado','recusado','por aprovar'].includes(s.status)).length,
+                signatures: folhas.filter(f => !(f.assinatura || f.assinaturaPath)).length,
+                pendingRequests: oss.filter(s => s.origem === 'portal' && s.status === 'por aprovar').length,
+                requests: oss.filter(s => s.origem === 'portal').map(s => ({data:s.data,descricao:s.descricao,status:s.status}))
+            });
         }
 
         function _portalAccordion(id, icone, titulo, innerHtml, abertoDefault) {
-            return `<div class="report-card" style="padding:0;overflow:hidden;">
-                <div style="cursor:pointer;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;" onclick="_portalToggleAccordion('${id}')">
-                    <h4 style="margin:0;"><i class="fas ${icone}"></i> ${titulo}</h4>
+            return `<div class="report-card" data-portal-section="${id}" style="padding:0;overflow:hidden;">
+                <button type="button" aria-expanded="${!!abertoDefault}" aria-controls="portal-acc-${id}" style="width:100%;background:none;border:0;color:inherit;text-align:left;cursor:pointer;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;" onclick="_portalToggleAccordion('${id}')">
+                    <span style="font-weight:700;"><i class="fas ${icone}"></i> ${titulo}</span>
                     <i class="fas fa-chevron-down" id="portal-acc-icone-${id}" style="transition:.2s;${abertoDefault ? 'transform:rotate(180deg);' : ''}"></i>
-                </div>
+                </button>
                 <div id="portal-acc-${id}" style="display:${abertoDefault ? 'block' : 'none'};padding:0 20px 18px;">${innerHtml}</div>
             </div>`;
         }
@@ -19523,11 +19538,15 @@
             if (!conteudo) return;
             const abrir = conteudo.style.display === 'none';
             conteudo.style.display = abrir ? 'block' : 'none';
+            document.querySelector('[aria-controls="portal-acc-' + id + '"]')?.setAttribute('aria-expanded', String(abrir));
             if (icone) icone.style.transform = abrir ? 'rotate(180deg)' : '';
         }
 
         let _portalSigCtx = null, _portalSigDraw = false, _portalSigFolha = null, _portalSigVazia = true;
         function portalAbrirAssinatura(folhaId) {
+            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado?.clienteId && c.adminId === usuarioLogado?.adminId);
+            const folha = (dados.folhasObra || []).find(f => f.id === folhaId);
+            if (usuarioLogado?.role !== 'cliente' || !_portalFolhaVisivel(folha, cli)) { alert('Documento indisponível para este cliente.'); return; }
             _portalSigFolha = folhaId; _portalSigVazia = true;
             let ov = document.getElementById('portalSigOverlay');
             if (!ov) {
@@ -19565,6 +19584,8 @@
             if (_portalSigVazia) { alert('Por favor assine antes de confirmar.'); return; }
             const cv = document.getElementById('portalSigCanvas');
             const folha = (dados.folhasObra || []).find(f => f.id === _portalSigFolha);
+            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado?.clienteId && c.adminId === usuarioLogado?.adminId);
+            if (usuarioLogado?.role !== 'cliente' || !_portalFolhaVisivel(folha, cli)) { portalFecharAssinatura(); alert('Documento indisponível para este cliente.'); return; }
             if (folha && cv) {
                 const base64 = cv.toDataURL('image/png');
                 const ok = await _uploadImagemStorage(`${folha.adminId}/folhas/${folha.id}.png`, base64);
@@ -19607,7 +19628,7 @@
         function portalEnviarAssistencia() {
             const desc = (document.getElementById('portalAjudaDesc')?.value || '').trim();
             if (!desc) { alert('Por favor descreva o que precisa.'); return; }
-            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado.clienteId);
+            const cli = (dados.clientes || []).find(c => c.id === usuarioLogado?.clienteId && c.adminId === usuarioLogado?.adminId);
             if (!cli) return;
             dados.servicos = dados.servicos || [];
             dados.servicos.push({ id: gerarId(), adminId: cli.adminId, clienteId: cli.id, descricao: '[Pedido do cliente] ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' });
@@ -34840,4 +34861,12 @@ window._relPrefill = function(msg){
     core.src = new URL('phc-core.js?v=1', base).href;
     core.onload = () => { const ui=document.createElement('script');ui.src=new URL('phc-integracao.js?v=1',base).href;document.head.appendChild(ui); };
     document.head.appendChild(core);
+})();
+
+// Navegação própria do cliente final; mantém os fluxos de assistência e assinatura.
+(() => {
+    if (document.getElementById('tg-portal-ui-script')) return;
+    const script = document.createElement('script'); script.id = 'tg-portal-ui-script';
+    script.src = new URL('portal-cliente-ui.js?v=1', document.currentScript.src).href;
+    document.head.appendChild(script);
 })();

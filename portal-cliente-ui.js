@@ -18,9 +18,9 @@ function mount(model){
  const overview=el('section','pc-overview');while(cont.firstChild)overview.append(cont.firstChild);
  const wrapper=el('div','pc-shell'),head=el('header','pc-header'),brand=el('div');
  brand.append(el('p','pc-eyebrow','ÁREA DE CLIENTE · '+model.empresa),el('h1','',`Olá, ${model.nome}`),el('p','pc-subtitle','Acompanhe os seus serviços, documentos e pedidos num só lugar.'));
- const request=el('button','pc-primary','Pedir assistência');request.type='button';request.prepend(icon('pedidos'));request.addEventListener('click',()=>{if(allowed(model.key))portalPedirAssistencia();});head.append(brand,request);wrapper.append(head);
+ const request=el('button','pc-primary','Pedir assistência');request.type='button';request.prepend(icon('pedidos'));request.addEventListener('click',()=>{if(allowed(model.key))portalPedirAssistencia();});head.append(brand);if(model.assistAtivo)head.append(request);wrapper.append(head);
  const stats=el('div','pc-stats');
- const statsData=[['Visitas nos próximos 10 dias',model.upcoming,'servicos'],['Serviços por concluir',model.openServices,'servicos'],['Folhas por assinar',model.signatures,'documentos'],['Pedidos por aprovar',model.pendingRequests,'pedidos']];
+ const statsData=[['Visitas nos próximos 10 dias',model.upcoming,'servicos'],['Serviços por concluir',model.openServices,'servicos'],['Folhas por assinar',model.signatures,'documentos'],['Assistências em aberto',model.pendingRequests,'pedidos']];
  statsData.forEach(([title,value,target])=>{const b=el('button','pc-stat');b.type='button';b.append(el('span','',title),el('strong','',String(value)));if(value&&target==='documentos')b.classList.add('pc-attention');b.addEventListener('click',()=>show(target));stats.append(b);});
  overview.prepend(stats);
  const next=el('div','pc-welcome');next.append(el('h2','',model.signatures?'Há documentos à sua espera':'Tudo organizado, sem complicações'),el('p','',model.signatures?`Tem ${model.signatures === 1 ? 'uma folha de obra por assinar' : model.signatures + ' folhas de obra por assinar'}. Consulte os documentos para continuar.`:'Escolha uma área para consultar o histórico ou envie um pedido de assistência.'));
@@ -44,9 +44,9 @@ function mount(model){
   }
   if(id==='pedidos'){
     panel.append(el('p','pc-muted','Consulte aqui o estado dos pedidos enviados à empresa.'));
-    const newRequest=el('button','pc-primary','Novo pedido de assistência');newRequest.type='button';newRequest.addEventListener('click',()=>{if(allowed(model.key))portalPedirAssistencia();});panel.append(newRequest);
-    if(!model.requests.length)panel.append(el('div','pc-empty','Ainda não enviou pedidos. Quando precisar de ajuda, use o botão acima.'));
-    const cards=el('div','pc-requests');model.requests.forEach(p=>{const card=el('article','pc-request'),line=el('div','pc-request-line');line.append(el('time','',p.data?p.data.split('-').reverse().join('/'):'Sem data'),el('span','pc-status',p.status||'Por analisar'));card.append(line,el('p','',String(p.descricao||'Sem descrição').replace(/^\[Pedido do cliente\]\s*/,'')));cards.append(card);});panel.append(cards);
+    const newRequest=el('button','pc-primary','Novo pedido de assistência');newRequest.type='button';newRequest.addEventListener('click',()=>{if(allowed(model.key))portalPedirAssistencia();});if(model.assistAtivo)panel.append(newRequest);else panel.append(el('p','pc-muted','O módulo de Assistências não está ativo nesta empresa.'));
+    if(!model.requests.length)panel.append(el('div','pc-empty','Ainda não enviou pedidos. '));
+    const cards=el('div','pc-requests');model.requests.forEach(p=>{const card=el('article','pc-request'),line=el('div','pc-request-line');line.append(el('time','',p.data?p.data.split('-').reverse().join('/'):'Sem data'),el('span','pc-status',p.status||'Por analisar'));card.append(el('strong','',p.numero||''),line,el('p','',String(p.descricao||'Sem descrição').replace(/^\[Pedido do cliente\]\s*/,'')));cards.append(card);});panel.append(cards);
   }
  }
  const help=el('p','pc-nav-help','O seu contacto com a equipa, sempre à mão.');nav.append(help);layout.append(nav,main);wrapper.append(layout);

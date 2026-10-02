@@ -298,8 +298,8 @@
             },
             assistencias: {
                 tabela: 'assistencias',
-                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
             },
             garantias: {
                 tabela: 'garantias',
@@ -736,7 +736,7 @@
             // Portal do cliente: só precisa de uma fração dos dados da empresa (as suas próprias
             // obras/contratos/OS/relatórios) — poupa bastante egress não pedir o resto (stock,
             // frota, funcionários, despesas, etc. que o portal nunca mostra).
-            const TABELAS_PORTAL_CLIENTE = new Set(['administradores', 'clientes', 'locais', 'contratos', 'servicos', 'folhas_obra', 'relatorios_especialidade', 'obras', 'notificacoes']);
+            const TABELAS_PORTAL_CLIENTE = new Set(['administradores', 'clientes', 'locais', 'contratos', 'servicos', 'folhas_obra', 'relatorios_especialidade', 'obras', 'notificacoes', 'assistencias']);
 
             let resultados;
             try {
@@ -753,7 +753,7 @@
                         // portal do cliente: restringe ainda mais, só ao que é dele
                         if (t === 'administradores') q = q.eq('id', tenantId);
                         else if (t === 'clientes') q = q.eq('id', clienteId);
-                        else if (t === 'locais' || t === 'contratos' || t === 'servicos' || t === 'obras' || t === 'relatorios_especialidade') q = q.eq('cliente_id', clienteId);
+                        else if (t === 'assistencias' || t === 'locais' || t === 'contratos' || t === 'servicos' || t === 'obras' || t === 'relatorios_especialidade') q = q.eq('cliente_id', clienteId);
                         else if (t === 'folhas_obra') q = q.eq('admin_id', tenantId); // esta tabela não tem coluna cliente_id
                         else if (tenantId) q = q.eq('admin_id', tenantId);
                     } else if (!ehSuperAdmin && tenantId && t !== 'encarregado_funcionarios') {
@@ -19366,6 +19366,8 @@
             await garantirFolhasCarregadas(_dataCorteMeses(12));
             if (requestSeq !== _portalRenderSeq || usuarioLogado?.role !== 'cliente' || portalKey !== [usuarioLogado.id, usuarioLogado.adminId, usuarioLogado.clienteId].join(':')) return;
             const adminCli = (dados.administradores || []).find(a => a.id === cli.adminId);
+            const assistAtivo = moduloAssistAtivo(adminCli);
+            const pedidosAssist = (dados.assistencias || []).filter(a => a.adminId === cli.adminId && a.clienteId === cli.id && a.origem === 'portal').sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
             const empresa = adminCli ? (adminCli.empresa || adminCli.nome) : 'Empresa';
             const oss = (dados.servicos || []).filter(s => s.adminId === cli.adminId && s.clienteId === cli.id).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
             const contratos = (dados.contratos || []).filter(c => c.adminId === cli.adminId && c.clienteId === cli.id);
@@ -19413,7 +19415,7 @@
             h += `<div data-portal-hero style="background:linear-gradient(135deg,#0b3b5c,#1a5f7a);color:#fff;border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
                 <div><div style="font-size:.85rem;opacity:.85;">Área de Cliente · ${escapeHtmlSimples(empresa)}</div><div style="font-size:1.3rem;font-weight:800;">Olá, ${escapeHtmlSimples(cli.nome)}</div></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn" style="background:#fff;color:#0b3b5c;font-weight:700;" onclick="portalPedirAssistencia()"><i class="fas fa-headset"></i> Pedir assistência</button>
+                    ${assistAtivo ? `<button class="btn" style="background:#fff;color:#0b3b5c;font-weight:700;" onclick="portalPedirAssistencia()"><i class="fas fa-headset"></i> Pedir assistência</button>` : ''}
                     <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;font-weight:700;" onclick="abrirHistoricoPedidosAssistencia('${cli.id}')"><i class="fas fa-clock-rotate-left"></i> Histórico de pedidos</button>
                 </div>
             </div>${bannerProxima}`;
@@ -19528,8 +19530,9 @@
                 upcoming: proximasInts.length,
                 openServices: oss.filter(s => !['concluído','concluido','cancelado','recusado','por aprovar'].includes(s.status)).length,
                 signatures: folhas.filter(f => !(f.assinatura || f.assinaturaPath)).length,
-                pendingRequests: oss.filter(s => s.origem === 'portal' && s.status === 'por aprovar').length,
-                requests: oss.filter(s => s.origem === 'portal').map(s => ({data:s.data,descricao:s.descricao,status:s.status}))
+                assistAtivo,
+                pendingRequests: pedidosAssist.filter(a => a.estado === 'aberta').length,
+                requests: pedidosAssist.map(a => ({numero:a.numero, data:new Date(a.dataCriacao).toLocaleDateString('sv-SE'),descricao:a.descricao,status:({aberta:'Aberto',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[a.estado] || a.estado}))
             });
         }
 
@@ -19619,13 +19622,16 @@
             if (usuarioLogado?.role !== 'cliente') return null;
             return (dados.clientes || []).find(c => c.id === usuarioLogado.clienteId && c.adminId === usuarioLogado.adminId) || null;
         }
+        function _portalAssistPermitido(cli) {
+            return !!cli && moduloAssistAtivo((dados.administradores || []).find(a => a.id === cli.adminId));
+        }
         function _portalAssistLocais(cli) {
             const instalacoes = (dados.locais || []).filter(l => l.clienteId === cli.id && l.adminId === cli.adminId);
             const sede = { id: '__sede_cliente__', sedeCliente: true, nome: 'Sede', morada: cli.morada || '', numeroPorta: cli.numeroPorta || '', codigoPostal: cli.codigoPostal || '', cidade: cli.cidade || '', freguesia: cli.freguesia || '' };
             return [sede, ...instalacoes];
         }
         function portalPedirAssistencia() {
-            const cli = _portalAssistCliente(); if (!cli) return;
+            const cli = _portalAssistCliente(); if (!_portalAssistPermitido(cli)) { alert('O módulo de Assistências não está ativo nesta empresa.'); return; }
             let ov = document.getElementById('portalAjudaOverlay');
             if (ov?.dataset.enviando === '1') return;
             if (!ov) {
@@ -19666,6 +19672,7 @@
         async function portalEnviarAssistencia() {
             const cli = _portalAssistCliente(), ov = document.getElementById('portalAjudaOverlay');
             if (!cli || !ov || ov.dataset.enviando === '1') return;
+            if (!_portalAssistPermitido(cli)) { alert('O módulo de Assistências não está ativo nesta empresa.'); return; }
             if (ov.dataset.cliente !== cli.id || ov.dataset.admin !== cli.adminId) { portalFecharAjuda(); return; }
             const local = _portalAssistLocais(cli).find(l => l.id === document.getElementById('portalAjudaLocal')?.value);
             const urgencia = document.getElementById('portalAjudaUrgencia')?.value;
@@ -19676,22 +19683,24 @@
             if (!desc || desc.length > 4000) { alert('Descreva o problema (até 4000 caracteres).'); return; }
             const btn = document.getElementById('portalAjudaEnviar'), estado = document.getElementById('portalAjudaEstado');
             ov.dataset.enviando = '1'; btn.disabled = true; estado.textContent = 'A enviar o pedido…';
-            dados.servicos = dados.servicos || [];
-            // A descrição preserva a urgência no esquema atual e torna-a visível na aprovação e no histórico.
-            const pedido = { id: ov.dataset.pedidoId || gerarId(), adminId: cli.adminId, clienteId: cli.id, localId: local.sedeCliente ? null : local.id, morada: local.morada || '', numeroPorta: local.numeroPorta || '', codigoPostal: local.codigoPostal || '', cidade: local.cidade || '', freguesia: local.freguesia || '', descricao: '[Pedido do cliente] Urgência: ' + prioridades[urgencia] + '\nLocal: ' + (local.nome || 'Local') + '\nProblema: ' + desc, data: getDataHoje(), hora: '', status: 'por aprovar', origem: 'portal' };
-            ov.dataset.pedidoId = pedido.id;
-            const existente = dados.servicos.find(p => p.id === pedido.id && p.clienteId === cli.id && p.adminId === cli.adminId);
-            if (existente) Object.assign(existente, pedido); else dados.servicos.push(pedido);
+            ov.dataset.pedidoId = ov.dataset.pedidoId || gerarId();
             try {
-                await guardarDados(dados);
-                _notificarAdminESubadmin(cli.adminId, '🆘 Novo pedido de assistência', 'Cliente ' + _clienteLabel(cli) + ' · ' + (local.nome || 'Local') + ' · Urgência: ' + prioridades[urgencia], "abrirSecao('servicos')");
+                const { data: gravado, error } = await supa.rpc('portal_criar_assistencia', { p_id: ov.dataset.pedidoId, p_local_id: local.sedeCliente ? null : local.id, p_prioridade: urgencia, p_problema: desc });
+                if (error || !gravado?.id) throw new Error(error?.message || 'Sem confirmação do servidor');
+                if (_portalAssistCliente()?.id !== cli.id || _portalAssistCliente()?.adminId !== cli.adminId) { ov.dataset.enviando = ''; portalFecharAjuda(); return; }
+                const pedido = M.assistencias.from(gravado);
+                dados.assistencias = dados.assistencias || [];
+                const indice = dados.assistencias.findIndex(a => a.id === pedido.id);
+                if (indice < 0) dados.assistencias.push(pedido); else dados.assistencias[indice] = pedido;
+                if (!_snap.assistencias) _snap.assistencias = new Map();
+                _snap.assistencias.set(pedido.id, JSON.stringify(M.assistencias.to(pedido)));
                 ov.dataset.enviando = ''; delete ov.dataset.pedidoId; portalFecharAjuda();
                 if (_portalAssistCliente()?.id === cli.id && _portalAssistCliente()?.adminId === cli.adminId) {
                     renderizarPortalCliente();
-                    alert(navigator.onLine ? '✅ Pedido enviado à empresa. Entraremos em contacto.' : 'Pedido guardado neste dispositivo. Será sincronizado quando houver ligação à internet.');
+                    alert('✅ Assistência ' + pedido.numero + ' criada em Aberto. A empresa irá tratar do pedido.');
                 }
             } catch (err) {
-                estado.textContent = 'Não foi possível confirmar o envio. Tente novamente; o mesmo pedido será reutilizado.';
+                estado.textContent = 'Não foi possível enviar: ' + (err.message || 'verifique a ligação') + '. Pode tentar novamente sem duplicar o pedido.';
             } finally { ov.dataset.enviando = ''; btn.disabled = false; }
         }
 
@@ -29214,9 +29223,9 @@ window._relPrefill = function(msg){
         }
 
         function abrirHistoricoPedidosAssistencia(clienteId) {
-            const pedidos = (dados.servicos || [])
-                .filter(s => s.clienteId === clienteId && s.origem === 'portal')
-                .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+            const cli = dados.clientes?.find(c => c.id === clienteId);
+            if (!cli || (usuarioLogado?.role === 'cliente' && (usuarioLogado.clienteId !== cli.id || usuarioLogado.adminId !== cli.adminId))) return;
+            const pedidos = (dados.assistencias || []).filter(a => a.adminId === cli.adminId && a.clienteId === clienteId && a.origem === 'portal').sort((a,b) => (b.dataCriacao || 0) - (a.dataCriacao || 0)).map(a => ({...a,data:new Date(a.dataCriacao).toLocaleDateString('sv-SE')}));
 
             let overlay = document.getElementById('overlayHistPedidos');
             if (!overlay) {
@@ -29227,16 +29236,14 @@ window._relPrefill = function(msg){
             }
             const linhas = pedidos.length ? pedidos.map(p => {
                 let estadoTxt, estadoCor, estadoFundo;
-                if (p.status === 'por aprovar') { estadoTxt = 'Por aprovar'; estadoCor = '#92400e'; estadoFundo = '#fde68a'; }
-                else if (p.status === 'recusado') { estadoTxt = 'Recusado'; estadoCor = '#991b1b'; estadoFundo = '#fee2e2'; }
-                else { estadoTxt = 'Aprovado'; estadoCor = '#166534'; estadoFundo = '#dcfce7'; }
+                estadoTxt = ({aberta:'Aberto',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[p.estado] || p.estado; estadoCor='#1e40af'; estadoFundo='#dbeafe';
                 const desc = (p.descricao || '').replace(/^\[Pedido do cliente\]\s*/, '');
                 return `<div style="border:1px solid #e6eaf2;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
                         <span style="font-size:.82rem;color:#5a6781;">${new Date(p.data + 'T00:00:00').toLocaleDateString('pt-PT')}</span>
                         <span style="background:${estadoFundo};color:${estadoCor};font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;">${estadoTxt}</span>
                     </div>
-                    <div style="margin-top:6px;font-size:.9rem;color:#152a52;">${desc || 'Sem descrição'}</div>
+                    <div style="margin-top:6px;font-size:.9rem;color:#152a52;">${escapeHtmlSimples(p.numero || '')} · ${escapeHtmlSimples(desc || 'Sem descrição')}</div>
                 </div>`;
             }).join('') : '<p style="color:#94a3b8;">Ainda não fez nenhum pedido de assistência.</p>';
 

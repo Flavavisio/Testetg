@@ -1,26 +1,3 @@
-
-function tgCalcularPoupanca(){
-    var func = parseFloat(document.getElementById('tgc_func').value) || 0;
-    var horas = parseFloat(document.getElementById('tgc_horas').value) || 0;
-    var custo = parseFloat(document.getElementById('tgc_custo').value) || 0;
-    document.getElementById('tgc_horas_val').textContent = horas.toLocaleString('pt-PT');
-    // Semanas úteis por mês ~4.33; considera-se que centralizar tudo numa plataforma só
-    // recupera cerca de 70% dessas horas perdidas (o resto continua a ser trabalho real de terreno).
-    var horasRecuperadasMes = func * horas * 4.33 * 0.7;
-    var poupancaMes = horasRecuperadasMes * custo;
-    var poupancaAno = poupancaMes * 12;
-    document.getElementById('tgc_resultado_mes').textContent = poupancaMes.toLocaleString('pt-PT', {maximumFractionDigits:0}) + ' €/mês';
-    document.getElementById('tgc_resultado_ano').textContent = '≈ ' + poupancaAno.toLocaleString('pt-PT', {maximumFractionDigits:0}) + ' € por ano';
-    var escaloes = [[5,29.99],[10,34.99],[25,39.99],[50,59.99],[100,89.99]];
-    var plano = escaloes[escaloes.length-1];
-    for (var i=0;i<escaloes.length;i++){ if (func <= escaloes[i][0]) { plano = escaloes[i]; break; } }
-    var planoEl = document.getElementById('tgc_plano_sugerido');
-    if (planoEl) {
-        planoEl.innerHTML = 'Para ' + func + ' pessoa' + (func===1?'':'s') + ', o plano de ' + plano[0] + ' funcionários fica em <b>' + plano[1].toFixed(2).replace('.',',') + ' €/mês</b> — a poupança estimada cobre isso ' + (poupancaMes>0 ? (poupancaMes/plano[1]).toFixed(1).replace('.',',') : '0') + 'x.';
-    }
-}
-document.addEventListener('DOMContentLoaded', function(){ if (document.getElementById('tgc_func')) tgCalcularPoupanca(); });
-if (document.getElementById('tgc_func')) tgCalcularPoupanca();
 function atualizarLanding(){var l=document.getElementById('tg-landing');if(l)l.style.display=(typeof usuarioLogado!=='undefined'&&usuarioLogado)?'none':'block';}
 async function loginLanding(e){e.preventDefault();var em=document.getElementById('landEmail').value;var pw=document.getElementById('landSenha').value;document.getElementById('loginEmail').value=em;document.getElementById('loginSenha').value=pw;return login(e);}
 
@@ -55,117 +32,138 @@ function abrirDetalheAddon(el) {
 function fecharDetalheAddon() {
     document.getElementById('tg-addon-overlay').classList.remove('open');
 }
-// ===== Wizard: Calcule o seu sistema =====
-const TCW_ADDONS = {
-    frota:     { nome: 'Frota',                              m: 9.99,  a: 107.89 },
-    contratos: { nome: 'Contratos de Manutenção / SCIE',      m: 14.99, a: 161.89 },
-    armazem:   { nome: 'Obras / Stock / Armazém',             m: 9.99,  a: 107.89 },
-    crm:       { nome: 'CRM Comercial + Assist',              m: 19.99, a: 215.89 },
-    erp:       { nome: 'Integração com ERP (Moloni)',         m: 29.99, a: 323.89 },
-};
-// Os escalões da calculadora pública usam sempre o mesmo PLANOS que gera as licenças a sério
-// (definido mais acima, na parte da app) — nunca valores escritos aqui à parte, para nunca
-// ficarem dessincronizados se o preço de um plano mudar.
-const TCW_ESCALOES = [5, 10, 25, 50, 100].map(n => [n, PLANOS['30_' + n].preco]);
+// Public plan finder: the same pack price source as the pricing cards and signup.
+const TCW_NEEDS = {equipa: 1, portal: 1, contratos: 1, frota: 1, armazem: 2, assist: 2, crm: 3};
+const TCW_PACK_ORDER = ['express', 'expert', 'pro', 'supreme'];
+const TCW_TITULOS = ['Quantas pessoas tem a equipa?', 'Que áreas precisa de gerir?', 'O pack para a sua equipa'];
 let _tcwPasso = 1;
+let _tcwRecomendacao = null;
+let _tgBilling = 'mensal';
+function tgPropostaUrl(pack, capacity, monthly, annual = false) {
+    const periodo = annual ? 'anual' : 'mensal';
+    const valor = annual ? Math.round(monthly * 12 * 0.9 * 100) / 100 : monthly;
+    const mensagem = 'Olá, pretendo uma proposta Total Gest' + (pack ? ' para o pack ' + PACK_NOMES[pack] : '') +
+        ', para ' + capacity + ' funcionários' + (monthly != null ? ', pagamento ' + periodo +
+        ' (' + _packFmtEuro(valor) + (annual ? '/ano' : '/mês') + ', IVA incluído)' : '') + '.';
+    return 'https://wa.me/351939373322?text=' + encodeURIComponent(mensagem);
+}
+function tgEscolherPack(event, pack) {
+    if (_tgBilling === 'anual') return true; // the anchor opens a prefilled proposal, never sends it
+    event.preventDefault();
+    _tgRegistarEvento('clique_cta', 'pack_' + pack);
+    abrirModalSignup(pack);
+    return false;
+}
+function tgCalcularPack(func, necessidades) {
+    if (!Number.isInteger(func) || func < 1 || func > 10000) return null;
+    const nivel = Math.max(0, ...necessidades.map(n => TCW_NEEDS[n] || 0));
+    const pack = TCW_PACK_ORDER[nivel];
+    if (func > SU_MAX_FUNCIONARIOS) return {pack, funcionarios: func, proposta: true};
+    const opcoes = SU_ESCALOES.map(e => {
+        const blocos = Math.max(0, Math.ceil((func - Number(e.key)) / 5));
+        return {pack, escalao: e.key, blocos, capacidade: Number(e.key) + blocos * 5,
+            mensal: PACK_PRECOS_SITE[pack][e.key] + blocos * SU_PRECO_BLOCO_5};
+    }).filter(o => o.capacidade <= SU_MAX_FUNCIONARIOS);
+    opcoes.sort((a,b) => a.mensal - b.mensal || a.capacidade - b.capacidade || a.blocos - b.blocos);
+    return {...opcoes[0], funcionarios: func, proposta: false};
+}
 function abrirWizardCalc() {
     _tgRegistarEvento('wizard_calc_abrir', null);
     _tcwPasso = 1;
-    // Os preços mostrados nos cartões vêm sempre do PLANOS (a mesma fonte que gera as
-    // licenças a sério) — nunca escritos à parte no HTML, para nunca desalinhar.
-    document.querySelectorAll('#tcw-func-chips [data-preco-de]').forEach(el => {
-        const chave = el.getAttribute('data-preco-de');
-        const preco = PLANOS[chave]?.preco;
-        el.textContent = preco != null ? preco.toFixed(2).replace('.', ',') + ' €/mês' : '—';
-    });
-    document.querySelectorAll('.tcw-passo').forEach((el, i) => el.style.display = i === 0 ? '' : 'none');
+    document.getElementById('tcw-error').hidden = true;
     _tcwRenderCabecalho();
     document.getElementById('tg-calc-wizard-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
+    document.getElementById('tcw_func').focus();
 }
 function fecharWizardCalc() {
     document.getElementById('tg-calc-wizard-overlay').classList.remove('open');
     document.body.style.overflow = '';
 }
 function _tcwSyncFuncInput() {
-    document.querySelectorAll('#tcw-func-chips button').forEach(b => b.classList.remove('on'));
+    const value = document.getElementById('tcw_func').value;
+    document.querySelectorAll('#tcw-func-chips button').forEach(b => {
+        b.classList.toggle('on', b.dataset.v === value);
+        b.setAttribute('aria-pressed', String(b.dataset.v === value));
+    });
+    document.getElementById('tcw-error').hidden = true;
 }
 document.addEventListener('click', e => {
     const chip = e.target.closest('#tcw-func-chips button');
     if (!chip) return;
-    document.querySelectorAll('#tcw-func-chips button').forEach(b => b.classList.remove('on'));
-    chip.classList.add('on');
     document.getElementById('tcw_func').value = chip.dataset.v;
+    _tcwSyncFuncInput();
 });
-const TCW_TITULOS = [
-    'Quantos funcionários tem a sua equipa?',
-    'Que necessidades tem?',
-    'Quanto tempo perde hoje com papéis e WhatsApp?',
-    'O resultado',
-];
 function _tcwRenderCabecalho() {
     document.getElementById('tcw-titulo-passo').textContent = TCW_TITULOS[_tcwPasso - 1];
-    document.getElementById('tcw-progress-fill').style.width = ((_tcwPasso / 4) * 100) + '%';
+    document.getElementById('tcw-step-label').textContent = _tcwPasso + ' de 3';
+    document.getElementById('tcw-progress-fill').style.width = (_tcwPasso / 3 * 100) + '%';
     document.getElementById('tcw-btn-voltar').style.visibility = _tcwPasso === 1 ? 'hidden' : 'visible';
-    document.getElementById('tcw-btn-seguinte').style.display = _tcwPasso === 4 ? 'none' : 'inline-flex';
+    document.getElementById('tcw-btn-seguinte').style.display = _tcwPasso === 3 ? 'none' : 'inline-flex';
+    document.getElementById('tcw-btn-seguinte').textContent = _tcwPasso === 2 ? 'Ver recomendação →' : 'Seguinte →';
+    document.querySelectorAll('.tcw-passo').forEach((el, i) => el.style.display = i === _tcwPasso - 1 ? '' : 'none');
 }
 function _tcwSeguinte() {
+    if (_tcwPasso >= 3) return;
     if (_tcwPasso === 1) {
-        const v = parseFloat(document.getElementById('tcw_func').value) || 0;
-        if (v < 1) { alert('Indica quantos funcionários tem, pelo menos 1.'); return; }
-        const perdemEl = document.getElementById('tcw_func_perdem');
-        if (perdemEl) perdemEl.value = v; // valor por omissão, o utilizador pode ajustar no passo 3
+        const v = Number(document.getElementById('tcw_func').value);
+        if (!Number.isInteger(v) || v < 1 || v > 10000) {
+            const error = document.getElementById('tcw-error');
+            error.textContent = 'Indique um número inteiro entre 1 e 10 000 funcionários.';
+            error.hidden = false; document.getElementById('tcw_func').focus(); return;
+        }
     }
-    document.getElementById('tcw-passo-' + _tcwPasso).style.display = 'none';
     _tcwPasso++;
-    if (_tcwPasso === 4) { _tcwCalcularResultado(); _tgRegistarEvento('wizard_calc_resultado', Array.from(document.querySelectorAll('.tcw-addon input:checked')).map(c => c.value).join(',') || 'sem_addons'); }
-    else _tgRegistarEvento('wizard_calc_passo', 'passo_' + _tcwPasso);
-    document.getElementById('tcw-passo-' + _tcwPasso).style.display = '';
+    if (_tcwPasso === 3) _tcwCalcularResultado();
     _tcwRenderCabecalho();
+    document.getElementById('tg-calc-wizard-card').scrollTop = 0;
+    document.getElementById('tcw-titulo-passo').setAttribute('tabindex', '-1');
+    document.getElementById('tcw-titulo-passo').focus();
 }
 function _tcwVoltar() {
-    if (_tcwPasso === 1) return;
-    document.getElementById('tcw-passo-' + _tcwPasso).style.display = 'none';
-    _tcwPasso--;
-    document.getElementById('tcw-passo-' + _tcwPasso).style.display = '';
-    _tcwRenderCabecalho();
+    if (_tcwPasso <= 1) return;
+    _tcwPasso--; _tcwRenderCabecalho();
+    document.getElementById('tcw-titulo-passo').focus();
 }
 function _tcwCalcularResultado() {
-    const func = parseFloat(document.getElementById('tcw_func').value) || 1;
-    const horas = parseFloat(document.getElementById('tcw_horas').value) || 0;
-    const funcPerdem = parseFloat(document.getElementById('tcw_func_perdem').value) || 0;
-    const custo = parseFloat(document.getElementById('tcw_custo').value) || 0;
-    const addonsEscolhidos = Array.from(document.querySelectorAll('.tcw-addon input:checked')).map(c => c.value);
-
-    let plano = TCW_ESCALOES[TCW_ESCALOES.length - 1];
-    for (const e of TCW_ESCALOES) { if (func <= e[0]) { plano = e; break; } }
-    const precoBase = plano[1];
-    const precoAddons = addonsEscolhidos.reduce((s, k) => s + TCW_ADDONS[k].m, 0);
-    const precoTotalGest = precoBase + precoAddons;
-
-    // Mesma fórmula da calculadora da secção de Preços: recupera-se ~70% das horas perdidas.
-    const horasRecuperadasMes = funcPerdem * horas * 4.33 * 0.7;
-    const custoPerdaMes = horasRecuperadasMes * custo;
-    const poupancaLiquida = custoPerdaMes - precoTotalGest;
-
-    const listaAddons = addonsEscolhidos.length
-        ? '<ul class="tcw-lista-addons">' + addonsEscolhidos.map(k => `<li>${TCW_ADDONS[k].nome} — ${TCW_ADDONS[k].m.toFixed(2).replace('.', ',')} €/mês</li>`).join('') + '</ul>'
-        : '<p class="tcw-sub" style="margin:0;">Nenhum add-on selecionado — só a Licença Base.</p>';
-
-    document.getElementById('tcw-resultado-conteudo').innerHTML = `
-        <div class="tcw-result-linha"><span>Está a perder hoje, em tempo administrativo</span><b class="neg">${custoPerdaMes.toLocaleString('pt-PT', { maximumFractionDigits: 0 })} €/mês</b></div>
-        <div class="tcw-result-linha"><span>Total Gest para ${func} funcionário${func === 1 ? '' : 's'} (Licença Base + add-ons)</span><b>${precoTotalGest.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/mês</b></div>
-        ${listaAddons}
-        <div class="tcw-result-final ${poupancaLiquida >= 0 ? 'pos' : 'neg'}">
-            ${poupancaLiquida >= 0
-                ? `Mesmo a pagar a Total Gest, fica com <b>${poupancaLiquida.toLocaleString('pt-PT', { maximumFractionDigits: 0 })} € a mais no bolso, por mês</b> — cerca de <b>${(poupancaLiquida * 12).toLocaleString('pt-PT', { maximumFractionDigits: 0 })} € por ano</b>.`
-                : `Com os números indicados, o custo da plataforma fica perto da poupança administrativa — a poupança real tende a ser maior, porque isto não conta menos deslocações a mais nem menos erros de faturação.`}
-        </div>
-        <a class="btn btn-orange" href="#" style="width:100%;justify-content:center;margin-top:16px;" onclick="_tgRegistarEvento('clique_cta','wizard_calc');fecharWizardCalc();abrirModalSignup();return false;">Começar 14 dias grátis <span style="margin-left:4px;">→</span></a>
-    `;
+    const necessidades = Array.from(document.querySelectorAll('.tcw-addon input:checked')).map(c => c.value);
+    const r = tgCalcularPack(Number(document.getElementById('tcw_func').value), necessidades);
+    _tcwRecomendacao = r;
+    if (!r) return;
+    const alvo = document.getElementById('tcw-resultado-conteudo');
+    if (r.proposta) {
+        alvo.innerHTML = '<h3>Uma proposta para ' + r.funcionarios + ' funcionários</h3><p>O pack ' + PACK_NOMES[r.pack] +
+            ' corresponde às áreas selecionadas. Para mais de 100 funcionários, confirmamos consigo a capacidade e o preço.</p>' +
+            '<a class="btn btn-orange" target="_blank" rel="noopener" href="' + tgPropostaUrl(r.pack,r.funcionarios,null) + '">Pedir proposta no WhatsApp</a>';
+        return;
+    }
+    const anual = _tgBilling === 'anual';
+    const total = anual ? Math.round(r.mensal * 12 * 0.9 * 100) / 100 : r.mensal;
+    alvo.innerHTML = '<span class="eyebrow">Sugestão para as áreas escolhidas</span><h3>Pack ' + PACK_NOMES[r.pack] + '</h3>' +
+        '<p>Até ' + r.capacidade + ' funcionários · ' + (r.blocos ? 'escalão ' + r.escalao + ' + ' + r.blocos + ' bloco(s) de +5' : 'escalão ' + r.escalao) + '</p>' +
+        '<div class="tg-recommended-price">' + _packFmtEuro(total) + '<small>/' + (anual ? 'ano' : 'mês') + ' · IVA incluído</small></div>' +
+        '<p>' + PACK_LIMITES_TXT[r.pack] + '. Pode consultar a comparação completa antes de decidir.</p>' +
+        (anual ? '<a class="btn btn-orange" href="' + tgPropostaUrl(r.pack,r.capacidade,r.mensal,true) + '" target="_blank" rel="noopener">Pedir proposta anual</a>' : '<button type="button" class="btn btn-orange" onclick="_tcwIniciarTeste()">Experimentar este pack</button>') +
+        '<button type="button" class="btn btn-ghost" onclick="_tcwComparar()">Comparar funcionalidades</button>' +
+        '<p class="tcw-sub">' + (anual ? 'O pagamento anual tem 10% de desconto. A equipa confirma consigo a proposta.' : '14 dias grátis. O preço indicado aplica-se após o teste.') + '</p>';
+    _tgRegistarEvento('wizard_calc_resultado', r.pack);
+}
+function _tcwIniciarTeste() {
+    const r = _tcwRecomendacao;
+    if (!r || r.proposta) return;
+    fecharWizardCalc(); _packMudarEscalao(r.escalao); abrirModalSignup(r.pack);
+    _suBlocosExtra = r.blocos; _suRenderEscaloes(); _suAtualizarTotal();
+}
+function _tcwComparar() {
+    const r = _tcwRecomendacao;
+    if (!r) return;
+    fecharWizardCalc();
+    const target = document.getElementById('packDetalhesInline');
+    target.dataset.packAberto = ''; _packVerDetalhes(r.pack);
+    target.scrollIntoView({behavior:'smooth',block:'start'});
 }
 // Packs e escalões mostrados no checkout — os preços têm de bater sempre certo com os cartões
-// da página (PACK_PRECOS_SITE). Como esta página não carrega app-principal.js, ficam também aqui.
+// da página (PACK_PRECOS_SITE), que reutiliza os preços da aplicação quando disponíveis.
 const SU_PACKS = {
     express: { nome: 'Express' },
     expert:  { nome: 'Expert' },
@@ -181,13 +179,18 @@ const SU_ESCALOES = [
     { key: '25', label: 'Até 25 funcionários' },
     { key: '50', label: 'Até 50 funcionários' },
 ];
-const SU_PRECO_BLOCO_5 = 5;
+const SU_PRECO_BLOCO_5 = typeof PACK_PRECO_BLOCO_5 !== 'undefined' ? PACK_PRECO_BLOCO_5 : 5;
 const SU_MAX_FUNCIONARIOS = 100;
 function _suFormatarEuro(v) { return v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 let _suPackSelecionado = null;
 let _suEscalaoSelecionado = '5';
 let _suBlocosExtra = 0;
+let _tgSignupFormHtml = '';
 function abrirModalSignup(packChave) {
+    const body = document.getElementById('tg-signup-body');
+    document.getElementById('tg-signup-card').removeAttribute('aria-label');
+    if (!_tgSignupFormHtml) _tgSignupFormHtml = body.innerHTML;
+    if (!document.getElementById('su_empresa')) body.innerHTML = _tgSignupFormHtml;
     _suPackSelecionado = packChave && SU_PACKS[packChave] ? packChave : null;
     _suEscalaoSelecionado = (typeof _packEscalaoAtual !== 'undefined' && _packEscalaoAtual && _packEscalaoAtual !== '50+') ? _packEscalaoAtual : '5';
     _suBlocosExtra = 0;
@@ -278,7 +281,7 @@ function _suAtualizarTotal() {
 // "mudar" no resumo — deixa escolher outro pack sem fechar o modal.
 function _suMudarPlano() {
     fecharModalSignup();
-    document.getElementById('preco')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('tg-precos')?.scrollIntoView({ behavior: 'smooth' });
 }
 function fecharModalSignup() {
     document.getElementById('tg-signup-overlay').classList.remove('open');
@@ -287,6 +290,8 @@ function fecharModalSignup() {
 function _suAlternarOlho(idCampo, btn) {
     const campo = document.getElementById(idCampo);
     const icone = btn.querySelector('i');
+    btn.setAttribute('aria-label', campo.type === 'password' ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe');
+    btn.setAttribute('aria-pressed', String(campo.type === 'password'));
     if (campo.type === 'password') { campo.type = 'text'; icone.className = 'fas fa-eye-slash'; }
     else { campo.type = 'password'; icone.className = 'fas fa-eye'; }
 }
@@ -367,13 +372,15 @@ async function submeterSignup(e) {
             <div class="signup-msg">
                 <i class="fas fa-envelope-circle-check"></i>
                 <h2>Confirme o seu email</h2>
-                <p class="signup-sub">Enviámos um link de confirmação para <b>${dadosPedido.email}</b>.<br>A sua conta de teste (14 dias) fica ativa assim que confirmar.</p>
+                <p class="signup-sub">Enviámos um link de confirmação para <b id="tg-confirm-email"></b>.<br>A sua conta de teste (14 dias) fica ativa assim que confirmar.</p>
             </div>`;
+        document.getElementById('tg-confirm-email').textContent = dadosPedido.email;
+        document.getElementById('tg-signup-card').setAttribute('aria-label','Confirme o seu email');
     } catch (err) {
         console.error('signup trial:', err);
         alert(err && err.message ? err.message : 'Não foi possível enviar o pedido. Tente novamente ou contacte-nos por WhatsApp.');
         btn.disabled = false;
-        btn.textContent = 'Ativar Conta Agora';
+        btn.textContent = 'Criar conta de teste';
     }
     return false;
 }
@@ -443,10 +450,12 @@ function _tgIdentificarVisitante(nome, email) {
 let _tgInicioVisita = Date.now();
 let _tgScrollMaximo = 0;
 function _tgAtualizarScrollMaximo() {
-    const doc = document.documentElement;
+    const landing = document.getElementById('tg-landing');
+    if (typeof usuarioLogado !== 'undefined' && usuarioLogado) return;
+    const doc = landing || document.documentElement;
     const alturaTotal = doc.scrollHeight - doc.clientHeight;
     if (alturaTotal <= 0) { _tgScrollMaximo = 100; return; }
-    const pct = Math.round(Math.min(100, (window.scrollY / alturaTotal) * 100));
+    const pct = Math.round(Math.min(100, ((landing ? landing.scrollTop : window.scrollY) / alturaTotal) * 100));
     if (pct > _tgScrollMaximo) _tgScrollMaximo = pct;
 }
 function _tgEnviarDuracaoFinal() {
@@ -468,12 +477,13 @@ function _tgEnviarDuracaoFinal() {
     } catch (e) { /* silencioso */ }
 }
 window.addEventListener('scroll', _tgAtualizarScrollMaximo, { passive: true });
+document.getElementById('tg-landing')?.addEventListener('scroll', _tgAtualizarScrollMaximo, {passive:true});
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') _tgEnviarDuracaoFinal(); });
 window.addEventListener('pagehide', _tgEnviarDuracaoFinal);
 
 // ===================== PACKS (Fase 2 — site) =====================
 // Preços por escalão de funcionários (c/ IVA). Acima de 50, blocos de +5 a 5€/mês.
-const PACK_PRECOS_SITE = {
+const PACK_PRECOS_SITE = typeof PACK_PRECOS !== 'undefined' ? PACK_PRECOS : {
     express: { 5: 42.49, 10: 47.49, 25: 62.49, 50: 102.49 },
     expert:  { 5: 52.49, 10: 57.49, 25: 72.49, 50: 112.49 },
     pro:     { 5: 72.49, 10: 77.49, 25: 92.49, 50: 132.49 },
@@ -525,7 +535,7 @@ const PACK_FUNCS = [
         ['CRM Comercial', 0,0,0,1],
         ['Dashboard Analítico', 0,0,0,1],
         ['Geofence / histórico GPS', 0,0,0,1],
-        ['Integração ERP', 0,0,0,1],
+        ['Opções de integração ERP (sujeitas a compatibilidade)', 0,0,0,1],
         ['Rondas / Vigilância', 0,0,0,1],
         ['Auditoria avançada', 0,0,0,1],
     ]},
@@ -536,24 +546,51 @@ const PACK_IDX = { express: 1, expert: 2, pro: 3, supreme: 4 };
 let _packEscalaoAtual = '5';
 function _packFmtEuro(v) { return v.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 function _packMudarEscalao(escalao) {
+    if (!SU_ESCALOES.some(e => e.key === escalao)) return;
     _packEscalaoAtual = escalao;
-    document.querySelectorAll('.pack-escalao-btn').forEach(b => b.classList.toggle('active', b.dataset.escalao === escalao));
-    document.querySelectorAll('#packGrid .plan').forEach(card => {
-        const pack = card.dataset.pack;
-        const amt = card.querySelector('.amt');
-        amt.textContent = _packFmtEuro(PACK_PRECOS_SITE[pack][escalao]);
+    document.querySelectorAll('.pack-escalao-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.escalao === escalao);
+        b.setAttribute('aria-pressed', String(b.dataset.escalao === escalao));
     });
+    tgAtualizarPrecos();
 }
+function tgAtualizarPrecos() {
+    const anual = _tgBilling === 'anual';
+    document.querySelectorAll('#tg-billing button').forEach(b => {
+        b.classList.toggle('on', b.dataset.mode === _tgBilling);
+        b.setAttribute('aria-pressed', String(b.dataset.mode === _tgBilling));
+    });
+    document.querySelectorAll('#packGrid .plan').forEach(card => {
+        const mensal = PACK_PRECOS_SITE[card.dataset.pack][_packEscalaoAtual];
+        const totalAnual = Math.round(mensal * 12 * 0.9 * 100) / 100;
+        card.querySelector('.amt').textContent = _packFmtEuro(anual ? totalAnual : mensal);
+        card.querySelector('.per').textContent = anual ? 'por ano · IVA incluído · equivalente a ' + _packFmtEuro(totalAnual / 12) + '/mês' : 'por mês · IVA incluído';
+    });
+    document.querySelectorAll('[data-pack-start]').forEach(a => {
+        const pack = a.dataset.packStart;
+        a.textContent = anual ? 'Pedir proposta anual' : 'Experimentar grátis';
+        a.href = anual ? tgPropostaUrl(pack,_packEscalaoAtual,PACK_PRECOS_SITE[pack][_packEscalaoAtual],true) : '#tg-precos';
+        if (anual) { a.target = '_blank'; a.rel = 'noopener'; } else { a.removeAttribute('target'); a.removeAttribute('rel'); }
+    });
+    const note = document.getElementById('tg-billing-note');
+    if (note) note.textContent = anual ? 'Pagamento anual com 10% de desconto. Peça a proposta do pack escolhido no WhatsApp; a equipa confirma os detalhes consigo.' : 'Experimente durante 14 dias. O valor mensal indicado aplica-se após o teste.';
+}
+document.getElementById('tg-billing')?.addEventListener('click', e => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b) return;
+    _tgBilling = b.dataset.mode; tgAtualizarPrecos();
+});
 // Detalhe do pack: tabela comparativa completa (como no Excel), com a coluna do pack escolhido
 // realçada. Assim vê-se não só o que este pack tem, mas como se compara com os outros.
 function _packVerDetalhes(pack) {
     const alvo = document.getElementById('packDetalhesInline');
     if (!alvo || !PACK_NOMES[pack]) return;
-    if (alvo.dataset.packAberto === pack) { alvo.innerHTML = ''; alvo.dataset.packAberto = ''; return; }
+    if (alvo.dataset.packAberto === pack) { alvo.innerHTML = ''; alvo.dataset.packAberto = ''; document.querySelectorAll('[data-pack-details]').forEach(b => b.setAttribute('aria-expanded','false')); document.querySelector('[data-pack-details="' + pack + '"]')?.focus(); return; }
     alvo.dataset.packAberto = pack;
+    document.querySelectorAll('[data-pack-details]').forEach(b => b.setAttribute('aria-expanded',String(b.dataset.packDetails === pack)));
     const escolhido = PACK_IDX[pack];
     const cabecalho = ['express','expert','pro','supreme'].map(p =>
-        `<th class="${p === pack ? 'pack-col-destaque' : ''}">${PACK_NOMES[p]}</th>`).join('');
+        `<th scope="col" class="${p === pack ? 'pack-col-destaque' : ''}">${PACK_NOMES[p]}</th>`).join('');
     const corpo = PACK_FUNCS.map(g => `
         <tr class="pack-grupo-linha"><td colspan="5">${g.grupo}</td></tr>
         ${g.linhas.map(l => `
@@ -576,14 +613,15 @@ function _packVerDetalhes(pack) {
             <h3>Todas as funcionalidades — em destaque: Pack ${PACK_NOMES[pack]}</h3>
             <p class="pack-detalhe-resumo">${PACK_LIMITES_TXT[pack]}. Cada pack inclui tudo o do nível anterior.</p>
             <div class="pack-tabela-scroll">
-                <table class="pack-tabela-funcs">
-                    <thead><tr><th>Funcionalidade</th>${cabecalho}</tr></thead>
+                <table class="pack-tabela-funcs"><caption class="tg-visually-hidden">Comparação de funcionalidades dos packs Total Gest</caption>
+                    <thead><tr><th scope="col">Funcionalidade</th>${cabecalho}</tr></thead>
                     <tbody>${corpo}</tbody>
                 </table>
             </div>
-            <a class="btn btn-orange" href="#" onclick="_tgRegistarEvento('clique_cta','pack_${pack}_detalhe');abrirModalSignup('${pack}');return false;" style="margin-top:14px;display:inline-block;">Começar com o ${PACK_NOMES[pack]} →</a>
+            <a class="btn btn-orange" href="#tg-precos" data-pack-start="${pack}" onclick="return tgEscolherPack(event,'${pack}')" style="margin-top:14px;display:inline-block;">Experimentar grátis</a>
         </div>
     `;
+    tgAtualizarPrecos();
     alvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 if (document.getElementById('tg-landing')) {

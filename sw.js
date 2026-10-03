@@ -1,6 +1,6 @@
 // Service Worker — Total Gest PWA
-const CACHE = 'totalgest-v17-index-carousel';
-const ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'totalgest-v18-login-install';
+const ASSETS = ['./login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
@@ -51,7 +51,7 @@ self.addEventListener('fetch', e => {
       // só usa o fallback de navegação (index.html) para pedidos de navegação (o utilizador a abrir/mudar de página).
       // Para tudo o resto (imagens, scripts, chamadas à API) tenta a cache desse recurso específico; se não houver, falha normalmente.
       if (req.mode === 'navigate') {
-        return caches.match('./index.html');
+        return caches.match(req).then(hit => hit || caches.match(new URL(req.url).pathname.endsWith('/login.html') ? './login.html' : './index.html'));
       }
       return caches.match(req);
     })
@@ -71,7 +71,7 @@ self.addEventListener('push', e => {
     badge: './icon-192.png', // o badge (Android, monocromático) mantém-se sempre o do TotalGest
     tag: dados.tag || 'totalgest-notificacao',
     renotify: true,
-    data: { url: dados.url || './index.html' },
+    data: { url: dados.url || './login.html' },
     vibrate: [120, 60, 120]
   };
 
@@ -80,7 +80,7 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || './index.html';
+  const url = (e.notification.data && e.notification.data.url) || './login.html';
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientsList => {

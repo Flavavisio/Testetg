@@ -1,0 +1,26 @@
+<div id="tg-landing" class="tg-login-page"><main class="tg-login-layout"><a class="tg-login-brand" href="index.html"><img id="tg-logo-master" src="logo-totalgest.png" alt="Total Gest" width="300" height="300" /></a><div class="tg-login-intro"><span class="eyebrow">BEM-VINDO À TOTAL GEST</span><h1>A sua operação<br>continua aqui.</h1><p>Entre na sua empresa ou no portal do cliente.</p></div><form class="login-card" id="tg-entrar" onsubmit="return loginLanding(event)">
+      <div class="login-head">
+        <div class="k">Já tem acesso?</div>
+        <h3>Iniciar sessão</h3>
+      </div>
+      <div class="login-body">
+        <div class="field">
+          <label for="landEmail">Email ou NIF</label>
+          <input id="landEmail" type="text" placeholder="Email da conta ou NIF do cliente" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="tg-login-help" required />
+          <p id="tg-login-help" class="tg-login-help">Empresa e equipa: email da conta. Portal do cliente: NIF e palavra-passe fornecidos pela empresa.</p>
+        </div>
+        <div class="field">
+          <label for="landSenha">Palavra-passe</label>
+          <input id="landSenha" type="password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
+        <div style="text-align:right;margin:-6px 0 10px;">
+          <a href="#" onclick="esqueciPassword(); return false;" style="font-size:.82rem;color:#64748b;">Recuperar palavra-passe</a>
+        </div>
+        <button class="btn btn-orange" type="submit">Entrar</button>
+        <p class="login-foot">Ainda não tem conta? <a href="index.html#tg-precos">Veja os planos</a></p>
+        <div class="login-note">
+          <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 2a5 5 0 00-5 5v3H6a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2v-7a2 2 0 00-2-2h-1V7a5 5 0 00-5-5z" stroke="#5a6781" stroke-width="1.6"/></svg>
+          Acesso à empresa, equipa e portal do cliente.
+        </div>
+      </div>
+    </form><div class="tg-install-actions"><button type="button" onclick="instalarPWA('android')">Instalar para Android</button><button type="button" onclick="instalarPWA('ios')">Instalar para iPhone</button></div><a class="tg-login-back" href="index.html">← Voltar ao site</a></main></div>

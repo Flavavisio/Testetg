@@ -73,23 +73,45 @@
         window.addEventListener('beforeinstallprompt', function (e) {
             e.preventDefault();
             deferredPrompt = e;
+            const landing = document.getElementById('tg-landing');
+            if (landing && getComputedStyle(landing).display !== 'none') return;
             if (_pwaBannerFoiDispensadoRecentemente()) return;
             const b = document.getElementById('bannerInstalarPWA');
             if (b) b.style.display = 'flex';
         });
-        function instalarPWA() {
-            const b = document.getElementById('bannerInstalarPWA');
-            if (!deferredPrompt) {
-                alert('Para instalar: no Android use o menu do browser → "Instalar app"; no iPhone use Partilhar → "Adicionar ao ecrã principal".');
-                return;
+        function mostrarInstrucoesInstalacao(platform) {
+            let dialog = document.getElementById('tg-install-dialog');
+            if (!dialog) {
+                dialog = document.createElement('dialog'); dialog.id = 'tg-install-dialog';
+                dialog.setAttribute('aria-labelledby', 'tg-install-title'); document.body.appendChild(dialog);
+                dialog.addEventListener('click', e => { if (e.target === dialog) { const r=dialog.getBoundingClientRect(); if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) dialog.close(); } });
             }
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.finally(function () {
-                deferredPrompt = null;
-                if (b) b.style.display = 'none';
-            });
+            const installed = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+            const ios = platform === 'ios';
+            dialog.innerHTML = installed
+              ? '<h2 id="tg-install-title">Já está na app</h2><p>A Total Gest já está aberta como aplicação neste dispositivo.</p><button type="button">Fechar</button>'
+              : '<h2 id="tg-install-title">Instalar no ' + (ios ? 'iPhone' : 'Android') + '</h2>' +
+                (ios ? '<p>No Safari, siga estes três passos:</p><ol><li>Toque em <strong>Partilhar</strong> (quadrado com seta para cima; pode estar no menu do navegador).</li><li>Escolha <strong>Adicionar ao ecrã principal</strong>. Se aparecer, ative <strong>Abrir como app web</strong>.</li><li>Toque em <strong>Adicionar</strong>. Abra a Total Gest pelo novo ícone.</li></ol>' : '<p>Quando disponível, o navegador pede-lhe para confirmar a instalação.</p><ol><li>Abra esta página no <strong>Chrome</strong> do seu Android.</li><li>No menu <strong>⋮</strong>, escolha <strong>Instalar app</strong> ou <strong>Adicionar ao ecrã principal</strong>.</li><li>Confirme a instalação e abra a Total Gest pelo novo ícone.</li></ol><p>Se a opção não aparecer, a app pode já estar instalada ou este navegador não permitir a instalação.</p>') + '<button type="button">Entendido</button>';
+            dialog.querySelector('button').onclick = () => dialog.close(); dialog.showModal();
+        }
+        async function instalarPWA(platform) {
+            if (platform === 'ios' && !location.pathname.endsWith('/login.html')) {
+                location.href = new URL('login.html?install=ios', location.href); return;
+            }
+            if (platform === 'ios' || navigator.standalone || matchMedia('(display-mode: standalone)').matches || !deferredPrompt) {
+                mostrarInstrucoesInstalacao(platform); return;
+            }
+            const prompt = deferredPrompt; deferredPrompt = null;
+            try { await prompt.prompt(); await prompt.userChoice; }
+            catch (_) { mostrarInstrucoesInstalacao('android'); }
+            finally { const b=document.getElementById('bannerInstalarPWA'); if(b)b.style.display='none'; }
+        }
+        if (new URLSearchParams(location.search).get('install') === 'ios') {
+            mostrarInstrucoesInstalacao('ios');
+            const url = new URL(location.href); url.searchParams.delete('install'); history.replaceState(null, '', url);
         }
         window.addEventListener('appinstalled', function () {
+            deferredPrompt = null;
             const b = document.getElementById('bannerInstalarPWA');
             if (b) b.style.display = 'none';
         });

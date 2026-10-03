@@ -624,7 +624,7 @@ function _packVerDetalhes(pack) {
     tgAtualizarPrecos();
     alvo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-if (document.getElementById('tg-landing')) {
+if (document.getElementById('tg-landing') && !document.querySelector('.tg-login-page')) {
     // O elemento "tg-landing" existe sempre no HTML (só fica escondido por CSS depois do login),
     // por isso não chega para saber se é mesmo um visitante novo — confirma com a sessão real do
     // Supabase antes de contar a visita, para não contar utilizadores já autenticados a recarregar a página.

@@ -1,0 +1,12 @@
+"""Generate login with the current app shell: run after editing index.html."""
+from pathlib import Path
+import re
+root=Path(__file__).resolve().parents[1]
+s=(root/'index.html').read_text()
+start=s.index('<div id="tg-landing">')
+end=s.index('    <aside id="tgSidebar">',start)
+s=s[:start]+(root/'templates/login-content.html').read_text()+'\n'+s[end:]
+s=re.sub(r'<title>.*?</title>','<title>Entrar — Total Gest</title>',s)
+s=s.replace('content="index, follow"','content="noindex, follow"').replace('href="https://totalgest.pt/"','href="https://totalgest.pt/login.html"')
+s=re.sub(r'<script src="landing-ui.js[^\"]*"></script>','',s)
+(root/'login.html').write_text(s)

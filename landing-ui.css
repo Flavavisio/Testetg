@@ -163,3 +163,5 @@
 
 @keyframes tgClientLoop{from{transform:translateX(0)}to{transform:translateX(calc(-50% - var(--tg-logo-gap)/2))}}
 @media(max-width:760px){#tg-landing .cliente-logo{flex-basis:80px;width:80px}}
+
+#tg-landing .tg-guide-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px}#tg-landing .tg-guide-grid a{display:block;padding:24px;border:1px solid #e2e8f0;border-radius:16px;color:#152a52;text-decoration:none;background:white}#tg-landing .tg-guide-grid h3{font-size:19px;margin:0 0 10px}#tg-landing .tg-guide-grid p{font-size:14px;color:#475569}#tg-landing .tg-guide-grid a:hover{border-color:#f97316}@media(max-width:760px){#tg-landing .tg-guide-grid{grid-template-columns:1fr}}

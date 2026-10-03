@@ -52,7 +52,11 @@
             if (guardado === '1') document.body.classList.add('tg-sidebar-collapsed');
         }
         const _NIVEIS_ZOOM = [100, 90, 80];
+        function _zoomAutomaticoMobile() {
+            return window.matchMedia('(max-width: 900px), (pointer: coarse)').matches;
+        }
         function alternarZoom() {
+            if (_zoomAutomaticoMobile()) { _aplicarZoom(100); return; }
             let atual = 100;
             try { atual = parseInt(localStorage.getItem('tg_zoom'), 10) || 100; } catch (e) {}
             const idxAtual = _NIVEIS_ZOOM.indexOf(atual);
@@ -61,6 +65,7 @@
             try { localStorage.setItem('tg_zoom', String(proximo)); } catch (e) {}
         }
         function _aplicarZoom(nivel) {
+            nivel = _zoomAutomaticoMobile() ? 100 : (_NIVEIS_ZOOM.includes(Number(nivel)) ? Number(nivel) : 100);
             document.documentElement.style.zoom = nivel + '%';
             const lbl = document.getElementById('labelZoom');
             if (lbl) lbl.textContent = nivel + '%';
@@ -75,8 +80,9 @@
         function _aplicarZoomGuardado() {
             let nivel = 100;
             try { nivel = parseInt(localStorage.getItem('tg_zoom'), 10) || 100; } catch (e) {}
-            if (nivel !== 100) _aplicarZoom(nivel);
+            _aplicarZoom(nivel);
         }
+        window.matchMedia('(max-width: 900px), (pointer: coarse)').addEventListener('change', _aplicarZoomGuardado);
         function _aplicarTemaGuardado() {
             let tema = null;
             try { tema = localStorage.getItem('tg_tema'); } catch (e) {}

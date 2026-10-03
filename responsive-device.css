@@ -1,0 +1,16 @@
+/* Let layout follow the device, while preserving browser pinch zoom. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(max-width:900px),(pointer:coarse){
+  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=hidden]):not([type=button]):not([type=submit]),html body select,html body textarea{font-size:16px!important}
+  #btnZoom{display:none!important}
+}
+@media(max-width:900px){
+  .header-left,.header-title,.header .user-info,.form-group{min-width:0}
+  .header-title h2{overflow-wrap:anywhere}
+  .onb-opt{min-width:0;flex-basis:100%}
+  #rpPreviewFlutuante{min-width:0;width:100%;max-width:100%}
+  .modal-overlay{padding-left:10px;padding-right:10px}
+  .modal{min-width:0;max-width:100%;max-height:calc(100dvh - 20px)}
+  #tg-signup-card .signup-grid2{grid-template-columns:minmax(0,1fr)}
+  #tg-landing .tg-toto-note p{min-width:0}
+}

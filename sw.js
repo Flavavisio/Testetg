@@ -1,5 +1,5 @@
 // Service Worker — Total Gest PWA
-const CACHE = 'totalgest-v20-responsive-seo';
+const CACHE = 'totalgest-v22-teco-smart';
 const ASSETS = ['./responsive-device.css', './login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

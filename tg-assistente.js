@@ -5,19 +5,19 @@
   const base = new URL('.', document.currentScript.src);
   const asset = name => new URL('assets/' + name, base).href;
   const css = document.createElement('link');
-  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=3.0.0-toto', base).href;
+  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=4.0.0-teco', base).href;
   document.head.append(css);
   const root = document.createElement('aside');
   root.id = 'tg-assistente'; root.hidden = true;
   root.innerHTML = `
     <section class="tg-chat" hidden role="dialog" aria-labelledby="tg-chat-title">
-      <header><img class="tg-header-mascot" alt="" width="45" height="54"><div><strong id="tg-chat-title">Toto · O teu assistente</strong><small><span class="tg-state-label">Pronto para ajudar</span></small></div><button type="button" class="tg-close" aria-label="Fechar assistente">×</button></header>
-      <div class="tg-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com o Toto"></div>
-      <div class="tg-tools"><button type="button" data-tg-query="resumo">O meu dia</button><button type="button" data-tg-query="alertas">Alertas</button><button type="button" class="tg-snooze">Silenciar 1 h</button></div><div class="tg-shortcuts" aria-label="Atalhos disponíveis"></div>
+      <header><img class="tg-header-mascot" alt="" width="45" height="54"><div><strong id="tg-chat-title">Teco · O teu assistente</strong><small><span class="tg-state-label">Pronto para ajudar</span></small></div><button type="button" class="tg-close" aria-label="Fechar assistente">×</button></header>
+      <div class="tg-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com o Teco"></div>
+      <div class="tg-tools"><button type="button" data-tg-query="resumo">O meu dia</button><button type="button" data-tg-query="pedidos do portal">Portal</button><button type="button" data-tg-query="alertas">Alertas</button><button type="button" class="tg-snooze">Silenciar 1 h</button></div><div class="tg-shortcuts" aria-label="Atalhos disponíveis"></div>
       <form class="tg-form"><label class="tg-sr" for="tg-question">O que precisas de encontrar?</label><input id="tg-question" maxlength="300" autocomplete="off" placeholder="Ex.: o que tenho hoje?"><button type="submit" aria-label="Enviar pedido">➜</button></form>
       <footer>Consulta dos dados carregados · sem IA paga</footer>
     </section>
-    <div class="tg-proactive" hidden><button type="button" class="tg-alert-open"></button><button type="button" class="tg-alert-dismiss" aria-label="Dispensar aviso">×</button></div><div class="tg-launcher"><button type="button" class="tg-minimize" aria-label="Minimizar mascote" title="Minimizar mascote">−</button><button type="button" class="tg-open" aria-label="Abrir assistente Toto" aria-expanded="false"><img alt="" width="124" height="132"><span>Precisas de ajuda?</span><b class="tg-badge" hidden></b></button></div>`;
+    <div class="tg-proactive" hidden><button type="button" class="tg-alert-open"></button><button type="button" class="tg-alert-dismiss" aria-label="Dispensar aviso">×</button></div><div class="tg-launcher"><button type="button" class="tg-minimize" aria-label="Minimizar mascote" title="Minimizar mascote">−</button><button type="button" class="tg-open" aria-label="Abrir assistente Teco" aria-expanded="false"><img alt="" width="124" height="132"><span>Precisas de ajuda?</span><b class="tg-badge" hidden></b></button></div>`;
   document.body.append(root);
   const panel = root.querySelector('.tg-chat'), log = root.querySelector('.tg-messages');
   const input = root.querySelector('input'), toggle = root.querySelector('.tg-open');
@@ -74,7 +74,7 @@
     if(!total){hint.hidden=true;lastAlertKey='';if(root.dataset.state==='alert')animate();}
     if(key && key!==lastAlertKey && !opened && Date.now()>=mutedUntil && Date.now()-lastHintAt>60000){
       lastAlertKey=key;lastHintAt=Date.now();
-      root.querySelector('.tg-alert-open').textContent=`Tens ${total} ${total === 1 ? 'alerta' : 'alertas'}. Queres ver o que precisa de atenção?`;
+      root.querySelector('.tg-alert-open').textContent=`${alerts[0]?.title || 'Assuntos a tratar'}: ${alerts[0]?.items.length || total}. Tens ${total} ${total === 1 ? 'alerta' : 'alertas'}. Queres ver o que precisa de atenção?`;
       hint.hidden=false;animate('alert');
       clearTimeout(hintTimer);hintTimer=setTimeout(()=>{hint.hidden=true;animate();},12000);
     }
@@ -90,17 +90,31 @@
     animate(response.state);return true;
   }
   motion.addEventListener('change', () => animate());
-  picture.addEventListener('error', () => { picture.hidden = true; toggle.querySelector('span').textContent = 'Assistente Toto'; });
+  picture.addEventListener('error', () => { picture.hidden = true; toggle.querySelector('span').textContent = 'Assistente Teco'; });
   function message(text, from = 'tg', actions = []) {
     const item = document.createElement('div'); item.className = 'tg-message ' + (from === 'user' ? 'tg-from-user' : '');
     const p = document.createElement('p'); p.textContent = text; item.append(p);
     actions.forEach(action => {
       const b = document.createElement('button'); b.type = 'button'; b.textContent = action.label;
-      b.addEventListener('click', () => action.query ? answer(action.query) : navigate(action.id)); item.append(b);
+      b.addEventListener('click', () => action.query ? answer(action.query) : action.recordType ? openRecord(action) : navigate(action.id)); item.append(b);
     });
     log.append(item);
     while (log.children.length > 40) log.firstElementChild.remove();
     log.scrollTop = log.scrollHeight;
+  }
+  function openRecord(action) {
+    sync(); if(root.hidden)return;
+    const snap=snapshot();if(!snap?.ready)return;
+    const type=action.recordType,id=action.recordId;
+    const item=(type==='os'||type==='drafts'?snap.os:type==='clients'?snap.clients:type==='assistance'?snap.assistance:[]).find(x=>x.id===id);
+    if(!item){message('Este registo já não está disponível no teu perfil. Faz uma nova consulta.');return;}
+    setOpen(false);
+    if(type==='os'||type==='drafts'){abrirVerOS(id);if(type==='drafts')_verOsMostrar(id,'relatorios');}
+    else if(type==='clients')abrirWorkspaceCliente(id);
+    else if(type==='assistance'){
+      if(permitted().some(a=>a.id==='clientes')){abrirWorkspaceCliente(item.clienteId);_wsClienteAba(item.clienteId,'assistencias');}
+      else navigate('assistencias');
+    }
   }
   function navigate(id) {
     sync(); if (root.hidden) return;
@@ -123,12 +137,12 @@
   }
   function welcome() {
     log.replaceChildren();
-    message('Olá! Sou o Toto. Agora posso consultar o teu dia, identificar OS atrasadas, contratos a vencer e alertas de stock. Experimenta “o que tenho hoje?” ou “alertas”. As respostas usam os dados carregados da tua empresa e do teu perfil.');
+    message('Olá! Sou o Teco. Posso ajudar-te a decidir o que tratar primeiro: pedidos do portal, assistências urgentes, OS atrasadas e relatórios em rascunho. Também pesquiso clientes, contratos e stock, e abro o registo que escolheres. Experimenta “o que tenho hoje?” ou “alertas”. As respostas usam os dados carregados da tua empresa e do teu perfil.');
   }
   function setOpen(value) {
     opened = value; panel.hidden = !value; root.classList.toggle('tg-is-open', value);
     toggle.setAttribute('aria-expanded', String(value));
-    toggle.setAttribute('aria-label', value ? 'Fechar assistente Toto' : 'Abrir assistente Toto');
+    toggle.setAttribute('aria-label', value ? 'Fechar assistente Teco' : 'Abrir assistente Teco');
     if (value) { hint.hidden=true; quickLinks(); animate('wave'); input.focus({preventScroll:true}); log.scrollTop = log.scrollHeight; }
     else if (!root.hidden) toggle.focus({preventScroll:true});
   }
@@ -138,7 +152,7 @@
     const kiosk = typeof _quiosqueDeveEstarAtivo === 'function' && _quiosqueDeveEstarAtivo();
     if (key !== identity) {
       identity = key; opened = false; panel.hidden = true; root.classList.remove('tg-is-open');
-      toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Abrir assistente Toto');
+      toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Abrir assistente Teco');
       clearTimeout(replyTimer); clearTimeout(hintTimer); lastContext=''; lastAlertKey=''; mutedUntil=0; lastHintAt=0; hint.hidden=true; badge.hidden=true; root.querySelector('.tg-snooze').textContent='Silenciar 1 h'; input.disabled=false; root.querySelector('.tg-form button').disabled=false; input.value = ''; minimized = false; root.classList.remove('tg-compact'); welcome();
     }
     root.hidden = !u || u.role === 'cliente' || !!kiosk;
@@ -153,7 +167,7 @@
     if (/^(ola|bom dia|boa tarde|boa noite|oi|obrigad[oa])$/.test(query)) { message('Olá! Em que área da Total Gest precisas de ajuda?'); return; }
     const allowed = permitted();
     if (/^(ajuda|menu|opcoes|o que fazes|o que podes fazer)$/.test(query)) {
-      message('Posso consultar OS de hoje, amanhã ou em atraso, contratos a vencer, stock baixo e pesquisar clientes. Experimenta também “resumo” ou “alertas”. Para navegar, escolhe uma área:', 'tg', allowed); return;
+      message('Posso consultar o teu dia, pedidos do portal, assistências urgentes, relatórios por assinar, contratos a vencer e stock. Experimenta “OS do cliente João”, “stock de cabo” ou “como concluir um serviço”. Experimenta também “resumo” ou “alertas”. Para navegar, escolhe uma área:', 'tg', allowed); return;
     }
     const matches = allowed.map(a => {
       const phrases = [normalize(a.label), ...(synonyms[a.id] || [])];

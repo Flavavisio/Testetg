@@ -6293,6 +6293,7 @@
             const _bgVerOs = document.querySelector('#modalGenericoOverlay .modal-actions .btn-success'); if (_bgVerOs) { _bgVerOs.style.display = ''; _bgVerOs.innerHTML = '<i class="fas fa-check"></i> Finalizar'; }
             overlay.classList.add('open', 'modal-veros');
             _verOsMostrar(osId, 'folhas');
+            window.tgOperationOS?.(osId);
         }
         function _verOsMostrar(osId, aba) {
             const os = dados.servicos?.find(s => s.id === osId); if (!os) return;
@@ -32719,7 +32720,7 @@ window._relPrefill = function(msg){
             if (usuarioLogado.role === 'admin' || usuarioLogado.role === 'subadmin') {
                 html += `<a class="tg-nav-item" data-secao="dashboard-central" onclick="abrirSecao('dashboard-central')"><i class="fas fa-chart-line"></i><span>Dashboard Central</span></a>`;
             }
-            if (layoutAtual === 'foco' || layoutAtual === 'aurora') {
+            if (['sidebar', 'foco', 'aurora'].includes(layoutAtual)) {
                 // "Total Gest Foco": clicar num grupo abre-o em acordeão, com os itens logo por
                 // baixo desse grupo — não abre mais nenhum painel lateral à parte.
                 document.querySelectorAll('#cardsGrid .grupo-cards').forEach(grupo => {
@@ -32768,6 +32769,7 @@ window._relPrefill = function(msg){
                 });
             }
             nav.innerHTML = html;
+            window.tgOperationRefresh?.();
             const fu = document.getElementById('tgSideUser');
             if (fu) fu.innerHTML = `<i class="fas fa-user-circle"></i> ${usuarioLogado.nome || ''}<div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${_papelLabel(usuarioLogado.role)}</div>`;
             const sb = document.getElementById('tgSideBrandNome');
@@ -33856,6 +33858,7 @@ window._relPrefill = function(msg){
                 if (home) home.style.display = 'none';
                 if (grid) grid.style.display = '';
             }
+            window.tgOperationRefresh?.();
         }
         function irParaInicio() {
             _contextoAtual = '__inicio';

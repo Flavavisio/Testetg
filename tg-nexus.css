@@ -63,7 +63,7 @@ body.tg-nexus #homeAgendaWrap #omeudia>*{min-width:0}
 .nx-search,.nx-density,.nx-side-search{display:flex;align-items:center;gap:9px;border:1px solid var(--nx-border);border-radius:10px;background:var(--nx-surface);color:var(--nx-muted);padding:11px 13px;cursor:pointer;font:inherit;font-size:.8rem;min-height:44px}
 .nx-search kbd{font:inherit;font-size:.62rem;background:var(--nx-bg);border:1px solid var(--nx-border);border-radius:4px;padding:3px;margin-left:20px}
 .nx-side-search{background:#1c2d47;border-color:#35465f;color:#bdc9df;margin:8px 18px;text-align:left}
-.nx-overview{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:22px}
+.nx-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:22px}
 .nx-module{min-width:0;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--nx-surface);border:1px solid var(--nx-border);border-radius:12px;padding:15px 13px;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;font:inherit;color:var(--nx-text)}
 .nx-module:hover{border-color:var(--nx-accent);box-shadow:0 5px 18px #315bdb12;transform:translateY(-2px)}
 .nx-module-top{display:flex;align-items:center;justify-content:space-between;color:var(--nx-accent);margin-bottom:3px}
@@ -125,3 +125,16 @@ body.tg-nexus #homeAlertas .alerta-linha{padding:11px;border-color:var(--nx-bord
 body.tg-nexus #homeAlertas .alerta-linha.danger{border-color:#d9606055;background:#d9606010}
 body.tg-nexus #homeAlertas .alertas-card{max-height:390px;overflow:auto;scrollbar-width:thin}
 body.tg-nexus #tgHome .tgm-alerta-admin{background:var(--nx-bg);color:var(--nx-text)}
+
+.nx-shortcut-toolbar{display:flex;justify-content:flex-end;margin:-6px 0 10px}
+.nx-shortcut-toolbar button,.nx-shortcut-actions button,.nx-shortcut-row button{font:inherit;font-size:.8rem;border:1px solid var(--nx-border);border-radius:9px;background:var(--nx-surface);color:var(--nx-text);min-height:44px;padding:8px 12px;cursor:pointer}
+.nx-shortcuts-help{color:var(--nx-muted);font-size:.85rem;line-height:1.5}
+.nx-shortcut-row{display:grid;grid-template-columns:20px minmax(0,1fr) 44px 44px;gap:8px;align-items:center;margin:10px 0}
+.nx-shortcut-row label{color:var(--nx-muted);font-weight:600}
+.nx-shortcut-row select{min-width:0;width:100%;font:inherit;font-size:16px;min-height:44px;border:1px solid var(--nx-border);border-radius:9px;background:var(--nx-bg);color:var(--nx-text);padding:8px}
+.nx-shortcut-row button{padding:8px;font-size:1.1rem}
+.nx-shortcut-row button:disabled{opacity:.35;cursor:default}
+.nx-shortcut-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}
+.nx-shortcut-actions [data-nx-shortcuts-save]{background:#315bdb;color:white;border-color:#315bdb}
+#nexusShortcutsStatus{font-size:.8rem;color:var(--nx-muted)}
+@media(max-width:380px){.nx-shortcut-row{gap:5px;grid-template-columns:16px minmax(0,1fr) 40px 40px}.nx-shortcut-row button{min-width:0}}

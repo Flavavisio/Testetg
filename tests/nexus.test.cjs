@@ -19,4 +19,37 @@ w.TGNexus.close();w.document.querySelector('.nx-module[data-nx-open="servicos"]'
 w.document.querySelector('[data-nx-density]').click();assert(w.document.body.classList.contains('nx-comfortable'));w.document.querySelector('[data-nx-fold]').click();assert(w.document.querySelector('.tgm-panel').classList.contains('nx-folded'));w.TGNexus.refresh();assert(w.document.querySelector('.tgm-panel').classList.contains('nx-folded'));
 w.usuarioLogado={id:'b',adminId:'company-b',role:'funcionario'};w.TGNexus.refresh();assert(!w.document.body.classList.contains('nx-comfortable'));assert(!w.document.querySelector('.tgm-panel').classList.contains('nx-folded'));w.TGNexus.open();licensed=false;query.value='servico';query.dispatchEvent(new w.Event('input'));assert.equal(w.document.querySelectorAll('.nx-result').length,0);
 w.usuarioLogado=null;w.TGNexus.refresh();assert(!w.document.body.classList.contains('tg-nexus'));assert(!w.document.getElementById('nexusSearchDialog').open);
+
+// Six chosen shortcuts stay fixed when modules are opened and refreshed.
+licensed=true;w.usuarioLogado={id:'a',role:'admin'};reports.classList.remove('hidden-card');
+add('assistencias','Assistências');add('agenda','Agenda');add('obras-longa','Obras');const fleet=add('frota','Frota');
+const ids=()=>[...w.document.querySelectorAll('.nx-module')].map(e=>e.dataset.nxOpen);
+const defaults=['clientes','servicos','assistencias','agenda','obras-longa','relatorio-os'];
+w.TGNexus.refresh();assert.deepEqual(ids(),defaults);
+w.document.querySelector('[data-nx-open="relatorio-os"]').click();w.TGNexus.refresh();assert.deepEqual(ids(),defaults);
+const edit=()=>w.document.querySelector('[data-nx-shortcuts]').click();
+const choose=(i,id)=>{const select=w.document.getElementById('nexusSlot'+i);select.value=id;select.dispatchEvent(new w.Event('change',{bubbles:true}));};
+edit();assert.equal(w.document.querySelectorAll('[data-nx-slot]').length,6);
+assert(!w.document.querySelector('#nexusShortcutRows img'));
+assert(![...w.document.querySelectorAll('#nexusSlot0 option')].some(o=>o.value==='crm'||o.value==='artigos'));
+choose(0,'frota');w.document.querySelector('[data-nx-shortcuts-close]').click();assert.deepEqual(ids(),defaults);
+edit();choose(0,'frota');w.document.querySelector('[data-nx-move="0"][data-nx-direction="1"]').click();
+w.document.querySelector('[data-nx-shortcuts-save]').click();
+const custom=['servicos','frota','assistencias','agenda','obras-longa','relatorio-os'];assert.deepEqual(ids(),custom);
+w.TGNexus.refresh();assert.deepEqual(ids(),custom);edit();assert.equal(w.document.getElementById('nexusSlot1').value,'frota');
+// Revoked access is caught before saving, and inaccessible modules never open.
+fleet.classList.add('hidden-card');w.document.querySelector('[data-nx-shortcuts-save]').click();
+assert(w.document.getElementById('nexusShortcutsDialog').open);assert(w.document.getElementById('nexusShortcutsStatus').textContent.includes('mudaram'));
+w.document.querySelector('[data-nx-shortcuts-close]').click();fleet.classList.remove('hidden-card');
+// Restoring is staged; cancelling preserves the saved configuration.
+edit();w.document.querySelector('[data-nx-shortcuts-reset]').click();w.document.querySelector('[data-nx-shortcuts-close]').click();w.TGNexus.refresh();assert.deepEqual(ids(),custom);
+edit();w.document.querySelector('[data-nx-shortcuts-reset]').click();w.document.querySelector('[data-nx-shortcuts-save]').click();assert.deepEqual(ids(),defaults);
+// Tenant/user switches close the editor and isolate saved choices.
+edit();w.usuarioLogado={id:'b',adminId:'company-b',role:'funcionario'};w.TGNexus.refresh();assert(!w.document.getElementById('nexusShortcutsDialog').open);assert.deepEqual(ids(),defaults);
+edit();choose(0,'frota');w.document.querySelector('[data-nx-shortcuts-save]').click();assert.equal(ids()[0],'frota');
+w.usuarioLogado={id:'a',role:'admin'};w.TGNexus.refresh();assert.deepEqual(ids(),defaults);
+// Storage failures keep the dialog open with an actionable message.
+edit();const originalSet=w.Storage.prototype.setItem;w.Storage.prototype.setItem=function(){throw new Error('blocked');};
+w.document.querySelector('[data-nx-shortcuts-save]').click();assert(w.document.getElementById('nexusShortcutsDialog').open);assert(w.document.getElementById('nexusShortcutsStatus').textContent.includes('Não foi possível guardar'));w.Storage.prototype.setItem=originalSet;
+w.usuarioLogado=null;w.TGNexus.refresh();assert(!w.document.getElementById('nexusShortcutsDialog').open);
 w.close();console.log('PASS Nexus: mobile layout, previous layouts, superadmin, restricted modules, safe titles, accent search, revoked access, original actions, account-scoped preferences, collapse, expired license, logout.');

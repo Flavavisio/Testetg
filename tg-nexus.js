@@ -6,7 +6,15 @@
     const active = () => !!user() && user().role !== 'cliente' && typeof obterLayout === 'function' && obterLayout() === 'aurora';
     const key = () => 'tg_nexus:' + JSON.stringify([user()?.adminId || user()?.id, user()?.id]);
     const read = () => { try { return JSON.parse(localStorage.getItem(key())) || {}; } catch (_) { return {}; } };
-    const save = value => { try { localStorage.setItem(key(), JSON.stringify(value)); } catch (_) {} };
+    const save = value => { try { localStorage.setItem(key(), JSON.stringify(value)); return true; } catch (_) { return false; } };
+    const defaultShortcuts = ['clientes','servicos','assistencias','agenda','obras-longa','relatorio-os'];
+    let shortcutDraft = [], shortcutScope = '';
+    function shortcutIds(all, prefs = read()) {
+        const requested = Array.isArray(prefs.shortcuts) ? prefs.shortcuts : defaultShortcuts;
+        const available = new Set(all.map(e => e.id));
+        return [...new Set([...requested, ...defaultShortcuts, ...all.map(e => e.id)])].filter(id => available.has(id)).slice(0, 6);
+    }
+    const shortcutName = e => e.id === 'agenda' ? 'Agenda de equipa' : e.name;
     const clean = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const esc = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let opener = null, selection = 0, scope = '', observerPending = false;
@@ -69,6 +77,33 @@
         $('nexusQuery').focus();
     }
     function close() { const dialog = $('nexusSearchDialog'); if (dialog?.open) dialog.close(); }
+    function closeShortcuts() { const dialog = $('nexusShortcutsDialog'); if (dialog?.open) dialog.close(); }
+    function renderShortcuts() {
+        const all = entries();
+        $('nexusShortcutRows').innerHTML = shortcutDraft.map((id, i) => `<div class="nx-shortcut-row"><label for="nexusSlot${i}">${i + 1}</label><select id="nexusSlot${i}" data-nx-slot="${i}" aria-label="Módulo na posição ${i + 1}">${all.map(e => `<option value="${esc(e.id)}"${id === e.id ? ' selected' : ''}${id !== e.id && shortcutDraft.includes(e.id) ? ' disabled' : ''}>${esc(shortcutName(e))}</option>`).join('')}</select><button type="button" data-nx-move="${i}" data-nx-direction="-1" aria-label="Mover posição ${i + 1} para cima"${i === 0 ? ' disabled' : ''}>↑</button><button type="button" data-nx-move="${i}" data-nx-direction="1" aria-label="Mover posição ${i + 1} para baixo"${i === shortcutDraft.length - 1 ? ' disabled' : ''}>↓</button></div>`).join('') || '<p class="nx-empty">Não existem módulos disponíveis.</p>';
+        $('nexusShortcutsSave').disabled = !shortcutDraft.length;
+    }
+    function openShortcuts() {
+        if (!active()) return;
+        close();
+        let d = $('nexusShortcutsDialog');
+        if (!d) {
+            d = document.createElement('dialog'); d.id = 'nexusShortcutsDialog'; d.className = 'nx-dialog';
+            d.setAttribute('aria-labelledby', 'nexusShortcutsTitle');
+            d.innerHTML = '<div class="nx-dialog-head"><div><span class="nx-eyebrow">O SEU INÍCIO</span><h2 id="nexusShortcutsTitle">Personalizar atalhos</h2></div><button type="button" data-nx-shortcuts-close aria-label="Fechar personalização">×</button></div><p class="nx-shortcuts-help">Escolha os seis módulos e use as setas para mudar a posição. A ordem é da esquerda para a direita, de cima para baixo.</p><div id="nexusShortcutRows"></div><p id="nexusShortcutsStatus" role="status"></p><div class="nx-shortcut-actions"><button type="button" data-nx-shortcuts-reset>Repor padrão</button><button type="button" data-nx-shortcuts-close>Cancelar</button><button type="button" id="nexusShortcutsSave" data-nx-shortcuts-save>Guardar</button></div>';
+            document.body.appendChild(d);
+            d.addEventListener('click', e => { if (e.target === d) closeShortcuts(); });
+            d.addEventListener('change', e => {
+                const slot = e.target.closest('[data-nx-slot]'); if (!slot) return;
+                const index = Number(slot.dataset.nxSlot), id = slot.value;
+                if (entries().some(e => e.id === id) && !shortcutDraft.some((value, i) => value === id && i !== index)) shortcutDraft[index] = id;
+                renderShortcuts(); $('nexusSlot' + index)?.focus();
+            });
+        }
+        shortcutDraft = shortcutIds(entries()); shortcutScope = key();
+        $('nexusShortcutsStatus').textContent = ''; renderShortcuts();
+        if (!d.open) d.showModal();
+    }
     function ensureDialog() {
         if ($('nexusSearchDialog')) return;
         const d = document.createElement('dialog'); d.id = 'nexusSearchDialog'; d.className = 'nx-dialog';
@@ -105,22 +140,21 @@
         const enabled = active();
         document.body.classList.toggle('tg-nexus', enabled);
         if (!enabled) {
-            close(); scope = '';
+            close(); closeShortcuts(); scope = '';
             document.querySelectorAll('.nx-folded').forEach(p => p.classList.remove('nx-folded'));
             return;
         }
-        if (scope !== key()) { close(); scope = key(); }
+        if (scope !== key()) { close(); closeShortcuts(); scope = key(); }
         document.body.classList.toggle('nx-comfortable', read().density === 'comfortable');
         const home = $('tgHome');
         if (home) {
             let workspace = $('nexusWorkspace');
             if (!workspace) { workspace = document.createElement('div'); workspace.id = 'nexusWorkspace'; home.prepend(workspace); }
             const all = entries();
-            const prefs = read(), recent = Array.isArray(prefs.recent) ? prefs.recent : [];
-            const preferred = [...recent, 'servicos','assistencias','clientes','agenda','obras-longa','relatorio-os'];
-            const chosen = [...new Set([...preferred,...all.map(e=>e.id)])].map(id => all.find(e=>e.id===id)).filter(Boolean).slice(0,6);
+            const prefs = read();
+            const chosen = shortcutIds(all, prefs).map(id => all.find(e => e.id === id));
             const date = new Date().toLocaleDateString('pt-PT', {weekday:'long',day:'numeric',month:'long'});
-            const html = `<div class="nx-workspace-head"><div><span class="nx-eyebrow">TOTAL GEST <span class="nx-brand-tag">NEXUS</span></span><h1>A sua operação, à vista.</h1><p>${esc(date)}</p></div><div class="nx-tools"><button type="button" class="nx-search" data-nx-search><i class="fas fa-search" aria-hidden="true"></i><span>Procurar módulo</span><kbd>Ctrl K</kbd></button><button type="button" class="nx-density" data-nx-density aria-label="Alterar densidade da informação" aria-pressed="${prefs.density !== 'comfortable'}" title="Alternar entre compacto e espaçoso"><i class="fas fa-sliders" aria-hidden="true"></i><span>${prefs.density === 'comfortable' ? 'Espaçoso' : 'Compacto'}</span></button></div></div><div class="nx-overview">${chosen.map((e,i) => `<button type="button" class="nx-module nx-tone-${i % 3}" data-nx-open="${esc(e.id)}"><span class="nx-module-top"><i class="${esc(e.icon)}" aria-hidden="true"></i><i class="fas fa-arrow-up-right-from-square nx-arrow" aria-hidden="true"></i></span><strong>${esc(e.name)}</strong><small>${esc(e.subtitle)}</small></button>`).join('')}</div>`;
+            const html = `<div class="nx-workspace-head"><div><span class="nx-eyebrow">TOTAL GEST <span class="nx-brand-tag">NEXUS</span></span><h1>A sua operação, à vista.</h1><p>${esc(date)}</p></div><div class="nx-tools"><button type="button" class="nx-search" data-nx-search><i class="fas fa-search" aria-hidden="true"></i><span>Procurar módulo</span><kbd>Ctrl K</kbd></button><button type="button" class="nx-density" data-nx-density aria-label="Alterar densidade da informação" aria-pressed="${prefs.density !== 'comfortable'}" title="Alternar entre compacto e espaçoso"><i class="fas fa-sliders" aria-hidden="true"></i><span>${prefs.density === 'comfortable' ? 'Espaçoso' : 'Compacto'}</span></button></div></div><div class="nx-shortcut-toolbar"><button type="button" data-nx-shortcuts>Personalizar atalhos</button></div><div class="nx-overview">${chosen.map((e,i) => `<button type="button" class="nx-module nx-tone-${i % 3}" data-nx-open="${esc(e.id)}"><span class="nx-module-top"><i class="${esc(e.icon)}" aria-hidden="true"></i><i class="fas fa-arrow-up-right-from-square nx-arrow" aria-hidden="true"></i></span><strong>${esc(shortcutName(e))}</strong><small>${esc(e.subtitle)}</small></button>`).join('')}</div>`;
             // Avoid replacing a focused control on background refreshes.
             if (workspace.dataset.content !== html) { workspace.innerHTML = html; workspace.dataset.content = html; }
         }
@@ -149,6 +183,32 @@
     }
     document.addEventListener('click', e => {
         if (!active()) return;
+        if (e.target.closest('[data-nx-shortcuts]')) openShortcuts();
+        if (e.target.closest('[data-nx-shortcuts-close]')) closeShortcuts();
+        if (e.target.closest('[data-nx-shortcuts-reset]')) {
+            shortcutDraft = shortcutIds(entries(), {}); renderShortcuts();
+            $('nexusShortcutsStatus').textContent = 'Padrão reposto. Clique em Guardar para aplicar.';
+        }
+        const move = e.target.closest('[data-nx-move]');
+        if (move) {
+            const from = Number(move.dataset.nxMove), to = from + Number(move.dataset.nxDirection);
+            if (to >= 0 && to < shortcutDraft.length) {
+                [shortcutDraft[from], shortcutDraft[to]] = [shortcutDraft[to], shortcutDraft[from]];
+                renderShortcuts();
+                $('nexusShortcutRows').querySelector(`[data-nx-move="${to}"][data-nx-direction="${move.dataset.nxDirection}"]`)?.focus();
+            }
+        }
+        if (e.target.closest('[data-nx-shortcuts-save]')) {
+            if (shortcutScope !== key()) { closeShortcuts(); return; }
+            const valid = shortcutIds(entries(), {shortcuts: shortcutDraft});
+            if (valid.length !== shortcutDraft.length || valid.some((id, i) => id !== shortcutDraft[i])) {
+                shortcutDraft = valid; renderShortcuts();
+                $('nexusShortcutsStatus').textContent = 'Os módulos disponíveis mudaram. Confirme a nova seleção.'; return;
+            }
+            const prefs = read(); prefs.shortcuts = [...shortcutDraft];
+            if (save(prefs)) { closeShortcuts(); refresh(); }
+            else $('nexusShortcutsStatus').textContent = 'Não foi possível guardar. Verifique o armazenamento do navegador e tente novamente.';
+        }
         if (e.target.closest('[data-nx-search]')) open();
         const entry = e.target.closest('[data-nx-open]'); if (entry) go(entry.dataset.nxOpen);
         if (e.target.closest('[data-nx-close]')) close();

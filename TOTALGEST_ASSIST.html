@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-tg-module="assistencias">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -236,6 +236,8 @@
         .btn-voltar-tg { padding:9px 11px; }
     }
 </style>
+<link rel="stylesheet" href="tg-integrated-modules.css?v=1.0.0">
+<script src="tg-module-embed.js?v=1.0.0"></script>
 </head>
 <body>
 
@@ -620,6 +622,8 @@
             };
         }
         async function guardarDados(d, apenas) {
+            _tgModuleAssertAccess();
+            window._tgModuleUnsynced = true;
             let houveErro = null;
             const colecoes = apenas && apenas.length ? apenas : ORDEM_CRM;
             for (const col of colecoes) {
@@ -656,6 +660,8 @@
                 mostrarStatusCRM('⚠️ Algumas alterações podem não ter sido guardadas no servidor: ' + houveErro.message + ' <a onclick="guardarDados(dados)">Tentar de novo</a>');
                 throw houveErro;
             }
+            window._tgModuleUnsynced = false;
+            _tgModuleSaved(apenas && apenas.length ? apenas : ORDEM_CRM);
         }
 
         // Notifica uma pessoa (registo em "notificacoes" + push a sério). Segue a mesma regra já
@@ -1024,6 +1030,7 @@
                         return;
                     }
                     await guardarDados(dados, ['servicos']);
+                    _tgModuleSaved(['assistencias','servicos']);
                     mostrarStatusCRM('✅ Assistência eliminada.');
                 } catch (e) {
                     console.error('eliminar assistência:', e);
@@ -1148,6 +1155,7 @@
         // ===================== Arranque =====================
         document.addEventListener('DOMContentLoaded', async function () {
             try {
+                _tgModuleAssertAccess();
                 const { data } = await supa.auth.getSession();
                 if (!data || !data.session || !data.session.user) {
                     document.getElementById('loginNecessario').style.display = 'block';
@@ -1174,12 +1182,7 @@
                 // não impede ninguém de abrir este ficheiro diretamente pelo link.
                 if (!superAdmin) {
                     const adminRec = (dados.administradores || []).find(a => a.id === tenantId);
-                    // O Assist vem sempre incluído na licença de CRM Comercial (mesma subscrição) —
-                    // por isso conta como ativo também quando o CRM estiver ativo, mesmo em contas
-                    // que só têm o campo assistPlano por preencher (mesma regra que já existe no
-                    // index.html, replicada aqui porque este ficheiro corre à parte).
-                    const crmAtivo = !!(adminRec?.crmPlano && adminRec?.crmExpiracao && adminRec.crmExpiracao > Date.now());
-                    const assistAtivo = crmAtivo || !!(adminRec?.assistPlano && adminRec?.assistExpiracao && adminRec.assistExpiracao > Date.now());
+                    const assistAtivo = !!(adminRec?.assistPlano && adminRec?.assistExpiracao && adminRec.assistExpiracao > Date.now());
                     if (!assistAtivo) {
                         const loginDiv = document.getElementById('loginNecessario');
                         loginDiv.innerHTML = `
@@ -1191,6 +1194,7 @@
                         return;
                     }
                 }
+                _tgModuleAssertAccess();
                 usuarioLogado.nome = obterNomeFuncionario(usuarioLogado.id) || 'Eu';
                 document.getElementById('crmApp').style.display = 'block';
                 renderizarTudo();

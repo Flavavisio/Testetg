@@ -5436,7 +5436,7 @@
                 // OS a partir dele, que é o próprio fluxo que já usas hoje.
                 const onclick = a.osGeradaId
                     ? `_wsSairPara('${clienteId}');abrirVerOS('${a.osGeradaId}')`
-                    : `window.open('TOTALGEST_ASSIST.html?criarOS=${a.id}', '_blank')`;
+                    : `_abrirAssist(null,'${a.id}')`;
                 return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f1f5f9;cursor:pointer;" onclick="${onclick}">
                     <i class="fas fa-headset" style="color:#94a3b8;width:18px;"></i>
                     <div style="flex:1;min-width:0;">
@@ -5550,7 +5550,7 @@
         }
         function _wsAssistBotaoAbrirApp() {
             return `<div style="text-align:center;margin-top:14px;">
-                <button class="btn btn-sm btn-outline" onclick="window.open('TOTALGEST_ASSIST.html', '_blank')"><i class="fas fa-external-link-alt"></i> Abrir Total Gest Assist</button>
+                <button class="btn btn-sm btn-outline" onclick="_abrirAssistGeral()"><i class="fas fa-headset"></i> Abrir Assistências</button>
             </div>`;
         }
         // Obras de Longa Duração — mesmo padrão dos outros separadores: lista, estado colorido,
@@ -8262,44 +8262,17 @@
         // bloco "Em breve" já visível ao cliente.
         // const PRECO_CRM_MENSAL = 34.99;  // valor a confirmar quando o addon avançar
         // const PRECO_CRM_ANUAL = +(34.99 * 12 * 0.9).toFixed(2);
-        // O cardCRM é agora um <a href="TOTALGEST_CRM.html"> real no HTML — isto é só o
-        // "porteiro": se o módulo não estiver ativo, cancela a navegação (preventDefault) e
-        // mostra o aviso. Se estiver ativo, devolve true e deixa o próprio clique no link (um
-        // gesto genuíno do utilizador) abrir o separador novo — sem passar por window.open()
-        // nem por cliques simulados via JS, que alguns browsers bloqueiam silenciosamente em
-        // páginas abertas como ficheiro local (file://).
+        // Open the purchased module within the app; the host checks license and role again.
         function _abrirCRM(ev) {
-            const admin = adminDoUtilizador();
-            if (!moduloCrmAtivo(admin)) {
-                if (ev) ev.preventDefault();
-                if (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') {
-                    alert('O CRM Comercial ainda não está ativo para a tua empresa.\n\nPodes ativá-lo em "Minha Licença" — Leads, Oportunidades, Propostas, Comissões e Dashboard Comercial.');
-                } else {
-                    alert('O CRM Comercial ainda não está ativo para a tua empresa.\n\nFala com o teu administrador para ativar este addon.');
-                }
-                return false;
-            }
-            return true;
+            if (ev) ev.preventDefault();
+            return window.TGModules.open('crm');
         }
-        // Total Gest Assist — add-on igual ao CRM, só abre para quem tiver o módulo ativo.
-        function _abrirAssist(ev) {
-            const admin = adminDoUtilizador();
-            if (!moduloAssistAtivo(admin)) {
-                if (ev) ev.preventDefault();
-                alert('O Total Gest Assist ainda não está ativo para a tua empresa.\n\nFala com o administrador para ativares este addon — Gestão de pedidos de assistência técnica, com criação direta de Ordens de Serviço.');
-                return false;
-            }
-            return true;
+        function _abrirAssist(ev, criarOSId) {
+            if (ev) ev.preventDefault();
+            return window.TGModules.open('assistencias', criarOSId);
         }
-        // Clique no resto do cartão "Assistências" do Dashboard (fora das linhas da lista, que
-        // já têm o seu próprio link para "criar OS") — abre o Assist normal, numa aba nova.
         function _abrirAssistGeral() {
-            const admin = adminDoUtilizador();
-            if (!moduloAssistAtivo(admin)) {
-                alert('O Total Gest Assist ainda não está ativo para a tua empresa.\n\nFala com o administrador para ativares este addon — Gestão de pedidos de assistência técnica, com criação direta de Ordens de Serviço.');
-                return;
-            }
-            window.open('TOTALGEST_ASSIST.html', '_blank');
+            return window.TGModules.open('assistencias');
         }
         // Rondas / Vigilância — ficheiro à parte (TOTALGEST_RONDAS.html), mesmo padrão do CRM/Assist.
         function _abrirRondas(ev) {
@@ -8630,14 +8603,10 @@
         }
         function moduloAssistAtivo(admin) {
             if (!admin) return false;
-            // O Assist vem sempre incluído na licença de CRM Comercial (mesma subscrição) —
-            // por isso conta logo como ativo sempre que o CRM estiver ativo, mesmo em contas
-            // que já tinham o CRM ativado antes desta junção (sem precisar de nenhuma migração
-            // de dados). O campo assistPlano isolado continua a funcionar à parte, para o caso
-            // raro de o Super Admin querer dar Assist sem CRM.
-            if (moduloCrmAtivo(admin)) return true;
+            // Assist and CRM have independent entitlements, including those granted by packs.
             return !!admin.assistPlano && admin.assistExpiracao && admin.assistExpiracao > Date.now();
         }
+
         // Fonte única de verdade para "que add-ons estão ativos e quanto custam" — usada em
         // qualquer sítio que precise do valor TOTAL da licença (tabela de administradores,
         // página de Licenças, lembrete de pagamento, etc.). Nunca calcular isto separadamente
@@ -11848,6 +11817,7 @@
         // mesmos filtros que carregarDados() já aplicava a essa tabela, para nunca trazer mais
         // (nem menos) dados do que traria um carregamento completo.
         async function carregarTabelaEspecifica(col) {
+            const actorAtLoad = JSON.stringify([usuarioLogado?.adminId || usuarioLogado?.id, usuarioLogado?.id]);
             if (col === 'administradores' || col === 'encarregados') {
                 // Estes dois têm dados adicionais embutidos (licença; funcionários do encarregado)
                 // vindos de outras tabelas — mais seguro recarregar tudo do que replicar essa lógica.
@@ -11878,6 +11848,7 @@
             }
             const { data, error } = await _buscarPaginadoGenerico(q);
             if (error) { console.warn('carregarTabelaEspecifica (' + col + '):', error); return; }
+            if (actorAtLoad !== JSON.stringify([usuarioLogado?.adminId || usuarioLogado?.id, usuarioLogado?.id])) return;
             dados[col] = (data || []).map(M[col].from);
             const m = new Map();
             for (const o of dados[col]) m.set(o.id, JSON.stringify(M[col].to(o)));
@@ -19037,7 +19008,7 @@
                 </div>
 
                 <div class="hdc-row3">
-                    ${(moduloCrmAtivo(admin) || moduloAssistAtivo(admin)) ? (() => {
+                    ${moduloAssistAtivo(admin) ? (() => {
                         // Assistências ainda sem OS (precisam de decisão) vs. já convertidas em
                         // OS (em curso, só a acompanhar). Excluí sempre as já resolvidas/fechadas.
                         const _assistTodas = (dados.assistencias || []).filter(a => a.adminId === adminId && !a.apagadoSuperAdmin);
@@ -19053,7 +19024,7 @@
                         // disparar também o clique do cartão (que abre o Assist normal por baixo).
                         const _linhaSemOS = (a) => {
                             const nomeCli = a.clienteId ? _nomeClienteOS(a.clienteId) : (a.nomeCliente || 'Sem cliente');
-                            return `<a href="TOTALGEST_ASSIST.html?criarOS=${a.id}" target="_blank" rel="noopener" onclick="event.stopPropagation();return _abrirAssist(event);" style="display:block;font-size:.72rem;color:var(--htxt);text-decoration:none;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Criar OS a partir desta assistência">${_assistResumoHtml(a)}</a>`;
+                            return `<a href="#assistencias" onclick="event.stopPropagation();return _abrirAssist(event,'${a.id}');" style="display:block;font-size:.72rem;color:var(--htxt);text-decoration:none;padding:3px 0;border-bottom:1px dashed var(--hline);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Criar OS a partir desta assistência">${_assistResumoHtml(a)}</a>`;
                         };
                         const _linhaComOS = (a) => {
                             const nomeCli = a.clienteId ? _nomeClienteOS(a.clienteId) : (a.nomeCliente || 'Sem cliente');
@@ -32712,7 +32683,7 @@ window._relPrefill = function(msg){
                         const sec = c.getAttribute('data-card');
                         const ic = c.querySelector('.icon i')?.className || 'fas fa-circle';
                         const nome = c.querySelector('.info h3')?.textContent?.trim() || sec;
-                        const href = sec === 'crm' ? 'TOTALGEST_CRM.html' : (sec === 'assistencias' ? 'TOTALGEST_ASSIST.html' : (sec === 'rondas' ? 'TOTALGEST_RONDAS.html' : null));
+                        const href = sec === 'rondas' ? 'TOTALGEST_RONDAS.html' : null;
                         const onclickAttr = sec === 'crm' ? 'return _abrirCRM(event)' : (sec === 'assistencias' ? 'return _abrirAssist(event)' : (sec === 'rondas' ? 'return _abrirRondas(event)' : (sec === 'relatorios-personalizados' ? 'abrirGestaoRelatoriosPersonalizados()' : `abrirSecao('${sec}')`)));
                         const atributosExtra = href ? `href="${href}" target="_blank" rel="noopener"` : '';
                         html += `<a class="tg-nav-item" data-secao="${sec}" ${atributosExtra} onclick="${onclickAttr}"><i class="${ic}"></i><span>${nome}</span></a>`;
@@ -32730,11 +32701,8 @@ window._relPrefill = function(msg){
                         const sec = c.getAttribute('data-card');
                         const ic = c.querySelector('.icon i')?.className || 'fas fa-circle';
                         const nome = c.querySelector('.info h3')?.textContent?.trim() || sec;
-                        // CRM e Assistências abrem um ficheiro à parte (TOTALGEST_CRM.html /
-                        // TOTALGEST_ASSIST.html) num separador novo — por isso este item do menu
-                        // lateral tem de ser um <a href> a sério, tal como o card correspondente
-                        // no ecrã principal, e não um simples onclick sem destino nenhum.
-                        const href = sec === 'crm' ? 'TOTALGEST_CRM.html' : (sec === 'assistencias' ? 'TOTALGEST_ASSIST.html' : (sec === 'rondas' ? 'TOTALGEST_RONDAS.html' : null));
+                        // CRM and Assist open in the current application workspace.
+                        const href = sec === 'rondas' ? 'TOTALGEST_RONDAS.html' : null;
                         const onclickAttr = sec === 'crm' ? 'return _abrirCRM(event)' : (sec === 'assistencias' ? 'return _abrirAssist(event)' : (sec === 'rondas' ? 'return _abrirRondas(event)' : (sec === 'relatorios-personalizados' ? 'abrirGestaoRelatoriosPersonalizados()' : `abrirSecao('${sec}')`)));
                         const atributosExtra = href ? `href="${href}" target="_blank" rel="noopener"` : '';
                         html += `<a class="tg-nav-item" data-secao="${sec}" ${atributosExtra} onclick="${onclickAttr}"><i class="${ic}"></i><span>${nome}</span></a>`;
@@ -33900,6 +33868,7 @@ window._relPrefill = function(msg){
             else _voltarMeuDia();
         }
         function abrirSecao(nome) {
+            if (['crm', 'assistencias'].includes(nome) && !window.TGModules.prepare(nome)) return;
             if (nome === 'exportar-dados') { abrirModalExportarImportar(); return; }
             _registarUsoSecao(nome);
             if (usuarioLogado && usuarioLogado.role === 'cliente' && !_licencaValidaTenant()) {

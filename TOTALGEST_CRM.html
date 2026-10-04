@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-PT" data-tg-module="crm">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -289,6 +289,8 @@
         color:#9aa5c0 !important;
     }
 </style>
+<link rel="stylesheet" href="tg-integrated-modules.css?v=1.0.0">
+<script src="tg-module-embed.js?v=1.0.0"></script>
 </head>
 <body>
 
@@ -856,6 +858,8 @@
             };
         }
         async function guardarDados(d, apenas) {
+            _tgModuleAssertAccess();
+            window._tgModuleUnsynced = true;
             let houveErro = null;
             const colecoes = apenas && apenas.length ? apenas : ORDEM_CRM;
             for (const col of colecoes) {
@@ -870,6 +874,8 @@
                 mostrarStatusCRM('⚠️ Algumas alterações podem não ter sido guardadas no servidor: ' + houveErro.message + ' <a onclick="guardarDados(dados)">Tentar de novo</a>');
                 throw houveErro;
             }
+            window._tgModuleUnsynced = false;
+            _tgModuleSaved(apenas && apenas.length ? apenas : ORDEM_CRM);
         }
         // guardarDados() só faz upsert — nunca apaga do servidor o que desaparece da lista local
         // (ao contrário da app principal, o CRM não tem deteção automática de "isto sumiu daqui").
@@ -877,6 +883,7 @@
         // chamar esta função para apagar a linha a sério no Supabase — senão volta a aparecer
         // na próxima vez que a página carregar os dados de novo.
         async function _crmApagarRegisto(col, id) {
+            _tgModuleAssertAccess();
             const meta = M[col];
             if (!meta) return;
             const { error } = await supa.from(meta.tabela).delete().eq('id', id);
@@ -884,6 +891,7 @@
                 console.error('apagar ' + meta.tabela + ':', error.message);
                 mostrarStatusCRM('⚠️ Não foi possível apagar no servidor: ' + error.message + ' <a onclick="location.reload()">Recarregar</a>');
             }
+            if (!error) _tgModuleSaved([col]);
         }
         function renderizarTudo() {
             renderizarLeads();
@@ -3431,6 +3439,7 @@
         // ===================== Arranque =====================
         document.addEventListener('DOMContentLoaded', async function () {
             try {
+                _tgModuleAssertAccess();
                 const { data } = await supa.auth.getSession();
                 if (!data || !data.session || !data.session.user) {
                     document.getElementById('loginNecessario').style.display = 'block';
@@ -3469,6 +3478,7 @@
                         return;
                     }
                 }
+                _tgModuleAssertAccess();
                 usuarioLogado.nome = obterNomeFuncionario(usuarioLogado.id) || 'Eu';
                 document.getElementById('crmApp').style.display = 'block';
                 _aplicarTemaGuardadoCRM();

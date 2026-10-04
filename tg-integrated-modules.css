@@ -1,0 +1,22 @@
+/* Host surface */
+.section-container.tg-integrated-module{padding:0;overflow:hidden;min-width:0}
+.tg-module-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #e3e8f0}
+.tg-module-heading h2{font-size:1.1rem;margin:0}
+.tg-module-frame{display:block;border:0;width:100%;height:calc(100dvh - 190px);min-height:560px;background:#f4f6fa}
+body.dark-mode .tg-module-heading{border-color:#2b3950}
+body.tg-nexus .section-container.tg-integrated-module{padding:0}
+/* Embedded module uses tabs instead of duplicating the app's company sidebar. */
+html.tg-module-embedded .crm-shell{display:flex;flex-direction:column;min-height:100vh}
+html.tg-module-embedded .crm-sidebar{position:sticky;top:0;width:100%;min-width:0;height:auto;transform:none;z-index:210;border-right:0;padding:6px 10px}
+html.tg-module-embedded .crm-sidebar .brand,html.tg-module-embedded .crm-sidebar-footer,html.tg-module-embedded .crm-nav-label,html.tg-module-embedded .crm-menu-toggle,html.tg-module-embedded .crm-sidebar-backdrop,html.tg-module-embedded .btn-voltar-tg,html.tg-module-embedded #crmBtnTema,html.tg-module-embedded #crmBtnZoom{display:none!important}
+html.tg-module-embedded .crm-nav{display:flex;flex-wrap:nowrap;gap:6px;padding:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+html.tg-module-embedded .crm-nav-item{flex:none;white-space:nowrap;margin:0;min-height:44px}
+html.tg-module-embedded .crm-nav-item.ativo::before{display:none}
+html.tg-module-embedded .crm-main{margin-left:0;width:100%}
+html.tg-module-embedded .crm-topbar{position:static;padding:16px 20px}
+html.tg-module-embedded .crm-body{padding:18px 20px 48px}
+@media(max-width:900px){.tg-module-heading{padding:12px;flex-wrap:wrap}.tg-module-frame{height:calc(100dvh - 160px);min-height:480px}}
+@media(max-width:600px){html.tg-module-embedded .crm-topbar{padding:12px}html.tg-module-embedded .crm-body{padding:14px 12px 40px}}
+
+html.tg-module-embedded body.dark-mode{--bg:#0b1220;--surface:#161f32;--surface-2:#1c2740;--border:#2c3852;--border-soft:#26314a;--text:#e7ebf5;--text-muted:#9aa5c0;--text-soft:#6b7591;--green-bg:#0b2e1c;--yellow-bg:#3a2408;--red-bg:#3a0f12;--blue-bg:#152449;--navy:#e7ebf5}
+html.tg-module-embedded body.dark-mode .crm-topbar{background:#161f32}

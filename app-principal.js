@@ -8012,12 +8012,12 @@
         }
 
         function obterLayout() {
-            if (window.innerWidth <= 900) return 'cards';
-            if (!usuarioLogado) return 'sidebar';
-            if (usuarioLogado.role === 'superadmin') return obterConfig()?.layout || 'sidebar';
+            if (!usuarioLogado) return window.innerWidth <= 900 ? 'cards' : 'sidebar';
             const aid = usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId;
             const a = (dados.administradores || []).find(x => x.id === aid);
-            return (a && a.layout) ? a.layout : 'sidebar';
+            const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'sidebar') : (a?.layout || 'sidebar');
+            // Nexus keeps its adaptive shell on phones; existing layouts retain their behavior.
+            return window.innerWidth <= 900 && escolhido !== 'aurora' ? 'cards' : escolhido;
         }
         // "Total Gest Foco" usa a mesma estrutura de barra lateral que o layout "sidebar" —
         // só muda o que aparece dentro da navegação (grupos com painel, em vez da lista toda aberta).
@@ -14632,6 +14632,7 @@
         }
         function _ehPerfilMobile() {
             if (!usuarioLogado) return false;
+            if (obterLayout() === 'aurora' && usuarioLogado.role !== 'cliente') return false;
             // Admin/sub-admin: o layout tipo app só faz sentido em ecrã pequeno — no PC continuam
             // a ver o painel de secretária completo.
             if (usuarioLogado.role === 'admin' || usuarioLogado.role === 'subadmin') return _dispositivoEhMobile();
@@ -32687,7 +32688,7 @@ window._relPrefill = function(msg){
                 _contextoAtual = '__inicio';
                 document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
             }
-            const layoutAtual = adminAtual()?.layout || 'sidebar';
+            const layoutAtual = obterLayout();
             let html = `<a class="tg-nav-item" data-secao="__inicio" onclick="irParaInicio()"><i class="fas fa-gauge-high"></i><span>Início</span></a>`;
             if (usuarioLogado.role === 'admin' || usuarioLogado.role === 'subadmin') {
                 html += `<a class="tg-nav-item" data-secao="dashboard-central" onclick="abrirSecao('dashboard-central')"><i class="fas fa-chart-line"></i><span>Dashboard Central</span></a>`;
@@ -34202,7 +34203,7 @@ window._relPrefill = function(msg){
                                         <option value="sidebar" ${(obterConfig()?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${obterConfig()?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${obterConfig()?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${obterConfig()?.layout === 'aurora' ? 'selected' : ''}>Total Gest Aurora (visual moderno, escuro)</option>
+                                        <option value="aurora" ${obterConfig()?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>
@@ -34285,7 +34286,7 @@ window._relPrefill = function(msg){
                                         <option value="sidebar" ${(admin?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${admin?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${admin?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Aurora (visual moderno, escuro)</option>
+                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>
@@ -34335,7 +34336,7 @@ window._relPrefill = function(msg){
                                         <option value="sidebar" ${(admin?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${admin?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${admin?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Aurora (visual moderno, escuro)</option>
+                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>

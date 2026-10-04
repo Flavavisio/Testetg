@@ -1,0 +1,11 @@
+# Total Gest Nexus
+
+Nexus replaces the Aurora appearance, retaining the saved `aurora` value so existing company preferences continue working. Choose **Total Gest Nexus (compacto, pesquisa rápida)** in the existing layout selector. Other layouts and the customer portal retain their behavior. The landing page and login branding are unchanged.
+
+The adaptive workspace uses a dark sidebar, a light working surface (or the existing dark theme), compact module indicators, local recent shortcuts, a searchable module picker (Ctrl/Cmd+K), adjustable density and collapsible daily panels. Current operational alerts, agenda, team and work panels remain the sources of information. Favorites remain accessible in a disclosure. No generated AI or external AI subscription is involved.
+
+Search and shortcuts derive their names and subtitles from existing permitted cards and delegate clicks to their original handlers, retaining distinct CRM/Assist routes, reports and add-on checks. Permissions and license are checked again when an action is selected. This is module navigation, not a new record search or background data loader. Preferences are browser-local and keyed by company and user; they never modify operational records. The portal does not receive the internal workspace.
+
+Nexus keeps its sidebar/home on small screens rather than forcing the legacy cards layout. Its drawer, one-column panels, wrapping modules and 16px search input support phones. Existing layouts retain their mobile behavior. The saved desktop sidebar collapse does not hide mobile navigation labels.
+
+Validation: `tests/nexus.test.cjs` checks mobile layout choice, other layouts, superadmin, hidden/locked cards, safe text, accent search, revoked access, original actions, scoped preferences, collapse, expired license and logout. Browser QA using the actual application shell and render functions with demo data checked 1440, 1024, 768, 390 and 320px, keyboard navigation, theme, density, collapsing, return to home and mobile drawer. No authenticated live account or production data was used. Reports, mobile zoom and Teco engine tests passed. Three legacy navigation tests also fail on the unchanged baseline (nested client tabs/return behavior); they are unrelated to Nexus and have not been changed here.

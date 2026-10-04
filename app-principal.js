@@ -31933,7 +31933,15 @@ window._relPrefill = function(msg){
         }
 
         function fecharModalLogin() {
+            _prepararVistaAposLogin();
             document.getElementById('modalLoginOverlay').classList.remove('open');
+        }
+
+        function _prepararVistaAposLogin() {
+            // Release the login keyboard before its container becomes hidden on iOS.
+            const campo = document.activeElement;
+            if (campo?.matches('input, textarea') && campo.closest('#tg-entrar, #modalLoginOverlay')) campo.blur();
+            _aplicarZoomGuardado();
         }
 
         async function esqueciPassword() {
@@ -32082,6 +32090,7 @@ window._relPrefill = function(msg){
                 if (error || !perfil) return false;
                 const _okSes = construirUsuarioPorPerfil(perfil, user.email);
                 if (_okSes) {
+                    _prepararVistaAposLogin();
                     // O arranque da app (antes de se saber se há sessão) abre sempre a secção
                     // "Contactos" como página pública de visitante — se ficou lá aberta (porque
                     // a sessão só confirma depois), fecha-a agora que sabemos que há login.

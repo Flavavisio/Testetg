@@ -5196,8 +5196,8 @@
         //  Financeiro) mostram uma mensagem simples por agora — ficam para as
         //  próximas fases, sem quebrar nada do que já existe nesses menus.
         // =====================================================================
-        const WS_CLIENTE_ABAS = ['resumo', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
-        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
+        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
+        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) return;
@@ -5274,7 +5274,7 @@
                             ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="_wsMarcarAssistencia('${clienteId}')"><i class="fas fa-headset"></i> Marcar assistência</button>` : ''}
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-map-pin"></i> Novo local</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModal('cliente','${clienteId}')"><i class="fas fa-edit"></i> Editar dados</button>
-                            <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirHistoricoCliente('${clienteId}')"><i class="fas fa-clock-rotate-left"></i> Histórico completo</button>
+                            <button class="btn btn-sm btn-outline" onclick="_wsClienteAba('${clienteId}','historico')"><i class="fas fa-clock-rotate-left"></i> Histórico completo</button>
                         </div>
                         <div style="padding:12px 22px 14px;display:flex;gap:8px;border-bottom:1px solid #e2e8f0;overflow-x:auto;flex-shrink:0;" id="wsClienteAbas"></div>
                         <div style="flex:1;overflow-y:auto;padding:18px 22px;" id="wsClienteConteudo"></div>
@@ -5288,6 +5288,7 @@
             if (barraAbas) barraAbas.innerHTML = abasVisiveis.map(a => `<button class="ws-cliente-aba-btn ${a === aba ? 'active' : ''}" onclick="_wsClienteAba('${clienteId}','${a}')">${WS_CLIENTE_ABAS_LABEL[a]}</button>`).join('');
             const conteudo = document.getElementById('wsClienteConteudo');
             if (aba === 'resumo') conteudo.innerHTML = await _wsResumoHtml(clienteId);
+            else if (aba === 'historico') await window.TGClientHistory.show(clienteId);
             else if (aba === 'locais') conteudo.innerHTML = _wsLocaisHtml(clienteId);
             else if (aba === 'os') conteudo.innerHTML = await _wsOsHtml(clienteId);
             else if (aba === 'obras') conteudo.innerHTML = _wsObrasHtml(clienteId);
@@ -8013,6 +8014,8 @@
 
         function obterLayout() {
             if (!usuarioLogado) return window.innerWidth <= 900 ? 'cards' : 'sidebar';
+            // Employee workspace is independent of the company's chosen admin layout.
+            if (usuarioLogado.role === 'funcionario') return 'foco';
             const aid = usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId;
             const a = (dados.administradores || []).find(x => x.id === aid);
             const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'sidebar') : (a?.layout || 'sidebar');
@@ -14603,11 +14606,13 @@
         }
         function _ehPerfilMobile() {
             if (!usuarioLogado) return false;
+            if (usuarioLogado.role === 'funcionario' && obterLayout() === 'foco') return false;
             if (obterLayout() === 'aurora' && usuarioLogado.role !== 'cliente') return false;
             // Admin/sub-admin: o layout tipo app só faz sentido em ecrã pequeno — no PC continuam
             // a ver o painel de secretária completo.
             if (usuarioLogado.role === 'admin' || usuarioLogado.role === 'subadmin') return _dispositivoEhMobile();
-            // Funcionário, encarregado, vendedor, vigilante — usam sempre o layout tipo app
+            // Os restantes perfis operacionais usam o layout tipo app.
+            // Funcionários usam o Foco através da exceção acima.
             // ("O Meu Dia", menu inferior/lateral simples), no PC ou no telemóvel. Não faz
             // sentido dar-lhes o painel de secretária completo num ecrã grande e o layout
             // simples num pequeno — a app deve parecer e funcionar da mesma forma nos dois,

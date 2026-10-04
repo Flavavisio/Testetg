@@ -20,3 +20,28 @@ html.tg-module-embedded .crm-body{padding:18px 20px 48px}
 
 html.tg-module-embedded body.dark-mode{--bg:#0b1220;--surface:#161f32;--surface-2:#1c2740;--border:#2c3852;--border-soft:#26314a;--text:#e7ebf5;--text-muted:#9aa5c0;--text-soft:#6b7591;--green-bg:#0b2e1c;--yellow-bg:#3a2408;--red-bg:#3a0f12;--blue-bg:#152449;--navy:#e7ebf5}
 html.tg-module-embedded body.dark-mode .crm-topbar{background:#161f32}
+/* Shared visual language for the embedded CRM and Assist, leaving company layouts intact. */
+html.tg-module-embedded body{--bg:#f4f6fa;--surface:#fff;--surface-2:#f8fafc;--border:#e3e8f0;--text:#17243d;--text-muted:#65728a;--orange:#315bdb;--orange-light:#5278ea;--blue:#315bdb;font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.5}
+html.tg-module-embedded .crm-sidebar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px}
+html.tg-module-embedded .crm-nav-item{color:var(--text-muted);border-radius:9px;padding:10px 14px;font-weight:600;font-size:.83rem}
+html.tg-module-embedded .crm-nav-item i{color:inherit}
+html.tg-module-embedded .crm-nav-item:hover{color:var(--text);background:var(--surface-2)}
+html.tg-module-embedded .crm-nav-item.ativo{color:var(--blue);background:var(--blue-bg)}
+html.tg-module-embedded .crm-topbar{background:var(--surface);border-color:var(--border);gap:12px}
+html.tg-module-embedded .crm-topbar h1{font-family:inherit;font-size:1.25rem;letter-spacing:-.025em}
+html.tg-module-embedded .crm-topbar h1 .ic{border-radius:10px;background:var(--blue-bg);color:var(--blue)}
+html.tg-module-embedded .btn{font-family:inherit;border-radius:9px;min-height:40px;font-weight:600;box-shadow:none}
+html.tg-module-embedded .btn-primary{background:var(--blue);border-color:var(--blue);box-shadow:none}
+html.tg-module-embedded .btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+html.tg-module-embedded :is(input,select,textarea){font-family:inherit;border-radius:9px;border-color:var(--border);background:var(--surface);color:var(--text);min-height:42px}
+html.tg-module-embedded .form-group label{font-weight:600;font-size:.8rem;color:var(--text-muted)}
+html.tg-module-embedded :is(.stat-card,.table-wrapper,.kanban-card,.modal){background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 2px 12px #17243d05}
+html.tg-module-embedded .stat-card{padding:18px}
+html.tg-module-embedded .stat-card .lbl{font-size:.76rem;font-weight:600;color:var(--text-muted)}
+html.tg-module-embedded .stat-card .val{font-size:1.7rem;letter-spacing:-.035em;color:var(--text)}
+html.tg-module-embedded th{background:var(--surface-2);color:var(--text-muted);font-size:.72rem;letter-spacing:.03em;border-color:var(--border)}
+html.tg-module-embedded td{border-color:var(--border);padding:12px 14px}
+html.tg-module-embedded :is(button,input,select,textarea,a,[tabindex]):focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+html.tg-module-embedded body.dark-mode{--bg:#101827;--surface:#192437;--surface-2:#223047;--border:#2b3950;--text:#e6ecf6;--text-muted:#a4b2c8;--blue:#9bb5ff;--blue-bg:#253658}
+html.tg-module-embedded body.dark-mode .btn-primary{background:#315bdb;color:#fff;border-color:#315bdb}
+@media(max-width:600px){html.tg-module-embedded .crm-sidebar{padding:8px}html.tg-module-embedded :is(input,select,textarea){font-size:16px}html.tg-module-embedded .btn{min-height:44px}}

@@ -8014,11 +8014,11 @@
 
         function obterLayout() {
             if (!usuarioLogado) return window.innerWidth <= 900 ? 'cards' : 'sidebar';
-            // Employee workspace is independent of the company's chosen admin layout.
-            if (usuarioLogado.role === 'funcionario') return 'foco';
             const aid = usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId;
             const a = (dados.administradores || []).find(x => x.id === aid);
             const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'sidebar') : (a?.layout || 'sidebar');
+            // Foco and Nexus retain the employee's operational home and bottom navigation.
+            if (usuarioLogado.role === 'funcionario' && ['foco', 'aurora'].includes(escolhido)) return 'cards';
             // Nexus keeps its adaptive shell on phones; existing layouts retain their behavior.
             return window.innerWidth <= 900 && escolhido !== 'aurora' ? 'cards' : escolhido;
         }
@@ -14606,13 +14606,13 @@
         }
         function _ehPerfilMobile() {
             if (!usuarioLogado) return false;
-            if (usuarioLogado.role === 'funcionario' && obterLayout() === 'foco') return false;
+            if (usuarioLogado.role === 'funcionario') return true;
             if (obterLayout() === 'aurora' && usuarioLogado.role !== 'cliente') return false;
             // Admin/sub-admin: o layout tipo app só faz sentido em ecrã pequeno — no PC continuam
             // a ver o painel de secretária completo.
             if (usuarioLogado.role === 'admin' || usuarioLogado.role === 'subadmin') return _dispositivoEhMobile();
             // Os restantes perfis operacionais usam o layout tipo app.
-            // Funcionários usam o Foco através da exceção acima.
+            // Funcionários usam sempre o painel operacional através da exceção acima.
             // ("O Meu Dia", menu inferior/lateral simples), no PC ou no telemóvel. Não faz
             // sentido dar-lhes o painel de secretária completo num ecrã grande e o layout
             // simples num pequeno — a app deve parecer e funcionar da mesma forma nos dois,
@@ -14632,6 +14632,11 @@
                 return;
             }
             document.body.classList.add('tem-menu-inferior');
+            // Returning from a desktop/admin shell must put the daily panel back in the
+            // visible operational home, rather than leave it inside the hidden tgHome.
+            const dia = document.getElementById('omeudia');
+            const grid = document.getElementById('cardsGrid');
+            if (dia && grid && dia.parentElement?.id === 'homeAgendaWrap') grid.prepend(dia);
             if (grupos) grupos.style.display = 'none';
             nav.style.display = 'flex';
             const gruposVisiveis = [...document.querySelectorAll('.grupo-cards')].filter(g =>

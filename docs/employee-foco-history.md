@@ -1,8 +1,8 @@
 # Foco dos funcionários e histórico do cliente
 
-Os utilizadores com `role=funcionario` usam o layout Foco no computador e no telemóvel. A escolha de layout guardada na empresa continua a aplicar-se aos administradores e subadministradores. Os restantes perfis mantêm o comportamento anterior.
+Nos layouts Foco e Nexus (`aurora`), os utilizadores com `role=funcionario` mantêm o painel operacional anterior: O Meu Dia, ponto, OS, obras e navegação inferior. Esta escolha aplica-se no computador e no telemóvel, sem alterar o layout guardado na empresa nem as permissões dos módulos.
 
-O Foco reutiliza a navegação existente por grupos e o menu móvel lateral. Os cartões ocultos ou bloqueados continuam excluídos. O grupo Equipa passa a chamar-se Funcionário neste perfil. Não há alteração de permissões nem de licenças.
+Administradores e subadministradores mantêm o comportamento anterior. O Foco mostra O Meu Dia completo, incluindo os painéis de equipa. Ao regressar do layout de computador ao painel móvel, O Meu Dia é recolocado na área visível para não ficar dentro da home oculta.
 
 Na ficha do cliente, o separador Histórico reúne OS, assistências, obras, contratos, relatórios e registos comerciais. Os módulos adicionais exigem a respetiva licença. O histórico está limitado à empresa e ao cliente atuais, para administradores e subadministradores com licença base válida. Pesquisa, tipo e intervalo de datas filtram os registos.
 

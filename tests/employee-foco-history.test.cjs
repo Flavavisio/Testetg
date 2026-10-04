@@ -2,15 +2,25 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const {JSDOM}=require(process.env.JSDOM_PATH||'jsdom');
 const main=fs.readFileSync('app-principal.js','utf8');
 const fn=name=>main.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'))[0];
-test('employees use Foco across widths while admin, subadmin and other roles retain their layouts',()=>{
+test('Foco and Nexus employees retain operational home while admin and other layouts are unchanged',()=>{
  const dom=new JSDOM('<nav id="tgSidebarNav"></nav><div id="cardsGrid"><div class="grupo-cards" data-grupo="equipa"><div class="grupo-header"><h3>Equipa</h3></div><div class="card-principal" data-card="ponto"><div class="info"><h3>Ponto</h3></div></div><div class="card-principal hidden-card" data-card="clientes"></div><div class="card-principal card-bloqueado" data-card="crm"></div></div></div>',{runScripts:'outside-only'}),w=dom.window;
  try{
  w.usuarioLogado={id:'e',adminId:'a',role:'funcionario'};w.dados={administradores:[{id:'a',layout:'aurora'}]};w.obterConfig=()=>({layout:'foco'});w._dispositivoEhMobile=()=>w.innerWidth<=900;
  w._ultimoUserSidebar='e';w._contextoAtual='ponto';w._marcarNavAtivo=()=>{};
  w.eval(['obterLayout','_ehPerfilMobile','construirSidebar','_focoAlternarGrupo'].map(fn).join('\n')+'\n'+main.match(/        function _layoutUsaSidebarShell\(\)[^\n]+/)[0]);
- for(const width of [390,768,1440]){w.innerWidth=width;assert.equal(w.obterLayout(),'foco');assert(w._layoutUsaSidebarShell());assert.equal(w._ehPerfilMobile(),false);w.construirSidebar();assert.equal(w.document.querySelector('[data-grupo-btn] span').textContent,'Funcionário');assert(w.document.querySelector('[data-secao="ponto"]'));assert(!w.document.querySelector('[data-secao="clientes"]'));assert(!w.document.querySelector('[data-secao="crm"]'));w._focoAlternarGrupo('equipa');assert(w.document.querySelector('.tg-nav-submenu').classList.contains('aberto'));}
+ for(const layout of ['foco','aurora'])for(const width of [390,768,1440]){w.dados.administradores[0].layout=layout;w.innerWidth=width;assert.equal(w.obterLayout(),'cards');assert.equal(w._layoutUsaSidebarShell(),false);assert.equal(w._ehPerfilMobile(),true);assert.equal(w.dados.administradores[0].layout,layout);}
  for(const role of ['admin','subadmin'])for(const layout of ['cards','sidebar','foco','aurora'])for(const width of [390,1440]){w.usuarioLogado={id:role==='admin'?'a':'s',adminId:'a',role};w.dados.administradores[0].layout=layout;w.innerWidth=width;assert.equal(w.obterLayout(),width<=900&&layout!=='aurora'?'cards':layout);assert.equal(w._ehPerfilMobile(),layout==='aurora'?false:width<=900);}
  w.usuarioLogado={id:'x',adminId:'a',role:'encarregado'};assert.equal(w._ehPerfilMobile(),false);assert.equal(w.dados.administradores[0].layout,'aurora');w.dados.administradores[0].layout='foco';assert(w._ehPerfilMobile());
+ }finally{w.close();}
+});
+test('daily home returns from desktop shell and bottom navigation keeps role-specific items',()=>{
+ const dom=new JSDOM('<div id="tgHome"><div id="homeAgendaWrap"><div id="omeudia">O Meu Dia completo</div></div></div><div id="cardsGrid"><div id="dashboardGrupos"></div><div class="grupo-cards" data-grupo="obras"><div class="grupo-header"><h3>Obras e Serviços</h3></div><div class="card-principal" data-card="servicos"></div><div class="card-principal hidden-card" data-card="crm"></div></div><div class="grupo-cards" data-grupo="oculto"><div class="card-principal hidden-card"></div></div></div><div id="menuInferiorMobile"></div><div id="painelGrupoMobile"></div>',{runScripts:'outside-only'}),w=dom.window;
+ try{
+ w.innerWidth=390;w.usuarioLogado={id:'a',role:'admin'};w.dados={administradores:[{id:'a',layout:'foco'}]};w._dispositivoEhMobile=()=>w.innerWidth<=900;w.escapeHtmlSimples=s=>s;w._ultimoGrupoMobileAberto=null;w.scrollTo=()=>{};
+ w.eval(['obterLayout','_ehPerfilMobile','_montarMenuInferiorMobile','_fecharSecaoAbertaMobile','_voltarMeuDia'].map(fn).join('\n'));
+ w._montarMenuInferiorMobile();assert.equal(w.document.getElementById('omeudia').parentElement.id,'cardsGrid');assert.equal(w.document.getElementById('omeudia').textContent,'O Meu Dia completo');assert(w.document.getElementById('menuInfDashboardCentral'));assert(w.document.getElementById('menuInfHome'));assert(!w.document.getElementById('menuInf_oculto'));
+ w.usuarioLogado={id:'e',adminId:'a',role:'funcionario'};w.dados.administradores[0].layout='aurora';w.innerWidth=1440;w._montarMenuInferiorMobile();assert.equal(w.document.getElementById('menuInferiorMobile').style.display,'flex');assert(!w.document.getElementById('menuInfDashboardCentral'));assert(w.document.getElementById('menuInf_obras'));
+ w.document.getElementById('omeudia').style.display='none';w._voltarMeuDia();assert.equal(w.document.getElementById('omeudia').style.display,'block');assert.equal(w.document.getElementById('painelGrupoMobile').style.display,'none');
  }finally{w.close();}
 });
 function setup(){

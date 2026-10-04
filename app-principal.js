@@ -99,7 +99,9 @@
         // porquê — foi isto que causou os erros estranhos ("Cannot read properties of null")
         // quando a sessão falhava a meio de uma ação.
         let _avisoSessaoMostrado = false;
+        let _logoutEmCurso = false;
         function _mostrarAvisoSessaoExpirada() {
+            if (_logoutEmCurso || _trocandoConta || !usuarioLogado) return;
             if (_avisoSessaoMostrado) return;
             _avisoSessaoMostrado = true;
             if (_dadosPollTimer) { clearInterval(_dadosPollTimer); _dadosPollTimer = null; }
@@ -118,10 +120,11 @@
         // a página em silêncio ou a rebentar com erros.
         const _fetchOriginalTG = window.fetch;
         window.fetch = function (...args) {
+            const contaPedido = usuarioLogado?.id;
             return _fetchOriginalTG.apply(this, args).then(res => {
                 try {
                     const url = String(args[0]?.url || args[0] || '');
-                    if (res.status === 401 && url.includes(SUPABASE_URL)) _mostrarAvisoSessaoExpirada();
+                    if (res.status === 401 && url.includes(SUPABASE_URL) && contaPedido && contaPedido === usuarioLogado?.id) _mostrarAvisoSessaoExpirada();
                 } catch (e) {}
                 return res;
             });
@@ -32583,6 +32586,7 @@ window._relPrefill = function(msg){
         }
 
         async function logout() {
+            if (_logoutEmCurso) return;
             if (_contarAlteracoesPendentes() > 0) {
                 const espera = confirm('Ainda há alterações por confirmar no servidor. Queres esperar uns segundos para garantir que tudo fica gravado antes de sair?');
                 if (espera) {
@@ -32598,14 +32602,19 @@ window._relPrefill = function(msg){
                 }
             }
             registarAuditoria('logout', 'sessão', usuarioLogado?.id, usuarioLogado?.nome);
+            _logoutEmCurso = true;
+            const aviso = document.getElementById('avisoSessaoOverlay');
+            if (aviso) aviso.style.display = 'none';
             try { await supa.auth.signOut(); } catch (e) { console.warn('signOut:', e); }
             usuarioLogado = null;
             document.body.classList.remove('is-cliente-portal');
             _avisoRenovChecked = false;
             pararHeartbeat(); pararPollOnline(); pararPollEquipa(); pararPollMapa(); pararPollDadosGerais(); _heartbeatOn = false;
-            renderizarTudo();
-            abrirSecao('contactos');
-            alert('Sessão terminada.');
+            try { renderizarTudo(); }
+            finally {
+                _logoutEmCurso = false;
+                window.location.replace(new URL('login.html', window.location.href).href);
+            }
         }
 
         function funcFotoSelecionada(ev) {

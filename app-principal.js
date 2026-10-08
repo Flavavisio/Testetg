@@ -277,8 +277,8 @@
             },
             clientes: {
                 tabela: 'clientes',
-                from: r => ({ id: r.id, nome: r.nome, numeroCliente: r.numero_cliente || null, telefone: r.telefone, endereco: r.endereco, morada: r.morada, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal, cidade: r.cidade, freguesia: r.freguesia, nif: r.nif, pessoaContacto: r.pessoa_contacto, email: r.email, portalAtivo: r.portal_ativo === true, adminId: r.admin_id, pinMapa: r.pin_mapa || null, moloniCustomerId: r.moloni_customer_id || null, toconlineCustomerId: r.toconline_customer_id || null }),
-                to:   o => ({ id: o.id, nome: o.nome, numero_cliente: o.numeroCliente || null, telefone: o.telefone || null, endereco: o.endereco || null, morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, nif: o.nif || null, pessoa_contacto: o.pessoaContacto || null, email: o.email || null, senha: o.senha || null, portal_ativo: o.portalAtivo === true, admin_id: o.adminId, pin_mapa: o.pinMapa || null, moloni_customer_id: o.moloniCustomerId || null, toconline_customer_id: o.toconlineCustomerId || null })
+                from: r => ({ id: r.id, nome: r.nome, numeroCliente: r.numero_cliente || null, telefone: r.telefone, endereco: r.endereco, morada: r.morada, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal, cidade: r.cidade, freguesia: r.freguesia, nif: r.nif, pessoaContacto: r.pessoa_contacto, email: r.email, portalAtivo: r.portal_ativo === true, adminId: r.admin_id, pinMapa: r.pin_mapa || null, moloniCustomerId: r.moloni_customer_id || null, toconlineCustomerId: r.toconline_customer_id || null, ...(r.passaporte_tecnico != null ? { passaporteTecnico: r.passaporte_tecnico } : {}) }),
+                to:   o => ({ id: o.id, nome: o.nome, numero_cliente: o.numeroCliente || null, telefone: o.telefone || null, endereco: o.endereco || null, morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, nif: o.nif || null, pessoa_contacto: o.pessoaContacto || null, email: o.email || null, senha: o.senha || null, portal_ativo: o.portalAtivo === true, admin_id: o.adminId, pin_mapa: o.pinMapa || null, moloni_customer_id: o.moloniCustomerId || null, toconline_customer_id: o.toconlineCustomerId || null, ...(o.passaporteTecnico !== undefined ? { passaporte_tecnico: o.passaporteTecnico } : {}) })
             },
             leads: {
                 tabela: 'leads',
@@ -302,8 +302,8 @@
             },
             servicos: {
                 tabela: 'servicos',
-                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [] }),
-                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [] })
+                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [], ...(r.passaporte_intervencao != null ? { passaporteIntervencao: r.passaporte_intervencao } : {}) }),
+                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [], ...(o.passaporteIntervencao !== undefined ? { passaporte_intervencao: o.passaporteIntervencao } : {}) })
             },
             assistencias: {
                 tabela: 'assistencias',
@@ -382,13 +382,13 @@
             },
             locais: {
                 tabela: 'locais',
-                from: r => ({ id: r.id, adminId: r.admin_id, clienteId: r.cliente_id, nome: r.nome, morada: r.morada, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, pinMapa: r.pin_mapa || null, dataCriacao: isoToMs(r.data_criacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, cliente_id: o.clienteId, nome: o.nome, morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, pin_mapa: o.pinMapa || null, data_criacao: msToISO(o.dataCriacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, clienteId: r.cliente_id, nome: r.nome, morada: r.morada, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, pinMapa: r.pin_mapa || null, dataCriacao: isoToMs(r.data_criacao), ...(r.passaporte_tecnico != null ? { passaporteTecnico: r.passaporte_tecnico } : {}) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, cliente_id: o.clienteId, nome: o.nome, morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, pin_mapa: o.pinMapa || null, data_criacao: msToISO(o.dataCriacao), ...(o.passaporteTecnico !== undefined ? { passaporte_tecnico: o.passaporteTecnico } : {}) })
             },
             equipamentos: {
                 tabela: 'equipamentos',
-                from: r => ({ id: r.id, adminId: r.admin_id, localId: r.local_id, tipo: r.tipo, marca: r.marca, numeroSerie: r.numero_serie, observacoes: r.observacoes, dataInstalacao: r.data_instalacao || null, garantiaAte: r.garantia_ate || null, dataCriacao: isoToMs(r.data_criacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, local_id: o.localId || null, tipo: o.tipo, marca: o.marca || null, numero_serie: o.numeroSerie || null, observacoes: o.observacoes || null, data_instalacao: o.dataInstalacao || null, garantia_ate: o.garantiaAte || null, data_criacao: msToISO(o.dataCriacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, localId: r.local_id, tipo: r.tipo, marca: r.marca, numeroSerie: r.numero_serie, observacoes: r.observacoes, dataInstalacao: r.data_instalacao || null, garantiaAte: r.garantia_ate || null, dataCriacao: isoToMs(r.data_criacao), ...(r.cliente_id != null ? { clienteId: r.cliente_id } : {}), ...(r.ficha_tecnica != null ? { fichaTecnica: r.ficha_tecnica } : {}) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, local_id: o.localId || null, tipo: o.tipo, marca: o.marca || null, numero_serie: o.numeroSerie || null, observacoes: o.observacoes || null, data_instalacao: o.dataInstalacao || null, garantia_ate: o.garantiaAte || null, data_criacao: msToISO(o.dataCriacao), ...(o.clienteId !== undefined ? { cliente_id: o.clienteId } : {}), ...(o.fichaTecnica !== undefined ? { ficha_tecnica: o.fichaTecnica } : {}) })
             },
             registosManutencao: {
                 tabela: 'registos_manutencao',
@@ -989,6 +989,7 @@
                 s.fotos.push({ url, dataCriacao: Date.now(), funcionarioId: usuarioLogado?.id || null });
                 guardarDados(dados);
                 _osRenderFotos(osId);
+                document.dispatchEvent(new CustomEvent('tg:passport-photo-updated', { detail: { osId } }));
             } catch (e) {
                 console.error('Erro ao guardar foto da OS:', e);
                 alert('⚠️ Não foi possível guardar a foto: ' + (e.message || e));
@@ -5199,8 +5200,8 @@
         //  Financeiro) mostram uma mensagem simples por agora — ficam para as
         //  próximas fases, sem quebrar nada do que já existe nesses menus.
         // =====================================================================
-        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
-        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
+        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'passaporte', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
+        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', passaporte: 'Instalações', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) return;
@@ -5292,6 +5293,7 @@
             const conteudo = document.getElementById('wsClienteConteudo');
             if (aba === 'resumo') conteudo.innerHTML = await _wsResumoHtml(clienteId);
             else if (aba === 'historico') await window.TGClientHistory.show(clienteId);
+            else if (aba === 'passaporte') await window.TGPassport.show(clienteId);
             else if (aba === 'locais') conteudo.innerHTML = _wsLocaisHtml(clienteId);
             else if (aba === 'os') conteudo.innerHTML = await _wsOsHtml(clienteId);
             else if (aba === 'obras') conteudo.innerHTML = _wsObrasHtml(clienteId);
@@ -5815,6 +5817,7 @@
                         <i class="fas ${icone}" style="color:#94a3b8;width:18px;"></i>
                         <div style="flex:1;"><div style="font-weight:600;font-size:.88rem;">${escapeHtmlSimples(nome)}</div><div style="font-size:.78rem;color:#64748b;">${escapeHtmlSimples(morada || 'Sem morada registada')}</div></div>
                         ${botaoEditar || ''}
+                        <button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation();TGPassport.open('${clienteId}','${chave === 'sede' ? '' : chave}')">Passaporte</button>
                         <i class="fas fa-chevron-down" id="wsLocalSeta-${chave}" style="color:#cbd5e1;"></i>
                     </div>
                     <div id="wsLocalDet-${chave}" style="display:none;padding:4px 0 14px 28px;"></div>
@@ -6281,6 +6284,7 @@
             if (_modalElVerOs) _modalElVerOs.style.maxWidth = '860px'; // mesma largura do "Ver Obra" — evita saltos ao alternar entre os dois
             const _mapaInfoVerOs = _osMapaInfo(os.clienteId, os.morada, os.localId);
             campos.innerHTML = `
+                ${window.TGPassport?.osButton(os) || ''}
                 ${os.morada ? `<div style="margin-bottom:12px;color:#334155;font-size:.88rem;"><i class="fas fa-location-dot" style="color:#94a3b8;"></i> ${escapeHtmlSimples(os.morada)} ${_mapaInfoVerOs ? `<a href="${_mapaInfoVerOs.url}" target="_blank" rel="noopener" title="${_mapaInfoVerOs.exato ? 'Ver pin exato no mapa' : 'Ver morada no mapa (aproximado)'}" style="color:${_mapaInfoVerOs.exato ? '#16a34a' : '#dc2626'};margin-left:4px;"><i class="fas fa-map-location-dot"></i></a>` : ''}</div>` : ''}
                 <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
                     <button type="button" class="btn btn-sm" id="verOsBtnFolhas" onclick="_verOsMostrar('${osId}','folhas')" style="flex:1;min-width:110px;background:#0ea5e9;color:#fff;"><i class="fas fa-clipboard-list"></i> Folhas de obra</button>
@@ -12303,6 +12307,7 @@
                         ${_moradaBadge}
                         ${_climaBadge}
                         ${_pontoBadge}
+                        ${window.TGPassport?.osButton(s) || ''}
                     </div>
                     <div style="margin-top:5px;">${_estadoEditavel}</div>
                     ${emConf ? '<div class="ag-conflito-badge"><i class="fas fa-exclamation-triangle"></i> Sobreposição de horário</div>' : ''}

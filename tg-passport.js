@@ -112,7 +112,7 @@
             ${st.incomplete?'<p class="tg-pp-warning" role="status">Não foi possível obter todas as OS antigas. A mostrar os registos disponíveis. '+button('retry','Tentar novamente')+'</p>':''}
             <div class="tg-pp-overview"><div class="tg-pp-cover">${image(m.foto,name)}<span>${eq.length} equipamentos · ${history.length} intervenções</span></div><div class="tg-pp-before"><span class="tg-pp-eyebrow">ANTES DE COMEÇAR</span><h3>O que o próximo técnico precisa de saber</h3><dl>${text('Armário técnico / acesso',m.armario)}${text('Notas de acesso',m.acesso)}${text('Contacto no local',m.contacto)}${text('Pendências conhecidas',m.pendencias || (faults.length?faults.length+' equipamento(s) com avaria':''))}${text('Última nota para o técnico',lastNote || m.notas)}</dl></div></div>
             <div class="tg-pp-main"><div><section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">INVENTÁRIO</span><h3>Equipamentos e ligações</h3></div>${s.manager?button('edit-equipment','+ Equipamento'):''}</div><div class="tg-pp-filters"><label>Pesquisar<input type="search" data-pp-search value="${esc(st.term)}" placeholder="Nome, modelo, IP, porta…"></label><label>Sistema<select data-pp-type><option value="">Todos os sistemas</option>${Object.entries(types).map(([k,v])=>`<option value="${k}" ${st.type===k?'selected':''}>${v}</option>`).join('')}</select></label></div><div class="tg-pp-equipment" data-pp-equipment></div></section>
-            <section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">CONTINUIDADE</span><h3>Intervenções nesta instalação</h3><p>Os mesmos registos das ordens de serviço e do histórico atual.</p></div>${st.workspace?button('history','Histórico completo do cliente'):''}</div><div class="tg-pp-timeline">${history.slice(0,st.limit).map(r=>{const detail=object(r.passaporteIntervencao);return `<article><time>${day(r.data)}</time><div><h4>OS ${esc(r.numeroRegisto || '—')} <span class="tg-pp-badge">${esc(r.status || 'Pendente')}</span></h4><p>${esc(r.descricao || 'Intervenção')}</p>${detail.trabalho?'<p>'+esc(detail.trabalho)+'</p>':''}${detail.proximoTecnico?'<p><strong>Para o próximo técnico:</strong> '+esc(detail.proximoTecnico)+'</p>':''}<div class="tg-pp-actions">${button('view-os','Ver OS',r.id)}${canEditOS(r,s)?button('intervention','Relatório técnico',r.id):button('view-report','Ver relatório técnico',r.id)}${button('pdf','Imprimir / PDF',r.id)}</div></div></article>`;}).join('') || '<p class="tg-pp-empty">Sem intervenções registadas nesta instalação.</p>'}</div>${history.length>st.limit?button('more','Mostrar mais intervenções'):''}</section></div>
+            <section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">CONTINUIDADE</span><h3>Intervenções nesta instalação</h3><p>Os mesmos registos das ordens de serviço e do histórico atual.</p></div>${st.workspace?button('history','Histórico completo do cliente'):''}</div><div class="tg-pp-timeline">${history.slice(0,st.limit).map(r=>{const detail=object(r.passaporteIntervencao);return `<article><time>${day(r.data)}</time><div><h4>OS ${esc(r.numeroRegisto || '—')} <span class="tg-pp-badge">${esc(r.status || 'Pendente')}</span></h4><p>${esc(r.descricao || 'Intervenção')}</p>${detail.trabalho?'<p>'+esc(detail.trabalho)+'</p>':''}${detail.proximoTecnico?'<p><strong>Para o próximo técnico:</strong> '+esc(detail.proximoTecnico)+'</p>':''}<div class="tg-pp-actions">${button('view-os','Ver OS',r.id)}${button('work-sheet','Folha de obra',r.id)}${button('work-sheet-pdf','PDF da folha',r.id)}</div></div></article>`;}).join('') || '<p class="tg-pp-empty">Sem intervenções registadas nesta instalação.</p>'}</div>${history.length>st.limit?button('more','Mostrar mais intervenções'):''}</section></div>
             <aside><section class="tg-pp-panel"><span class="tg-pp-eyebrow">ÚLTIMA INTERVENÇÃO</span><h3>${last?'OS '+esc(last.numeroRegisto || '—'):'Sem registos'}</h3><p>${last?day(last.data)+' · '+esc(last.status || ''):'As fotografias aparecerão aqui quando forem anexadas a uma OS.'}</p><div class="tg-pp-photos">${lastPhotos.map((f,i)=>`<a href="${esc(url(photoURL(f)))}" target="_blank" rel="noopener noreferrer">${image(photoURL(f),'Foto '+(i+1)+' da última intervenção')}</a>`).join('')}</div>${last && canEditOS(last,s)?button('photos','Adicionar foto à OS',last.id):''}</section>
             <section class="tg-pp-panel"><div class="tg-pp-heading"><h3>Documentos e esquemas</h3>${s.manager?button('edit-site','Gerir'):''}</div>${documents(s).map(d=>`<a class="tg-pp-document" href="${esc(url(d.url))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-lines"></i><span>${esc(d.nome || 'Documento')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join('') || '<p class="tg-pp-empty">Sem documentos associados.</p>'}</section><section class="tg-pp-panel"><h3>Consulta no terreno</h3><p>Na OS, use “Consultar instalação” para abrir este passaporte.</p>${button('link','Copiar ligação desta instalação')}<p class="tg-pp-muted">A ligação exige uma sessão com acesso à instalação.</p></section></aside></div><div data-pp-editor></div></section>`;
         st.host.onclick=event=>handle(event,st);
@@ -159,9 +159,12 @@
         const os=getOS(st,id);
         if(action==='view-os' && os){cacheOS(os);if(st.workspace)_wsSairPara(st.customerId);else document.getElementById('tgPassportOverlay')?.classList.remove('open');abrirVerOS(id);return;}
         if(action==='photos' && os && canEditOS(os,s)){cacheOS(os);_osPedirFoto(id);return;}
-        if(action==='intervention' && os && canEditOS(os,s)){interventionEditor(st,os);return;}
-        if(action==='view-report' && os){reportView(st,os);return;}
-        if(action==='pdf' && os){printReport(st,os);return;}
+        if((action==='work-sheet' || action==='work-sheet-pdf') && os){await workSheets(st,os,action==='work-sheet-pdf');return;}
+        if(action==='open-sheet' || action==='pdf-sheet'){
+            const sheet=(dados.folhasObra || []).find(f=>f.id===id && f.adminId===s.tenant);
+            const linked=sheet && getOS(st,sheet.servicoId);
+            if(linked)await openSheet(st,linked,sheet,action==='pdf-sheet');
+        }
     }
     function editor(st,title,body) {
         if(!valid(st))return;
@@ -216,23 +219,33 @@
             await guardarDados(dados);
         },'Equipamento guardado.');};
     }
-    function interventionEditor(st,os) {
-        const s=scope(st.customerId,st.localId);if(!canEditOS(os,s))return;const meta=object(os.passaporteIntervencao);
-        const root=editor(st,'Relatório técnico · OS '+(os.numeroRegisto || '—'),`<form class="tg-pp-form"><label>Equipamento<select name="equipamentoId"><option value="">Instalação em geral</option>${equipment(s).map(e=>`<option value="${esc(e.id)}" ${meta.equipamentoId===e.id?'selected':''}>${esc(object(e.fichaTecnica).nome || e.marca || e.tipo)}</option>`).join('')}</select></label>${field('problema','Problema comunicado',meta.problema || os.descricao,'textarea')}${field('testes','Verificações e resultados dos testes',meta.testes,'textarea')}${field('trabalho','Trabalho realizado',meta.trabalho,'textarea',true)}${field('resultado','Resultado e pendências',meta.resultado,'textarea')}${field('proximoTecnico','Informação para o próximo técnico',meta.proximoTecnico,'textarea')}<p>As fotografias continuam anexadas à OS. O estado, as folhas de obra, os checklists e os relatórios existentes mantêm os seus fluxos atuais.</p>${saveFooter}</form>`);
-        root.querySelector('form').onsubmit=ev=>{ev.preventDefault();const form=ev.currentTarget,v=formValues(form);saveForm(st,form,async()=>{
-            const live=scope(st.customerId,st.localId);if(!live || !canEditOS(os,live))throw Error('Sem permissão.');if(v.equipamentoId && !equipment(live).some(e=>e.id===v.equipamentoId))throw Error('Equipamento inválido.');
-            const target=cacheOS(os);target.passaporteIntervencao={...object(target.passaporteIntervencao),...v,tecnicoId:actor().id,tecnicoNome:actor().nome || '',atualizadoEm:Date.now()};await guardarDados(dados);
-            st.services=st.services.map(r=>r.id===target.id?target:r);
-        },'Relatório técnico guardado na OS e no passaporte.');};
+    async function workSheets(st,os,pdf=false) {
+        if(!valid(st))return;
+        const s=scope(st.customerId,st.localId);
+        const root=editor(st,'Folhas de obra · OS '+(os.numeroRegisto || '—'),'<p role="status">A carregar as folhas de obra desta OS…</p>');
+        let failed=false;
+        try {
+            const q=supa.from('folhas_obra').select('*').eq('admin_id',s.tenant).eq('servico_id',os.id).order('data',{ascending:false}).order('id',{ascending:false});
+            const {data,error}=await _buscarPaginadoGenerico(q);if(error)throw error;
+            if(!valid(st) || !root.isConnected)return;
+            const loaded=(data || []).map(M.folhasObra.from).filter(f=>f.adminId===s.tenant && f.servicoId===os.id);
+            dados.folhasObra=dados.folhasObra || [];_snap.folhasObra=_snap.folhasObra || new Map();
+            loaded.forEach(f=>{if(!dados.folhasObra.some(x=>x.id===f.id)){dados.folhasObra.push(f);_snap.folhasObra.set(f.id,JSON.stringify(M.folhasObra.to(f)));}});
+        } catch (_) {failed=true;}
+        if(!valid(st) || !root.isConnected)return;
+        const sheets=(dados.folhasObra || []).filter(f=>f.adminId===s.tenant && f.servicoId===os.id).sort((a,b)=>String(b.data || '').localeCompare(String(a.data || '')) || String(b.id).localeCompare(String(a.id)));
+        if(sheets.length===1 && !failed){await openSheet(st,os,sheets[0],pdf);return;}
+        const warning=failed?'<p class="tg-pp-warning" role="status">Não foi possível confirmar todas as folhas desta OS. '+button(pdf?'work-sheet-pdf':'work-sheet','Tentar novamente',os.id)+'</p>':'';
+        editor(st,'Folhas de obra · OS '+(os.numeroRegisto || '—'),warning+(sheets.length?sheets.map(f=>'<article class="tg-pp-panel"><h4>Folha de obra · '+esc(day(f.data))+'</h4><p>'+esc(f.descricao || f.obraDescricao || 'Sem descrição')+'</p><div class="tg-pp-actions">'+button('open-sheet','Ver folha de obra',f.id)+button('pdf-sheet','PDF da folha',f.id)+'</div></article>').join(''):failed?'':'<p class="tg-pp-empty">Ainda não existe uma folha de obra para esta OS.</p>'));
     }
-    function reportHTML(st,os) {
-        const s=scope(st.customerId,st.localId),r=object(os.passaporteIntervencao),eq=equipment(s).find(e=>e.id===r.equipamentoId);
-        return `<article class="tg-pp-report"><h1>Relatório de intervenção</h1><p>${esc(s.customer.nome)} · ${esc(s.local?.nome || 'Sede')} · OS ${esc(os.numeroRegisto || '—')} · ${day(os.data)}</p><dl>${text('Equipamento',object(eq?.fichaTecnica).nome || eq?.marca || (r.equipamentoId?'Equipamento já não disponível':'Instalação em geral'))}${text('Técnico',r.tecnicoNome || (dados.funcionarios || []).find(f=>f.id===os.funcionarioId)?.nome)}</dl>${[['Problema comunicado',r.problema || os.descricao],['Verificações realizadas',r.testes],['Trabalho realizado',r.trabalho],['Resultado e pendências',r.resultado],['Para o próximo técnico',r.proximoTecnico],['Armário técnico',s.meta.armario]].map(([k,v])=>`<h2>${esc(k)}</h2><p>${esc(v || 'Não registado')}</p>`).join('')}<h2>Fotografias da OS</h2><div class="tg-pp-photos">${(os.fotos || []).filter(f=>url(photoURL(f))).map((f,i)=>image(photoURL(f),'Fotografia '+(i+1))).join('') || '<p>Sem fotografias anexadas.</p>'}</div><p>Estado da OS: ${esc(os.status || 'Pendente')}. ${r.atualizadoEm?'Relatório atualizado em '+day(r.atualizadoEm)+'.':'Ainda não existe um suplemento técnico preenchido.'}</p></article>`;
-    }
-    function reportView(st,os){editor(st,'Relatório técnico',reportHTML(st,os)+button('pdf','Imprimir / guardar PDF',os.id));}
-    function printReport(st,os) {
-        if(!valid(st))return;const popup=window.open('','_blank');if(!popup){alert('Permita abrir uma janela para imprimir ou guardar o PDF.');return;}
-        popup.document.write('<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Relatório de intervenção</title><style>body{font:14px Arial,sans-serif;color:#172a45;max-width:800px;margin:30px auto;padding:20px}h1{font-size:25px}h2{font-size:17px;margin-top:24px}p,dd{white-space:pre-wrap;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:1fr 1fr;gap:15px}dt{color:#64748b;font-size:12px}dd{margin:4px 0}.tg-pp-photos{display:flex;flex-wrap:wrap;gap:10px}.tg-pp-photos img{width:45%;height:180px;object-fit:contain}button{padding:10px}@media print{button{display:none}article h2{break-after:avoid}img{break-inside:avoid}}</style></head><body><button onclick="window.print()">Imprimir / guardar PDF</button>'+reportHTML(st,os)+'</body></html>');popup.document.close();popup.opener=null;
+    async function openSheet(st,os,sheet,pdf) {
+        if(!valid(st))return;
+        const s=scope(st.customerId,st.localId);
+        if(sheet.adminId!==s.tenant || sheet.servicoId!==os.id || !getOS(st,os.id))return;
+        cacheOS(os);
+        if(pdf){await gerarPDFFolha(sheet.id,'cliente');return;}
+        if(st.workspace)_wsSairPara(st.customerId);else document.getElementById('tgPassportOverlay')?.classList.remove('open');
+        await abrirFolhaDetalhe(sheet.id);
     }
     document.addEventListener('click',event=>{
         const b=event.target.closest('[data-pp-os]');if(b){event.stopPropagation();const os=(dados.servicos || []).find(r=>r.id===b.dataset.ppOs);if(os && scope(os.clienteId,os.localId || ''))open(os.clienteId,os.localId || '');}
@@ -244,5 +257,5 @@
         if(current && !valid(current)){if((current.identity!==identity() || !scope(current.customerId,current.localId)) && current.host.querySelector('.tg-passport'))current.host.innerHTML='';if(!current.workspace)document.getElementById('tgPassportOverlay')?.classList.remove('open');current=null;++serial;}
         const q=new URLSearchParams(location.search);if(q.get('tg_passaporte')==='1' && actor() && scope(q.get('tg_cliente'),q.get('tg_local') || '')){const cid=q.get('tg_cliente'),lid=q.get('tg_local') || '';q.delete('tg_passaporte');q.delete('tg_cliente');q.delete('tg_local');window.history.replaceState(null,'',location.pathname+(q.size?'?'+q:'')+location.hash);open(cid,lid);}
     });
-    window.TGPassport={show,open,scope,equipment,records,osButton,url,reportHTML};
+    window.TGPassport={show,open,scope,equipment,records,osButton,url};
 })();

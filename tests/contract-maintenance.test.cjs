@@ -96,3 +96,14 @@ test('OS creation holds its lock until synchronization finishes and reports a pe
  emptyHistory(w);w.eval(fn('confirmarGerarOS'));w.fecharGerarOS=()=>{};w._horaMin=v=>{const [h,m]=v.split(':').map(Number);return h*60+m};w.gerarNumeroRegistoServidor=async()=> 'OS-1';w.abrirGerarOSContrato('ct');w.document.querySelector('.os-gerar-func-chk').checked=true;w.document.getElementById('os_hora').value='';let release;w.guardarDados=()=>new Promise(r=>release=r);const first=w.confirmarGerarOS();await new Promise(r=>setTimeout(r,0));assert.equal(w.dados.servicos.length,1);await w.confirmarGerarOS();assert.equal(w.dados.servicos.length,1);assert.equal(w.confirmarGerarOS.emCurso,true);release();await first;assert.equal(w.confirmarGerarOS.emCurso,false);
  w.dados.servicos[0].status='concluído';w.guardarDados=async()=>{throw Error('offline')};await w.confirmarGerarOS();assert.equal(w.dados.servicos.length,2);assert(w.alerts.at(-1).includes('neste dispositivo'));assert.equal(w.confirmarGerarOS.emCurso,false);
 }finally{w.close()}});
+
+test('both web and installed-app entry pages load the same maintenance and passport versions after the main app',()=>{
+ const index=fs.readFileSync('index.html','utf8'),login=fs.readFileSync('login.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
+ const scripts=html=>[...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(m=>m[1]);
+ for(const name of ['app-principal.js','tg-contract-maintenance.js','tg-passport.js']){
+  const a=scripts(index).filter(s=>s.startsWith(name+'?')),b=scripts(login).filter(s=>s.startsWith(name+'?'));
+  assert.equal(a.length,1);assert.deepEqual(b,a);assert(sw.includes('./'+a[0]));
+ }
+ for(const html of [index,login]){const names=scripts(html);assert(names.findIndex(s=>s.startsWith('tg-contract-maintenance.js?'))>names.findIndex(s=>s.startsWith('app-principal.js?')));}
+ for(const name of ['_wsResumoHtml','_wsContratosHtml'])assert(fn(name).includes('tg_maintenance_customer'));
+});

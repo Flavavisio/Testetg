@@ -10019,7 +10019,7 @@
                             </div>
                             <div id="ct_novo_equip" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
                                 <div class="form-group" style="margin-bottom:8px;"><label>Tipo *</label><select id="ct_equip_tipo" onchange="onTipoContratoChange(this)">${tipoOpts}</select><div id="ct_equip_tipo_gerir" style="margin-top:6px;"></div></div>
-                                <div class="form-group" style="margin-bottom:8px;"><label>Relatório de especialidade *</label><select id="ct_equip_relatorio">${window.TGEquipmentReports?.options() || '<option value="">Sem relatório</option>'}</select></div>
+                                <div class="form-group" style="margin-bottom:8px;"><label>Relatório de especialidade *</label><select id="ct_equip_relatorio">${window.TGEquipmentReports?.options() || '<option value="">Sem relatório</option>'}</select></div>${window.TGEquipmentReports?.maintenanceFields(null,'ct_equip') || ''}
                                 <div class="form-group" style="margin-bottom:8px;"><label>Marca</label><input type="text" id="ct_equip_marca" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Nº de série</label><input type="text" id="ct_equip_serie" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Data de instalação/venda</label><input type="date" id="ct_equip_data_instalacao" /></div>
@@ -10429,11 +10429,13 @@
                 if (!tipo) { alert('Escolha o tipo do novo equipamento.'); return; }
                 let relatorio;
                 try { relatorio=window.TGEquipmentReports?.validate(document.getElementById('ct_equip_relatorio')?.value); } catch(e) { alert(e.message); return; }
+                let manutencao;
+                try {manutencao=window.TGEquipmentReports?.maintenanceValidate(document.getElementById('ct_equip_periodicidade')?.value,document.getElementById('ct_equip_proxima')?.value);}catch(e){alert(e.message);return;}
                 equipId = gerarId();
                 dados.equipamentos = dados.equipamentos || [];
                 dados.equipamentos.push({
                     id: equipId, adminId, clienteId, localId, tipo,
-                    fichaTecnica: {relatorioEspecialidade: relatorio ?? ''},
+                    fichaTecnica: {relatorioEspecialidade: relatorio ?? '',manutencao},
                     marca: document.getElementById('ct_equip_marca').value.trim(),
                     numeroSerie: document.getElementById('ct_equip_serie').value.trim(),
                     observacoes: document.getElementById('ct_equip_obs').value.trim(),
@@ -10491,6 +10493,7 @@
             const interv = document.getElementById('ct_interv');
             const help = document.getElementById('ct_regra_help');
             if (!period || !interv) return;
+            if (window.TGContractMaintenance) {period.disabled=false;interv.disabled=false;if(help)help.textContent='Cada equipamento define a sua periodicidade e próxima manutenção.';return;}
             if (_algumEquipExigePresencialAnual()) {
                 period.value = 'anual'; period.disabled = true;
                 interv.value = 'presencial'; interv.disabled = true;
@@ -10662,7 +10665,7 @@
             let periodicidade = document.getElementById('ct_period').value;
             let tipoIntervencao = document.getElementById('ct_interv').value;
             const tecnicoId = document.getElementById('ct_tecnico').value || null;
-            if (_algumEquipExigePresencialAnual()) { periodicidade = 'anual'; tipoIntervencao = 'presencial'; }
+            if (!window.TGContractMaintenance && _algumEquipExigePresencialAnual()) { periodicidade = 'anual'; tipoIntervencao = 'presencial'; }
             const dataInicio = document.getElementById('ct_inicio').value;
             const valor = document.getElementById('ct_valor').value;
             if (!dataInicio) { alert('Indique a data de início.'); return; }

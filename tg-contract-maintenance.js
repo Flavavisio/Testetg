@@ -18,7 +18,17 @@
     let draft = {}, editing = null, historySerial = 0;
     const planLabel = p => p.equipamentoNome || EQUIP_TIPOS[p.tipo] || p.tipo;
     const covers = (p,e) => p.equipamentoId ? p.equipamentoId===e.id : p.tipo===e.tipo;
-    const plans = c => Array.isArray(c?.gestaoManutencao?.plano) ? c.gestaoManutencao.plano.filter(p=>p && p.ativo!==false) : [];
+    const plans = c => {
+        const source=Array.isArray(c?.gestaoManutencao?.plano)?c.gestaoManutencao.plano.filter(p=>p && p.ativo!==false):[],equipment=_contratoEquipamentos(c);
+        const result=source.flatMap(p=>{
+            const eq=equipment.filter(e=>covers(p,e));
+            if(p.equipamentoId){const config=eq[0]?.fichaTecnica?.manutencao;return [{...p,...(config || {})}];}
+            if(!eq.some(e=>e.fichaTecnica?.manutencao))return [p];
+            return eq.map(e=>({...p,id:p.id+'-'+e.id,origemSistemaId:p.id,equipamentoId:e.id,equipamentoNome:e.fichaTecnica?.nome || [EQUIP_TIPOS[e.tipo] || e.tipo,e.marca].filter(Boolean).join(' · '),...e.fichaTecnica?.manutencao}));
+        });
+        for(const e of equipment)if(e.fichaTecnica?.manutencao && !result.some(p=>covers(p,e)))result.push({id:'equip-'+e.id,equipamentoId:e.id,equipamentoNome:e.fichaTecnica?.nome || [EQUIP_TIPOS[e.tipo] || e.tipo,e.marca].filter(Boolean).join(' · '),tipo:e.tipo,intervencao:'presencial',tarefas:[],...e.fichaTecnica.manutencao});
+        return result;
+    };
     function draftContract() {
         return {adminId:usuarioLogado?.adminId || usuarioLogado?.id,clienteId:read('ct_cliente'),localId:read('ct_local'),locaisIds:[read('ct_local')],equipamentosIds:[..._ctEquipamentosAtuais]};
     }
@@ -28,10 +38,11 @@
             const tipo=row.dataset.ctSystem, equipamentoId=row.dataset.ctEquipment, old=(draft.plano || []).find(p=>p.equipamentoId===equipamentoId) || (draft.plano || []).find(p=>!p.equipamentoId && p.tipo===tipo) || {};
             const periodicidade=row.querySelector('[data-period]').value;
             const intervencao=row.querySelector('[data-intervention]').value;
-            if (tipoExigePresencialAnual(tipo) && (periodicidade!=='anual' || intervencao!=='presencial')) throw Error('Este sistema exige manutenção anual presencial.');
+            const proximaData=row.querySelector('[data-next]').value;
+            if(!proximaData)throw Error('Indica a próxima manutenção de cada equipamento.');
             const linhas=row.querySelector('textarea').value.split('\n').map(t=>t.trim()).filter(Boolean);
             if (linhas.length>100 || linhas.some(t=>t.length>500)) throw Error('Usa até 100 tarefas por sistema, com até 500 caracteres por tarefa.');
-            return {...old,id:old.equipamentoId?old.id:gerarId(),origemSistemaId:old.origemSistemaId || (!old.equipamentoId?old.id:undefined),equipamentoId,equipamentoNome:row.dataset.ctEquipmentName,tipo,ativo:true,periodicidade,intervencao,tarefas:linhas.map((texto,i)=>({id:old.tarefas?.[i]?.texto===texto?old.tarefas[i].id:gerarId(),texto}))};
+            return {...old,id:old.equipamentoId?old.id:old.id?old.id+'-'+equipamentoId:'equip-'+equipamentoId,origemSistemaId:old.origemSistemaId || (!old.equipamentoId?old.id:undefined),equipamentoId,equipamentoNome:row.dataset.ctEquipmentName,tipo,ativo:true,periodicidade,proximaData,intervencao,tarefas:linhas.map((texto,i)=>({id:old.tarefas?.[i]?.texto===texto?old.tarefas[i].id:gerarId(),texto}))};
         });
     }
     function refreshPlan() {
@@ -41,12 +52,13 @@
         const equipment=[..._contratoEquipamentos(c),...(dados.equipamentos || []).filter(e=>e.adminId===c.adminId && e.localId==='__novo__' && e.clienteId===c.clienteId && c.equipamentosIds.includes(e.id))];
         root.innerHTML=equipment.map(e=>{
             const tipo=e.tipo, name=[EQUIP_TIPOS[tipo] || tipo,e.nome,e.marca,e.modelo].filter(Boolean).join(' · ');
-            const p=(draft.plano || []).find(p=>p.equipamentoId===e.id) || (draft.plano || []).find(p=>!p.equipamentoId && p.tipo===tipo) || {}, forced=tipoExigePresencialAnual(tipo);
-            return `<div data-ct-system="${esc(tipo)}" data-ct-equipment="${esc(e.id)}" data-ct-equipment-name="${esc(name)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(name)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
+            const p=(draft.plano || []).find(p=>p.equipamentoId===e.id) || (draft.plano || []).find(p=>!p.equipamentoId && p.tipo===tipo) || {}, config=window.TGEquipmentReports?.maintenanceValue(e) || e.fichaTecnica?.manutencao || {}, forced=false;
+            return `<div data-ct-system="${esc(tipo)}" data-ct-equipment="${esc(e.id)}" data-ct-equipment-name="${esc(name)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(name)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Próxima manutenção<input type="date" data-next value="${esc((p.equipamentoId?p.proximaData:config.proximaData) || config.proximaData || p.proximaData || avancarPeriodicidade(read('ct_inicio') || getDataHoje(),(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual'))}"></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
         }).join('') || '<p class="help-text">Seleciona primeiro os equipamentos abrangidos.</p>';
     }
     function mount(c) {
         editing=c || null;draft=JSON.parse(JSON.stringify(obj(c?.gestaoManutencao)));
+        draft.plano=(draft.plano || []).map(p=>{const e=(dados.equipamentos || []).find(e=>e.id===p.equipamentoId && e.adminId===c?.adminId);return e?.fichaTecnica?.manutencao?{...p,...e.fichaTecnica.manutencao}:p;});
         const root=document.querySelector('#modalContratoCampos .ff-wrap'); if (!root) return;
         root.querySelector('#ct_tipos_trabalho_cont')?.closest('.ff-secao')?.remove();
         if(_contratoLocalIds(c || {}).length>1)root.querySelector('#ct_cobertura')?.insertAdjacentHTML('afterend','<p class="help-text">Este contrato antigo abrangia várias instalações. Para guardar, escolhe uma instalação e mantém apenas os equipamentos dessa instalação. O histórico anterior é preservado.</p>');
@@ -108,7 +120,8 @@
         if(srv.materiais==='parcial' && !srv.notas)throw Error('Descreve os materiais abrangidos.');
         const avisoDias=number('ct_alerta_dias',true) ?? 30,urgenteDias=number('ct_urgente_dias',true) ?? 7;
         if(urgenteDias>avisoDias)throw Error('O aviso urgente deve ser igual ou inferior à antecedência do aviso.');
-        return {...draft,versao:2,plano,servicos:srv,alertas:{...obj(draft.alertas),avisoDias,urgenteDias},comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
+        for(const p of plano){const e=(dados.equipamentos || []).find(e=>e.id===p.equipamentoId && e.adminId===draftContract().adminId);if(e)e.fichaTecnica={...e.fichaTecnica,manutencao:{...e.fichaTecnica?.manutencao,periodicidade:p.periodicidade,proximaData:p.proximaData}};}
+        return {...draft,versao:3,plano,servicos:srv,alertas:{...obj(draft.alertas),avisoDias,urgenteDias},comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
     }
     function recordLocation(r,c) {
         if(r.localId != null || Array.isArray(r.sistemasIds))return r.localId || '';
@@ -120,7 +133,8 @@
             const eq=_contratoEquipamentos(c,l.id);
             return plans(c).filter(p=>eq.some(e=>covers(p,e))).map(p=>{
                 const regs=(dados.registosManutencao || []).filter(r=>r.adminId===c.adminId && r.contratoId===c.id && recordLocation(r,c)===(l.id || '') && r.dataRealizacao && (Array.isArray(r.sistemasIds)?(r.sistemasIds.includes(p.id) || (p.origemSistemaId && r.sistemasIds.includes(p.origemSistemaId))):true)).sort((a,b)=>b.dataRealizacao.localeCompare(a.dataRealizacao));
-                return {localId:l.id,localNome:l.nome,plan:p,data:avancarPeriodicidade(regs[0]?.dataRealizacao || c.dataInicio,p.periodicidade)};
+                const advanced=regs[0]?avancarPeriodicidade(regs[0].dataRealizacao,p.periodicidade):null;
+                return {localId:l.id,localNome:l.nome,plan:p,data:advanced && (!p.proximaData || advanced>p.proximaData)?advanced:p.proximaData || advanced || avancarPeriodicidade(c.dataInicio,p.periodicidade)};
             });
         });
     }

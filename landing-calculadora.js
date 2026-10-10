@@ -33,7 +33,7 @@ function fecharDetalheAddon() {
     document.getElementById('tg-addon-overlay').classList.remove('open');
 }
 // Public plan finder: the same pack price source as the pricing cards and signup.
-const TCW_NEEDS = {equipa: 1, portal: 1, contratos: 1, frota: 1, armazem: 2, assist: 2, crm: 3};
+const TCW_NEEDS = {instalacoes: 1, equipa: 1, portal: 1, contratos: 1, frota: 1, armazem: 2, assist: 2, crm: 3};
 const TCW_PACK_ORDER = ['express', 'expert', 'pro', 'supreme'];
 const TCW_TITULOS = ['Quantas pessoas tem a equipa?', 'Que áreas precisa de gerir?', 'O pack para a sua equipa'];
 let _tcwPasso = 1;
@@ -495,7 +495,9 @@ const PACK_PRECOS_SITE = typeof PACK_PRECOS !== 'undefined' ? PACK_PRECOS : {
 // ✓ = incluído nesse pack. A ordem segue a lógica cumulativa Express → Expert → Pro → Supreme.
 const PACK_FUNCS = [
     { grupo: 'Base', linhas: [
-        ['Clientes e locais', 1,1,1,1],
+        ['Clientes', 1,1,1,1],
+        ['Organização dos locais / instalações do cliente', 'Locais','Instalações','Instalações','Instalações'],
+        ['Passaporte de Instalação', 0,1,1,1],
         ['Ordens de Serviço', 1,1,1,1],
         ['Folha de Obra / Intervenção', 1,1,1,1],
         ['PDF Folha de Obra — Cliente', 1,1,1,1],

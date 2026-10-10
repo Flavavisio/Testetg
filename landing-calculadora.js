@@ -496,7 +496,7 @@ const PACK_PRECOS_SITE = typeof PACK_PRECOS !== 'undefined' ? PACK_PRECOS : {
 const PACK_FUNCS = [
     { grupo: 'Base', linhas: [
         ['Clientes', 1,1,1,1],
-        ['Organização dos locais / instalações do cliente', 'Locais','Instalações','Instalações','Instalações'],
+        ['Instalações do cliente', 1,1,1,1],
         ['Passaporte de Instalação', 0,1,1,1],
         ['Ordens de Serviço', 1,1,1,1],
         ['Folha de Obra / Intervenção', 1,1,1,1],

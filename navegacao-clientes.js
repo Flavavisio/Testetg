@@ -97,7 +97,7 @@ function _tgClienteSubabaPermitida(aba, admin) {
 function _tgClienteSubnav(clienteId, aba) {
     const principal = _tgClienteAbaPrincipal(aba);
     const opcoes = principal === 'os' ? [['os','Ordens de serviço'],['assistencias','Assistências'],['manutencoes','Manutenções']]
-        : principal === 'locais' ? [['locais','Locais'],['equipamentos','Equipamentos instalados']]
+        : principal === 'locais' ? [['locais','Instalações'],['equipamentos','Equipamentos instalados']]
         : principal === 'documentos' ? [['documentos','Especialidade'],['personalizados','Personalizados'],['anexos','Documentação'],['registos','Registos da empresa']] : [];
     return opcoes.filter(([a]) => _tgClienteSubabaPermitida(a, adminAtual())).map(([a, titulo]) => `<button type="button" class="tg-cliente-subaba ${a === aba ? 'active' : ''}" aria-pressed="${a === aba}" onclick="_wsClienteAba('${clienteId}','${a}')">${titulo}</button>`).join('');
 }

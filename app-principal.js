@@ -5200,8 +5200,8 @@
         //  Financeiro) mostram uma mensagem simples por agora — ficam para as
         //  próximas fases, sem quebrar nada do que já existe nesses menus.
         // =====================================================================
-        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'passaporte', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
-        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', passaporte: 'Instalações', locais: 'Locais', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
+        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
+        const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', locais: 'Instalações', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) return;
@@ -5240,6 +5240,7 @@
             }, 350);
         }
         async function _wsClienteAba(clienteId, aba) {
+            if (aba === 'passaporte') aba = 'locais'; // compatibilidade com ligações anteriores
             const admin = adminAtual();
             // Cada separador só aparece se o módulo correspondente estiver mesmo ativo nesta
             // conta — Assistências precisa do Assist, Contratos e Equipamentos (que vivem dentro
@@ -5269,14 +5270,14 @@
                             <div style="width:48px;height:48px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;font-weight:700;color:#152a52;font-size:1.05rem;flex-shrink:0;">${iniciais}</div>
                             <div style="flex:1;min-width:0;">
                                 <div style="font-weight:700;font-size:1.15rem;">${escapeHtmlSimples(cliente.nome)}</div>
-                                <div style="font-size:.8rem;color:#64748b;">${cliente.nif ? 'NIF ' + escapeHtmlSimples(cliente.nif) + ' · ' : ''}${escapeHtmlSimples(cliente.cidade || cliente.endereco || '—')} · ${locaisCliente.length + 1} local${locaisCliente.length ? 'is' : ''}</div>
+                                <div style="font-size:.8rem;color:#64748b;">${cliente.nif ? 'NIF ' + escapeHtmlSimples(cliente.nif) + ' · ' : ''}${escapeHtmlSimples(cliente.cidade || cliente.endereco || '—')} · ${locaisCliente.length + 1} instalaç${locaisCliente.length ? 'ões' : 'ão'}</div>
                             </div>
                             <button class="close-modal" onclick="_wsClienteFechar()">&times;</button>
                         </div>
                         <div style="padding:14px 22px 0;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
                             <button class="btn btn-sm btn-primary" onclick="_wsMarcarOS('${clienteId}')"><i class="fas fa-clipboard-plus"></i> Marcar OS</button>
                             ${moduloAssistAtivo(admin) ? `<button class="btn btn-sm btn-outline" onclick="_wsMarcarAssistencia('${clienteId}')"><i class="fas fa-headset"></i> Marcar assistência</button>` : ''}
-                            <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-map-pin"></i> Novo local</button>
+                            <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-map-pin"></i> Nova instalação</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirModal('cliente','${clienteId}')"><i class="fas fa-edit"></i> Editar dados</button>
                             <button class="btn btn-sm btn-outline" onclick="_wsClienteAba('${clienteId}','historico')"><i class="fas fa-clock-rotate-left"></i> Histórico completo</button>
                         </div>
@@ -5293,8 +5294,10 @@
             const conteudo = document.getElementById('wsClienteConteudo');
             if (aba === 'resumo') conteudo.innerHTML = await _wsResumoHtml(clienteId);
             else if (aba === 'historico') await window.TGClientHistory.show(clienteId);
-            else if (aba === 'passaporte') await window.TGPassport.show(clienteId);
-            else if (aba === 'locais') conteudo.innerHTML = _wsLocaisHtml(clienteId);
+            else if (aba === 'locais') {
+                if (moduloPassaporteAtivo(admin) && window.TGPassport) await window.TGPassport.show(clienteId);
+                else conteudo.innerHTML = _wsLocaisHtml(clienteId);
+            }
             else if (aba === 'os') conteudo.innerHTML = await _wsOsHtml(clienteId);
             else if (aba === 'obras') conteudo.innerHTML = _wsObrasHtml(clienteId);
             else if (aba === 'contratos') conteudo.innerHTML = _wsContratosHtml(clienteId);
@@ -5795,13 +5798,13 @@
             }).join('');
             return `
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
-                    <div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Locais</div><div style="font-size:1.5rem;font-weight:700;">${locaisParaMostrar.length}</div></div>
+                    <div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Instalações</div><div style="font-size:1.5rem;font-weight:700;">${locaisParaMostrar.length}</div></div>
                     <div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">OS abertas</div><div style="font-size:1.5rem;font-weight:700;">${osAbertas}</div></div>
                     ${contratosAtivos ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Equipamentos</div><div style="font-size:1.5rem;font-weight:700;">${equipCliente}</div></div>
                     <div style="background:${contratosAVencer ? '#fef3c7' : '#f8fafc'};border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:${contratosAVencer ? '#92400e' : '#64748b'};text-align:left;">Contratos a vencer</div><div style="font-size:1.5rem;font-weight:700;color:${contratosAVencer ? '#92400e' : 'inherit'};">${contratosAVencer}</div></div>` : ''}
                 </div>
                 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;">
-                    <div style="font-weight:600;font-size:.9rem;margin-bottom:8px;">Locais e última atividade</div>
+                    <div style="font-weight:600;font-size:.9rem;margin-bottom:8px;">Instalações e última atividade</div>
                     ${linhasLocais}
                 </div>
             `;
@@ -5817,7 +5820,7 @@
                         <i class="fas ${icone}" style="color:#94a3b8;width:18px;"></i>
                         <div style="flex:1;"><div style="font-weight:600;font-size:.88rem;">${escapeHtmlSimples(nome)}</div><div style="font-size:.78rem;color:#64748b;">${escapeHtmlSimples(morada || 'Sem morada registada')}</div></div>
                         ${botaoEditar || ''}
-                        <button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation();TGPassport.open('${clienteId}','${chave === 'sede' ? '' : chave}')">Passaporte</button>
+                        ${moduloPassaporteAtivo(adminAtual()) ? `<button type="button" class="btn btn-sm btn-outline" onclick="event.stopPropagation();TGPassport.open('${clienteId}','${chave === 'sede' ? '' : chave}')">Passaporte</button>` : ''}
                         <i class="fas fa-chevron-down" id="wsLocalSeta-${chave}" style="color:#cbd5e1;"></i>
                     </div>
                     <div id="wsLocalDet-${chave}" style="display:none;padding:4px 0 14px 28px;"></div>
@@ -5830,7 +5833,7 @@
                 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0 18px;">
                     ${linhaSede}${linhasExtra}
                 </div>
-                <button class="btn btn-sm btn-outline" style="margin-top:14px;" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-plus"></i> Adicionar local</button>
+                <button class="btn btn-sm btn-outline" style="margin-top:14px;" onclick="_wsSairPara('${clienteId}');abrirModalNovoLocalCliente('${clienteId}')"><i class="fas fa-plus"></i> Adicionar instalação</button>
             `;
         }
         async function _wsLocalToggle(clienteId, chave) {
@@ -8108,6 +8111,10 @@
         }
         // Limite de uma funcionalidade para o pack da conta. Sem pack (conta antiga) → sem limite
         // (Infinity), para o modelo antigo continuar a funcionar exatamente como antes.
+        // O Passaporte pertence ao pack da empresa, incluindo os seus técnicos.
+        function moduloPassaporteAtivo(admin) {
+            return ['expert', 'pro', 'supreme'].includes(packDoAdmin(admin));
+        }
         function packLimite(admin, chaveLimite) {
             const p = packDoAdmin(admin);
             if (!p) return Infinity;
@@ -9878,16 +9885,16 @@
                     <div class="help-text" style="margin:-14px 0 14px;">Não existe? <a href="#" onclick="fecharModalContrato(); abrirModal('cliente', null); return false;">Criar cliente</a> e volte a abrir o contrato.</div>
 
                     <div class="ff-secao ff-tint-id">
-                        <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Local e Equipamento</div>
+                        <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Instalação e Equipamento</div>
                         <div class="ff-secao-body">
-                            <div class="form-group ff-span2"><label>Local / Instalação *</label>
+                            <div class="form-group ff-span2"><label>Instalação *</label>
                                 <div style="display:flex;gap:8px;align-items:center;">
                                     <select id="ct_local" onchange="onLocalContratoChange()" style="flex:1;"></select>
-                                    <button type="button" class="btn btn-sm btn-danger" title="Apagar este local" onclick="apagarLocalContrato()"><i class="fas fa-trash"></i></button>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Apagar esta instalação" onclick="apagarLocalContrato()"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
                             <div id="ct_novo_local" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
-                                <div class="form-group" style="margin-bottom:8px;"><label>Nome do novo local *</label><input type="text" id="ct_local_nome" placeholder="Ex: Loja Centro" /></div>
+                                <div class="form-group" style="margin-bottom:8px;"><label>Nome da nova instalação *</label><input type="text" id="ct_local_nome" placeholder="Ex: Loja Centro" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Morada</label><input type="text" id="ct_local_morada" placeholder="Rua/Avenida" autocomplete="off" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Número de porta</label><input type="text" id="ct_local_numero" placeholder="Ex.: 12, 3º Dto" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Código Postal</label><input type="text" id="ct_local_cp" placeholder="0000-000" autocomplete="off" oninput="aplicarMascaraCP(this); _cttPreencherPorCP(this.value,{cidade:'ct_local_cidade',freguesia:'ct_local_freguesia',morada:'ct_local_morada'})" maxlength="8" /></div>
@@ -10052,7 +10059,7 @@
         }
         function apagarLocalContrato() {
             const localId = document.getElementById('ct_local').value;
-            if (!localId || localId === '__novo__') { alert('Seleciona um local existente para apagar.'); return; }
+            if (!localId || localId === '__novo__') { alert('Seleciona uma instalação existente para apagar.'); return; }
             const local = dados.locais?.find(l => l.id === localId);
             if (!local) return;
             const contratosLigados = (dados.contratos || []).filter(c => c.localId === localId && c.id !== contratoEditandoId).length;
@@ -10077,7 +10084,7 @@
             const locais = (dados.locais || []).filter(l => l.adminId === adminId && l.clienteId === cliId);
             localSel.innerHTML = '<option value="">— Morada principal do cliente (Sede) —</option>'
                 + locais.map(l => `<option value="${l.id}">${l.nome}</option>`).join('')
-                + '<option value="__novo__">➕ Criar novo local</option>';
+                + '<option value="__novo__">➕ Criar nova instalação</option>';
             onLocalObraChange();
         }
         function onLocalObraChange() {
@@ -10106,7 +10113,7 @@
             const moradaSede = cli ? [cli.morada, cli.codigoPostal, cli.cidade].filter(Boolean).join(', ') : '';
             localSel.innerHTML = `<option value="">Sede${moradaSede ? ' — ' + moradaSede : ''}</option>`
                 + locais.map(l => `<option value="${l.id}">${l.nome}</option>`).join('')
-                + '<option value="__novo__">➕ Criar novo local</option>';
+                + '<option value="__novo__">➕ Criar nova instalação</option>';
             onLocalContratoChange();
         }
 
@@ -10527,7 +10534,7 @@
             let localId = document.getElementById('ct_local').value;
             if (localId === '__novo__') {
                 const nome = document.getElementById('ct_local_nome').value.trim();
-                if (!nome) { alert('Indique o nome do novo local.'); return; }
+                if (!nome) { alert('Indique o nome da nova instalação.'); return; }
                 localId = gerarId();
                 dados.locais = dados.locais || [];
                 dados.locais.push({
@@ -16385,7 +16392,7 @@
                 const locaisCliente = (dados.locais || []).filter(l => l.clienteId === cli.id);
                 localSel.innerHTML = '<option value="">— Morada principal do cliente (Sede) —</option>' +
                     locaisCliente.map(l => `<option value="${l.id}">${l.nome}</option>`).join('') +
-                    '<option value="__novo__">➕ Criar novo local</option>';
+                    '<option value="__novo__">➕ Criar nova instalação</option>';
             }
         }
         function criarOSdaObra(obraId, obraRecemCriada) {
@@ -19295,7 +19302,7 @@
         }
         function renderizarGuia() {
             const cont = document.getElementById('guiaConteudo'); if (!cont) return;
-            const desc = {"funcionarios": "Esta secção é onde gere toda a equipa técnica da empresa. Pode criar novos funcionários e editar os existentes, definindo nome, telefone, email e senha de acesso à aplicação. É aqui que define o ordenado bruto e as horas semanais, dados que alimentam depois os relatórios de assiduidade e de custos. Pode associar um veículo da frota a cada funcionário — e só quem tiver veículo atribuído é que passa a ver o card da Frota. Cada funcionário criado fica habilitado a iniciar sessão com o seu email e senha. A partir desse momento pode ser escolhido como responsável de uma Ordem de Serviço. Pode ainda ligar ou desligar o registo de ponto com GPS pessoa a pessoa. Convém manter os dados atualizados para que os documentos saiam corretos. Ao eliminar um funcionário, retira-lhe o acesso à plataforma.","clientes": "Aqui mantém a base de dados de todos os clientes da empresa. Cada cliente pode ter nome, NIF, contactos, morada e vários locais associados. Estes dados são reutilizados em todo o sistema, evitando reescrever moradas e contactos a cada trabalho. Quando cria uma Ordem de Serviço, escolhe o cliente a partir desta lista. O mesmo acontece nas folhas de obra e nos contratos de manutenção. Ter os clientes bem preenchidos torna os relatórios e os PDFs muito mais completos e profissionais. Pode pesquisar, editar ou eliminar clientes a qualquer momento. É normalmente o primeiro passo antes de agendar qualquer serviço. Quanto melhor a ficha do cliente, menos tempo perde depois no terreno.","frota": "Esta área concentra a gestão de todos os veículos da empresa. Para cada viatura pode registar matrícula, documentos, datas de inspeção e de seguro, e o histórico de manutenções. Regista também sinistros e os respetivos detalhes para acompanhamento. O sistema calcula e avisa quando uma inspeção, seguro ou revisão está a aproximar-se ou já venceu. Pode atribuir cada veículo a um funcionário ou encarregado, que passa então a ver o card da Frota. Quem não tiver veículo atribuído não vê esta secção, mantendo o painel limpo. Os avisos ajudam a evitar multas e paragens inesperadas. É um add-on opcional da plataforma. Bem usada, reduz custos e prolonga a vida dos veículos.","servicos": "As Ordens de Serviço são o centro da operação diária. Aqui regista cada trabalho a realizar, com cliente, descrição, data, hora e duração prevista. Pode atribuir cada OS a um técnico responsável pela execução. O estado evolui de pendente para em andamento e, no fim, concluído, dando visibilidade do ponto de situação. As OS aparecem no calendário da Agenda de Obras, onde podem ser reorganizadas por arrastamento. Podem ser geradas automaticamente quando uma obra passa ao estado Ativa. Ao terminar, dão origem a uma folha de obra com materiais e assinatura do cliente. O sistema avisa o responsável caso tente aprovar férias a alguém com OS marcadas nesse período. É a partir destas ordens que se constroem os relatórios e os números do financeiro. Em resumo, é o registo central de tudo o que a equipa faz.","folhas": "As folhas de obra documentam o trabalho efetivamente realizado em cada Ordem de Serviço. Permitem descrever a intervenção, listar os materiais consumidos e registar observações. O cliente pode assinar diretamente no ecrã do dispositivo, ficando a assinatura guardada na folha. Servem como comprovativo do serviço prestado para o cliente e para a empresa. Os materiais consumidos abatem ao stock do armazém, mantendo as quantidades reais. Também alimentam o financeiro, ligando o trabalho aos respetivos custos. Pode anexar fotografias e gerar um documento para envio. Ficam associadas à OS e à obra correspondentes. É a peça que fecha o ciclo de cada serviço.","requisicoes": "As requisições servem para a equipa pedir material ao responsável de forma organizada. Um funcionário ou encarregado cria o pedido indicando os artigos e quantidades. O admin ou encarregado analisa e aprova ou rejeita cada requisição. Ao aprovar, o material é abatido ao stock automaticamente. Isto evita pedidos informais e mantém o controlo do que sai do armazém. Cada requisição tem um estado para se saber se está pendente ou já tratada. Ajuda a planear reposições quando o stock baixa. Mantém um histórico de quem pediu o quê e quando. É a ponte entre o terreno e o armazém.","relatorio-os": "Consulte relatórios operacionais de ordens de serviço, assistências, clientes e locais, técnicos e equipas, obras, manutenções e stock. Cada opção respeita os módulos e acessos da empresa. Escolha os filtros, consulte a pré-visualização e exporte em PDF ou Excel. Os relatórios de especialidade mantêm-se nos trabalhos e clientes.","agenda-obras": "A Agenda de Obras é o calendário de planeamento das Ordens de Serviço. Pode ver o trabalho por semana ou por mês, conforme preferir. Cada OS aparece no respetivo dia e pode ser arrastada para outra data. Pode atribuir ou trocar o responsável diretamente a partir do cartão da OS. O sistema deteta e assinala conflitos quando a mesma pessoa fica com sobreposições. Há uma zona de OS por agendar, para arrastar para o calendário. Ajuda a distribuir a carga de trabalho de forma equilibrada. Dá uma visão imediata da semana à equipa de gestão. É a forma mais visual de organizar o terreno.","ponto": "Esta secção regista a assiduidade da equipa através da picagem de ponto. Cada pessoa pica a entrada e a saída a partir do seu dispositivo. Pode ativar a captura da localização GPS no momento da picagem, por pessoa. Os registos servem de base ao cálculo das horas trabalhadas. Ficam organizados por dia e por funcionário. Permitem detetar atrasos, faltas e horas extra. São depois usados na secção de Assiduidade. Garantem um registo objetivo e com data/hora. Reduzem erros e discussões sobre horários.","assiduidade": "A Assiduidade transforma os registos de ponto em relatórios úteis. Mostra as horas trabalhadas por funcionário e por período. Apresenta totais, faltas e desvios face ao previsto. Pode exportar em PDF e em Excel para processamento ou arquivo. Facilita o fecho mensal e o apoio ao processamento salarial. Dá uma visão clara da disponibilidade da equipa. Ajuda a identificar padrões de absentismo. Complementa os dados de ordenado definidos na ficha do funcionário. É um instrumento de gestão de pessoas.","pedidos": "Aqui são geridos os pedidos de férias e de faltas da equipa. O funcionário submete o pedido, podendo anexar um justificativo. O responsável vê os pedidos pendentes e aprova ou rejeita. Ao aprovar, o sistema avisa se a pessoa tiver Ordens de Serviço marcadas nesse período. Isto evita aprovar ausências que deixariam trabalhos sem técnico. Cada pedido tem um estado visível para ambas as partes. Mantém um histórico das ausências ao longo do tempo. Ajuda a planear a equipa com antecedência. É a forma formal de tratar férias e faltas.","encarregados": "Esta secção gere os encarregados e as equipas que cada um supervisiona. Os encarregados têm um nível de acesso intermédio, entre o admin e o funcionário. Podem aceder à agenda, às ordens de serviço e a relatórios, sem funções de administração da empresa. Pode definir os seus dados, contactos e veículo atribuído. Servem para descentralizar a coordenação no terreno. Cada encarregado acompanha o trabalho da sua equipa. Ajudam a aliviar a carga de gestão do administrador. Tal como os funcionários, podem ter registo de ponto e GPS. São peças-chave em empresas com várias frentes de obra.","contratos": "Os contratos de manutenção organizam as intervenções periódicas por cliente e equipamento. Para cada contrato define a periodicidade, o tipo de intervenção e os dados do equipamento. O sistema calcula automaticamente a data da próxima manutenção. Avisa quando há contratos vencidos ou prestes a vencer, com sinalização por cores. Isto evita falhar manutenções e perder credibilidade junto do cliente. Cada contrato fica ligado ao cliente e ao local respetivos. Ajuda a gerar receita recorrente e previsível. É um add-on opcional da plataforma. Bem usado, é uma fonte estável de trabalho planeado.","artigos": "Esta área é o catálogo de stock da empresa. Cada artigo pode ter marca, categoria, unidade, stock atual e stock mínimo. Pode ativar alertas para ser avisado quando um artigo fica em rutura. Os movimentos de entrada e saída mantêm as quantidades atualizadas. Pode importar e exportar o catálogo em CSV para tratar muitos artigos de uma vez. Os artigos são usados nas encomendas, requisições e planos de obra. Ajuda a saber sempre o que existe em armazém. Reduz compras desnecessárias e ruturas em obra. Faz parte do add-on Armazém.","encomendas": "Aqui regista as encomendas de material aos fornecedores. Cada encomenda pode ter vários itens com marca, categoria e quantidade. Pode associar a encomenda a uma obra específica. Na receção, dá entrada do material em stock de forma simples. Pode anexar a fatura do fornecedor à encomenda recebida. O sistema atualiza o stock automaticamente com o que chega. Mantém o histórico de compras e respetivos custos. Ajuda a planear reposições com base nas obras em curso. Integra-se com o financeiro pelo lado das compras. Faz parte do add-on Armazém.","fornecedores": "Esta secção mantém a lista de fornecedores da empresa. Para cada um pode guardar contactos e informação relevante. São usados na criação de encomendas de material. Ter os fornecedores organizados acelera o processo de compra. Evita procurar contactos dispersos por vários sítios. Pode editar ou remover fornecedores quando necessário. Complementa o catálogo de artigos e as encomendas. Ajuda a comparar e a escolher o fornecedor certo. Faz parte do add-on Armazém.","obras-longa": "O Planeamento de Obra acompanha cada obra do início ao fim. Cada obra tem um estado que evolui por Preparação, Ativa, Suspensa e Concluída. O card mostra contadores rápidos de quantas estão em cada estado. Quando uma obra passa a Ativa, pode gerar logo uma Ordem de Serviço. Cada obra tem um plano de materiais com quantidades previstas, recebidas e consumidas. Isto permite comparar o orçamentado com o realmente gasto. O sistema assinala obras com excedente de materiais. Liga-se às encomendas e ao stock do armazém. Dá uma visão clara do andamento e dos custos de cada obra. Faz parte do add-on Armazém.","financeiro": "O Financeiro dá a visão económica da operação. Mostra a faturação das Ordens de Serviço num período à escolha. Apresenta as compras de material e o resultado final. Inclui um gráfico de evolução mensal para perceber tendências. Tem detalhe por cliente, para saber quem gera mais valor. Pode filtrar por mês, ano ou todo o histórico. Permite exportar a informação em PDF. Junta num só sítio o que entra e o que sai. Ajuda a tomar decisões com base em números. Está incluído no add-on Armazém.","agenda": "A Agenda reúne as datas importantes que se aproximam. Inclui fim de licença, inspeções, manutenções e contratos a vencer. Funciona como um resumo de prazos a não falhar. Ajuda a antecipar renovações e intervenções. Evita surpresas de última hora. Dá uma visão rápida do que exige atenção em breve. Complementa os avisos espalhados pelos vários cards. É útil para o planeamento semanal. Mantém a gestão um passo à frente.","reports": "O painel de Reports concentra os indicadores de gestão da empresa. Resume a equipa, as ordens de serviço, os clientes e os custos. Dá uma visão geral do estado do negócio num relance. Ajuda a identificar pontos fortes e áreas a melhorar. Serve de apoio à tomada de decisão. Complementa os relatórios mais específicos das outras secções. É pensado para uma leitura rápida pelo administrador. Reúne num só ecrã o essencial. Poupa tempo na recolha de informação.","minha-licenca": "Aqui consulta o estado da sua licença e dos add-ons. Vê as datas de validade da licença base, da Frota, dos Contratos e do Armazém. Pode pedir a ativação ou a renovação, em plano mensal ou anual. O pedido segue para o Super Admin com as instruções de pagamento. Quando perto de expirar, surgem botões de renovação. Mantém a transparência sobre o que tem contratado. Evita interrupções por esquecimento de renovar. É o ponto único para gerir a sua subscrição. Garante que continua com acesso a tudo o que precisa.","ajuda-peticoes": "Este é o canal de suporte da plataforma. Permite enviar pedidos de ajuda ou reportar problemas ao administrador da plataforma. Pode acompanhar o estado e a resposta de cada pedido. Mantém um histórico das comunicações. Evita ter de recorrer a meios externos para pedir apoio. O cartão sinaliza quando há novidades por ler. É a forma mais rápida de obter assistência. Útil sempre que surge uma dúvida ou um imprevisto. Liga-o diretamente a quem gere a plataforma.","auditoria":"O Histórico/Auditoria regista quem fez o quê e quando dentro da empresa. Inclui criação, edição e eliminação de registos, aprovações de pedidos, assinaturas de folhas e início e fim de sessão. Cada entrada guarda a data e hora, o utilizador, o seu papel, a ação e a secção afetada. Pode filtrar por utilizador, ação ou secção para encontrar rapidamente o que procura. Os registos mais recentes aparecem primeiro. Pode exportar tudo em CSV para arquivo ou análise. É uma ferramenta de transparência e de segurança. Ajuda a esclarecer dúvidas e a investigar enganos sem acusações. Só o administrador (e o Super Admin) tem acesso a este histórico.","contactos": "Mostra a informação e os contactos da empresa. Fica visível no ecrã inicial, antes de iniciar sessão. Serve de cartão de visita digital da empresa. Ajuda quem chega a saber como contactar. Reúne os dados essenciais num só sítio. É simples e direto. Complementa a imagem profissional da plataforma."};
+            const desc = {"funcionarios": "Esta secção é onde gere toda a equipa técnica da empresa. Pode criar novos funcionários e editar os existentes, definindo nome, telefone, email e senha de acesso à aplicação. É aqui que define o ordenado bruto e as horas semanais, dados que alimentam depois os relatórios de assiduidade e de custos. Pode associar um veículo da frota a cada funcionário — e só quem tiver veículo atribuído é que passa a ver o card da Frota. Cada funcionário criado fica habilitado a iniciar sessão com o seu email e senha. A partir desse momento pode ser escolhido como responsável de uma Ordem de Serviço. Pode ainda ligar ou desligar o registo de ponto com GPS pessoa a pessoa. Convém manter os dados atualizados para que os documentos saiam corretos. Ao eliminar um funcionário, retira-lhe o acesso à plataforma.","clientes": "Aqui mantém a base de dados de todos os clientes da empresa. Cada cliente pode ter nome, NIF, contactos, morada e várias instalações associadas. Estes dados são reutilizados em todo o sistema, evitando reescrever moradas e contactos a cada trabalho. Quando cria uma Ordem de Serviço, escolhe o cliente a partir desta lista. O mesmo acontece nas folhas de obra e nos contratos de manutenção. Ter os clientes bem preenchidos torna os relatórios e os PDFs muito mais completos e profissionais. Pode pesquisar, editar ou eliminar clientes a qualquer momento. É normalmente o primeiro passo antes de agendar qualquer serviço. Quanto melhor a ficha do cliente, menos tempo perde depois no terreno.","frota": "Esta área concentra a gestão de todos os veículos da empresa. Para cada viatura pode registar matrícula, documentos, datas de inspeção e de seguro, e o histórico de manutenções. Regista também sinistros e os respetivos detalhes para acompanhamento. O sistema calcula e avisa quando uma inspeção, seguro ou revisão está a aproximar-se ou já venceu. Pode atribuir cada veículo a um funcionário ou encarregado, que passa então a ver o card da Frota. Quem não tiver veículo atribuído não vê esta secção, mantendo o painel limpo. Os avisos ajudam a evitar multas e paragens inesperadas. É um add-on opcional da plataforma. Bem usada, reduz custos e prolonga a vida dos veículos.","servicos": "As Ordens de Serviço são o centro da operação diária. Aqui regista cada trabalho a realizar, com cliente, descrição, data, hora e duração prevista. Pode atribuir cada OS a um técnico responsável pela execução. O estado evolui de pendente para em andamento e, no fim, concluído, dando visibilidade do ponto de situação. As OS aparecem no calendário da Agenda de Obras, onde podem ser reorganizadas por arrastamento. Podem ser geradas automaticamente quando uma obra passa ao estado Ativa. Ao terminar, dão origem a uma folha de obra com materiais e assinatura do cliente. O sistema avisa o responsável caso tente aprovar férias a alguém com OS marcadas nesse período. É a partir destas ordens que se constroem os relatórios e os números do financeiro. Em resumo, é o registo central de tudo o que a equipa faz.","folhas": "As folhas de obra documentam o trabalho efetivamente realizado em cada Ordem de Serviço. Permitem descrever a intervenção, listar os materiais consumidos e registar observações. O cliente pode assinar diretamente no ecrã do dispositivo, ficando a assinatura guardada na folha. Servem como comprovativo do serviço prestado para o cliente e para a empresa. Os materiais consumidos abatem ao stock do armazém, mantendo as quantidades reais. Também alimentam o financeiro, ligando o trabalho aos respetivos custos. Pode anexar fotografias e gerar um documento para envio. Ficam associadas à OS e à obra correspondentes. É a peça que fecha o ciclo de cada serviço.","requisicoes": "As requisições servem para a equipa pedir material ao responsável de forma organizada. Um funcionário ou encarregado cria o pedido indicando os artigos e quantidades. O admin ou encarregado analisa e aprova ou rejeita cada requisição. Ao aprovar, o material é abatido ao stock automaticamente. Isto evita pedidos informais e mantém o controlo do que sai do armazém. Cada requisição tem um estado para se saber se está pendente ou já tratada. Ajuda a planear reposições quando o stock baixa. Mantém um histórico de quem pediu o quê e quando. É a ponte entre o terreno e o armazém.","relatorio-os": "Consulte relatórios operacionais de ordens de serviço, assistências, clientes e instalações, técnicos e equipas, obras, manutenções e stock. Cada opção respeita os módulos e acessos da empresa. Escolha os filtros, consulte a pré-visualização e exporte em PDF ou Excel. Os relatórios de especialidade mantêm-se nos trabalhos e clientes.","agenda-obras": "A Agenda de Obras é o calendário de planeamento das Ordens de Serviço. Pode ver o trabalho por semana ou por mês, conforme preferir. Cada OS aparece no respetivo dia e pode ser arrastada para outra data. Pode atribuir ou trocar o responsável diretamente a partir do cartão da OS. O sistema deteta e assinala conflitos quando a mesma pessoa fica com sobreposições. Há uma zona de OS por agendar, para arrastar para o calendário. Ajuda a distribuir a carga de trabalho de forma equilibrada. Dá uma visão imediata da semana à equipa de gestão. É a forma mais visual de organizar o terreno.","ponto": "Esta secção regista a assiduidade da equipa através da picagem de ponto. Cada pessoa pica a entrada e a saída a partir do seu dispositivo. Pode ativar a captura da localização GPS no momento da picagem, por pessoa. Os registos servem de base ao cálculo das horas trabalhadas. Ficam organizados por dia e por funcionário. Permitem detetar atrasos, faltas e horas extra. São depois usados na secção de Assiduidade. Garantem um registo objetivo e com data/hora. Reduzem erros e discussões sobre horários.","assiduidade": "A Assiduidade transforma os registos de ponto em relatórios úteis. Mostra as horas trabalhadas por funcionário e por período. Apresenta totais, faltas e desvios face ao previsto. Pode exportar em PDF e em Excel para processamento ou arquivo. Facilita o fecho mensal e o apoio ao processamento salarial. Dá uma visão clara da disponibilidade da equipa. Ajuda a identificar padrões de absentismo. Complementa os dados de ordenado definidos na ficha do funcionário. É um instrumento de gestão de pessoas.","pedidos": "Aqui são geridos os pedidos de férias e de faltas da equipa. O funcionário submete o pedido, podendo anexar um justificativo. O responsável vê os pedidos pendentes e aprova ou rejeita. Ao aprovar, o sistema avisa se a pessoa tiver Ordens de Serviço marcadas nesse período. Isto evita aprovar ausências que deixariam trabalhos sem técnico. Cada pedido tem um estado visível para ambas as partes. Mantém um histórico das ausências ao longo do tempo. Ajuda a planear a equipa com antecedência. É a forma formal de tratar férias e faltas.","encarregados": "Esta secção gere os encarregados e as equipas que cada um supervisiona. Os encarregados têm um nível de acesso intermédio, entre o admin e o funcionário. Podem aceder à agenda, às ordens de serviço e a relatórios, sem funções de administração da empresa. Pode definir os seus dados, contactos e veículo atribuído. Servem para descentralizar a coordenação no terreno. Cada encarregado acompanha o trabalho da sua equipa. Ajudam a aliviar a carga de gestão do administrador. Tal como os funcionários, podem ter registo de ponto e GPS. São peças-chave em empresas com várias frentes de obra.","contratos": "Os contratos de manutenção organizam as intervenções periódicas por cliente e equipamento. Para cada contrato define a periodicidade, o tipo de intervenção e os dados do equipamento. O sistema calcula automaticamente a data da próxima manutenção. Avisa quando há contratos vencidos ou prestes a vencer, com sinalização por cores. Isto evita falhar manutenções e perder credibilidade junto do cliente. Cada contrato fica ligado ao cliente e ao local respetivos. Ajuda a gerar receita recorrente e previsível. É um add-on opcional da plataforma. Bem usado, é uma fonte estável de trabalho planeado.","artigos": "Esta área é o catálogo de stock da empresa. Cada artigo pode ter marca, categoria, unidade, stock atual e stock mínimo. Pode ativar alertas para ser avisado quando um artigo fica em rutura. Os movimentos de entrada e saída mantêm as quantidades atualizadas. Pode importar e exportar o catálogo em CSV para tratar muitos artigos de uma vez. Os artigos são usados nas encomendas, requisições e planos de obra. Ajuda a saber sempre o que existe em armazém. Reduz compras desnecessárias e ruturas em obra. Faz parte do add-on Armazém.","encomendas": "Aqui regista as encomendas de material aos fornecedores. Cada encomenda pode ter vários itens com marca, categoria e quantidade. Pode associar a encomenda a uma obra específica. Na receção, dá entrada do material em stock de forma simples. Pode anexar a fatura do fornecedor à encomenda recebida. O sistema atualiza o stock automaticamente com o que chega. Mantém o histórico de compras e respetivos custos. Ajuda a planear reposições com base nas obras em curso. Integra-se com o financeiro pelo lado das compras. Faz parte do add-on Armazém.","fornecedores": "Esta secção mantém a lista de fornecedores da empresa. Para cada um pode guardar contactos e informação relevante. São usados na criação de encomendas de material. Ter os fornecedores organizados acelera o processo de compra. Evita procurar contactos dispersos por vários sítios. Pode editar ou remover fornecedores quando necessário. Complementa o catálogo de artigos e as encomendas. Ajuda a comparar e a escolher o fornecedor certo. Faz parte do add-on Armazém.","obras-longa": "O Planeamento de Obra acompanha cada obra do início ao fim. Cada obra tem um estado que evolui por Preparação, Ativa, Suspensa e Concluída. O card mostra contadores rápidos de quantas estão em cada estado. Quando uma obra passa a Ativa, pode gerar logo uma Ordem de Serviço. Cada obra tem um plano de materiais com quantidades previstas, recebidas e consumidas. Isto permite comparar o orçamentado com o realmente gasto. O sistema assinala obras com excedente de materiais. Liga-se às encomendas e ao stock do armazém. Dá uma visão clara do andamento e dos custos de cada obra. Faz parte do add-on Armazém.","financeiro": "O Financeiro dá a visão económica da operação. Mostra a faturação das Ordens de Serviço num período à escolha. Apresenta as compras de material e o resultado final. Inclui um gráfico de evolução mensal para perceber tendências. Tem detalhe por cliente, para saber quem gera mais valor. Pode filtrar por mês, ano ou todo o histórico. Permite exportar a informação em PDF. Junta num só sítio o que entra e o que sai. Ajuda a tomar decisões com base em números. Está incluído no add-on Armazém.","agenda": "A Agenda reúne as datas importantes que se aproximam. Inclui fim de licença, inspeções, manutenções e contratos a vencer. Funciona como um resumo de prazos a não falhar. Ajuda a antecipar renovações e intervenções. Evita surpresas de última hora. Dá uma visão rápida do que exige atenção em breve. Complementa os avisos espalhados pelos vários cards. É útil para o planeamento semanal. Mantém a gestão um passo à frente.","reports": "O painel de Reports concentra os indicadores de gestão da empresa. Resume a equipa, as ordens de serviço, os clientes e os custos. Dá uma visão geral do estado do negócio num relance. Ajuda a identificar pontos fortes e áreas a melhorar. Serve de apoio à tomada de decisão. Complementa os relatórios mais específicos das outras secções. É pensado para uma leitura rápida pelo administrador. Reúne num só ecrã o essencial. Poupa tempo na recolha de informação.","minha-licenca": "Aqui consulta o estado da sua licença e dos add-ons. Vê as datas de validade da licença base, da Frota, dos Contratos e do Armazém. Pode pedir a ativação ou a renovação, em plano mensal ou anual. O pedido segue para o Super Admin com as instruções de pagamento. Quando perto de expirar, surgem botões de renovação. Mantém a transparência sobre o que tem contratado. Evita interrupções por esquecimento de renovar. É o ponto único para gerir a sua subscrição. Garante que continua com acesso a tudo o que precisa.","ajuda-peticoes": "Este é o canal de suporte da plataforma. Permite enviar pedidos de ajuda ou reportar problemas ao administrador da plataforma. Pode acompanhar o estado e a resposta de cada pedido. Mantém um histórico das comunicações. Evita ter de recorrer a meios externos para pedir apoio. O cartão sinaliza quando há novidades por ler. É a forma mais rápida de obter assistência. Útil sempre que surge uma dúvida ou um imprevisto. Liga-o diretamente a quem gere a plataforma.","auditoria":"O Histórico/Auditoria regista quem fez o quê e quando dentro da empresa. Inclui criação, edição e eliminação de registos, aprovações de pedidos, assinaturas de folhas e início e fim de sessão. Cada entrada guarda a data e hora, o utilizador, o seu papel, a ação e a secção afetada. Pode filtrar por utilizador, ação ou secção para encontrar rapidamente o que procura. Os registos mais recentes aparecem primeiro. Pode exportar tudo em CSV para arquivo ou análise. É uma ferramenta de transparência e de segurança. Ajuda a esclarecer dúvidas e a investigar enganos sem acusações. Só o administrador (e o Super Admin) tem acesso a este histórico.","contactos": "Mostra a informação e os contactos da empresa. Fica visível no ecrã inicial, antes de iniciar sessão. Serve de cartão de visita digital da empresa. Ajuda quem chega a saber como contactar. Reúne os dados essenciais num só sítio. É simples e direto. Complementa a imagem profissional da plataforma."};
             const itens = [];
             document.querySelectorAll('#cardsGrid .card-principal').forEach(c => {
                 if (c.classList.contains('hidden-card')) return;
@@ -19416,7 +19423,7 @@
                 </div>`;
             }
 
-            h += _portalAccordion('locais', 'fa-building', `Intervenções por Local / Instalação`, _gerarHTMLIntervencoesPorLocal(cli.id, true, _dataCorteMeses(12), 'portal-acc-locais'), false);
+            h += _portalAccordion('locais', 'fa-building', `Intervenções por Instalação`, _gerarHTMLIntervencoesPorLocal(cli.id, true, _dataCorteMeses(12), 'portal-acc-locais'), false);
 
             // Ordens de Serviço
             let hOss = '';
@@ -19635,12 +19642,12 @@
                 </div>
                 <p style="color:#64748b;">Indique onde precisa de assistência e o que aconteceu.</p>
                 <form onsubmit="event.preventDefault();portalEnviarAssistencia();">
-                    <div class="form-group"><label for="portalAjudaLocal">Local *</label>
+                    <div class="form-group"><label for="portalAjudaLocal">Instalação *</label>
                         <select id="portalAjudaLocal" required ${locais.length === 1 ? 'disabled' : ''}>
-                            ${locais.length !== 1 ? '<option value="">Selecione o local</option>' : ''}
+                            ${locais.length !== 1 ? '<option value="">Selecione a instalação</option>' : ''}
                             ${locais.map(l => `<option value="${escapeHtmlSimples(l.id)}">${escapeHtmlSimples(l.nome || 'Local')} — ${escapeHtmlSimples(l.morada || l.cidade || 'Morada não indicada')}</option>`).join('')}
                         </select>
-                        <small style="color:#64748b;">${locais.length === 1 ? 'O seu único local foi selecionado automaticamente.' : locais.length ? 'Escolha o local onde ocorre o problema.' : 'Ainda não tem locais registados. Contacte a empresa para adicionar o local.'}</small>
+                        <small style="color:#64748b;">${locais.length === 1 ? 'A sua única instalação foi selecionada automaticamente.' : locais.length ? 'Escolha a instalação onde ocorre o problema.' : 'Ainda não tem instalações registadas. Contacte a empresa para adicionar uma instalação.'}</small>
                     </div>
                     <div class="form-group"><label for="portalAjudaUrgencia">Urgência *</label>
                         <select id="portalAjudaUrgencia" required><option value="">Selecione a urgência</option><option value="baixa">Baixa — pode aguardar</option><option value="normal">Normal — necessita de assistência</option><option value="alta">Alta — afeta o funcionamento</option><option value="urgente">Urgente — serviço parado</option></select>
@@ -19665,7 +19672,7 @@
             const urgencia = document.getElementById('portalAjudaUrgencia')?.value;
             const prioridades = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
             const desc = (document.getElementById('portalAjudaDesc')?.value || '').trim();
-            if (!local) { alert('Selecione um local válido.'); return; }
+            if (!local) { alert('Selecione uma instalação válida.'); return; }
             if (!Object.prototype.hasOwnProperty.call(prioridades, urgencia)) { alert('Indique a urgência do pedido.'); return; }
             if (!desc || desc.length > 4000) { alert('Descreva o problema (até 4000 caracteres).'); return; }
             const btn = document.getElementById('portalAjudaEnviar'), estado = document.getElementById('portalAjudaEstado');
@@ -20069,7 +20076,7 @@
                         <div class="report-item"><span>Em dia</span><span style="color:#16a34a;">${ctEmDia}</span></div>
                         <div class="report-item"><span>A vencer (≤30d)</span><span style="color:#f59e0b;">${ctAVencer}</span></div>
                         <div class="report-item"><span>Vencidos</span><span style="color:#dc2626;">${ctVencidos}</span></div>
-                        <div class="report-item"><span>Locais / Equipamentos</span><span>${totalLocais} / ${totalEquip}</span></div>
+                        <div class="report-item"><span>Instalações / Equipamentos</span><span>${totalLocais} / ${totalEquip}</span></div>
                         <div class="report-item"><span>Manutenções realizadas</span><span>${totalRegistos}</span></div>
                         <div class="report-item" style="font-weight:bold; border-top:1px solid #e2e8f0; padding-top:8px;"><span>Valor anual contratado</span><span>${eur(ctValor)}</span></div>
                     </div>
@@ -24944,7 +24951,7 @@ async function salvarAdmin(e) {
             const locaisCliente = (dados.locais || []).filter(l => l.clienteId === cliId);
             localSel.innerHTML = '<option value="">— Morada principal do cliente (Sede) —</option>' +
                 locaisCliente.map(l => `<option value="${l.id}">${l.nome}</option>`).join('') +
-                '<option value="__novo__">➕ Criar novo local</option>';
+                '<option value="__novo__">➕ Criar nova instalação</option>';
         }
         function _foNovoLocalToggle() {
             const val = document.getElementById('fo_local')?.value;
@@ -25422,16 +25429,16 @@ async function salvarAdmin(e) {
                                 </div>` : ''}
                                 <div class="form-group"><label>Duração (min)</label><input type="number" id="s_duracao" step="15" min="0" value="${item && item.duracao != null ? item.duracao : ''}" placeholder="ex.: 60 (para detetar sobreposições)" /></div>
                                 <div class="form-group"><label>Duração estimada (dias)</label><input type="number" id="s_duracao_dias" step="1" min="0" value="${item && item.duracaoDias != null ? item.duracaoDias : ''}" placeholder="para obras grandes" /></div>
-                                <div class="form-group ff-span2"><label>Local / Instalação</label>
+                                <div class="form-group ff-span2"><label>Instalação</label>
                                     <select id="s_local" onchange="_osPreencherMoradaDoLocal(this.value)">
                                         <option value="">— Morada principal do cliente —</option>
                                         ${(dados.locais || []).filter(l => l.clienteId === (item ? item.clienteId : '')).map(l => `<option value="${l.id}" ${item && item.localId === l.id ? 'selected' : ''}>${l.nome}</option>`).join('')}
-                                        <option value="__novo__">➕ Criar novo local</option>
+                                        <option value="__novo__">➕ Criar nova instalação</option>
                                     </select>
                                     <div class="help-text">Se o cliente tiver mais que uma instalação registada, escolhe aqui qual desta OS. Deixa em branco para usar a morada principal.</div>
                                 </div>
                                 <div id="s_novo_local" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
-                                    <div class="form-group" style="margin-bottom:8px;"><label>Nome do novo local *</label><input type="text" id="s_local_nome" placeholder="Ex: Loja Centro" /></div>
+                                    <div class="form-group" style="margin-bottom:8px;"><label>Nome da nova instalação *</label><input type="text" id="s_local_nome" placeholder="Ex: Loja Centro" /></div>
                                     <div class="form-group" style="margin-bottom:0;"><label><i class="fas fa-map-pin" style="color:#dc2626;"></i> Pin do Google Maps (opcional) <a href="https://www.google.com/maps" target="_blank" rel="noopener" style="font-weight:400;font-size:.78rem;color:#2563eb;text-decoration:none;margin-left:8px;"><i class="fas fa-up-right-from-square"></i> Abrir Google Maps</a></label><input type="text" id="s_local_pin_mapa" placeholder="Cola aqui o link ou as coordenadas copiadas do Google Maps" autocomplete="off" oninput="_clienteAtualizarLinkPin('s_local_pin_mapa','s_local_pin_mapa_link')" /><div id="s_local_pin_mapa_link" style="margin-top:6px;font-size:.82rem;"></div></div>
                                 </div>
                                 <div class="form-group ff-span2"><label>Morada da instalação</label><input type="text" id="s_morada" value="${item && item.morada != null ? item.morada : ''}" placeholder="Preenche automaticamente ao escolher o cliente, mas pode editar" autocomplete="off" /><div id="s_morada_ajuda" class="help-text"></div></div>
@@ -25462,16 +25469,16 @@ async function salvarAdmin(e) {
                         <div class="ff-secao ff-tint-id">
                             <div class="ff-secao-head"><i class="fas fa-map-marker-alt"></i> Local da Instalação</div>
                             <div class="ff-secao-body">
-                                <div class="form-group ff-span2"><label>Local / Instalação</label>
+                                <div class="form-group ff-span2"><label>Instalação</label>
                                     <select id="fo_local" onchange="_foNovoLocalToggle()">
                                         <option value="">— Morada principal do cliente (Sede) —</option>
                                         ${(dados.locais || []).filter(l => l.clienteId === (item ? item.clienteId : '')).map(l => `<option value="${l.id}" ${item && item.localId === l.id ? 'selected' : ''}>${l.nome}</option>`).join('')}
-                                        <option value="__novo__">➕ Criar novo local</option>
+                                        <option value="__novo__">➕ Criar nova instalação</option>
                                     </select>
                                     <div class="help-text">Por defeito usa a Sede (morada principal do cliente). Escolhe outra instalação se o cliente tiver mais que uma.</div>
                                 </div>
                                 <div id="fo_novo_local" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
-                                    <div class="form-group" style="margin-bottom:0;"><label>Nome do novo local *</label><input type="text" id="fo_local_nome" placeholder="Ex: Loja Centro" /></div>
+                                    <div class="form-group" style="margin-bottom:0;"><label>Nome da nova instalação *</label><input type="text" id="fo_local_nome" placeholder="Ex: Loja Centro" /></div>
                                 </div>
                             </div>
                         </div>
@@ -25718,19 +25725,19 @@ async function salvarAdmin(e) {
                     </div>
 
                     <div class="ff-secao ff-tint-id">
-                        <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Local e Cliente</div>
+                        <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Instalação e Cliente</div>
                         <div class="ff-secao-body">
                             <div class="form-group ff-span2"><label>Cliente</label><div style="display:flex;gap:8px;"><input type="text" id="ob_cliente_busca" style="flex:1;" placeholder="Digite o nome ou nº do cliente (opcional)…" value="${item && item.clienteId ? (() => { const cc = (dados.clientes || []).find(x => x.id === item.clienteId); return cc ? _clienteLabel(cc) : ''; })() : ''}" oninput="clienteBuscaInput('ob_cliente_busca','ob_cliente', onClienteObraChange)" onfocus="clienteBuscaFoco('ob_cliente_busca')" onblur="clienteBuscaEsconder('ob_cliente_busca')" autocomplete="off" /><input type="hidden" id="ob_cliente" value="${item && item.clienteId ? item.clienteId : ''}" /><button type="button" class="btn btn-outline" onclick="obraAddCliente()" title="Adicionar cliente"><i class="fas fa-plus"></i></button></div></div>
-                            <div class="form-group ff-span2"><label>Local / Instalação</label>
+                            <div class="form-group ff-span2"><label>Instalação</label>
                                 <select id="ob_local" onchange="onLocalObraChange()">
                                     <option value="">— Morada principal do cliente (Sede) —</option>
                                     ${item && item.clienteId ? (dados.locais || []).filter(l => l.clienteId === item.clienteId).map(l => `<option value="${l.id}" ${item.localId === l.id ? 'selected' : ''}>${l.nome}</option>`).join('') : ''}
-                                    <option value="__novo__">➕ Criar novo local</option>
+                                    <option value="__novo__">➕ Criar nova instalação</option>
                                 </select>
                                 <div class="help-text">Por defeito usa a Sede (morada principal do cliente). Escolhe outra instalação se o cliente tiver mais que uma, ou cria uma nova.</div>
                             </div>
                             <div id="ob_novo_local" class="ff-span2" style="display:none;padding:10px;background:#f8fafc;border-radius:8px;">
-                                <div class="form-group" style="margin-bottom:8px;"><label>Nome do novo local *</label><input type="text" id="ob_local_nome" placeholder="Ex: Loja Centro" /></div>
+                                <div class="form-group" style="margin-bottom:8px;"><label>Nome da nova instalação *</label><input type="text" id="ob_local_nome" placeholder="Ex: Loja Centro" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Morada da instalação</label><input type="text" id="ob_morada" placeholder="Rua, número..." autocomplete="off" /></div>
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                                     <div class="form-group" style="margin-bottom:0;"><label>Número de porta</label><input type="text" id="ob_local_numero" placeholder="ex.: 3, 3A" /></div>
@@ -26909,7 +26916,7 @@ async function salvarAdmin(e) {
                 let _sLocalIdResolvido = document.getElementById('s_local') ? document.getElementById('s_local').value : (_osExist ? _osExist.localId : null);
                 if (_sLocalIdResolvido === '__novo__') {
                     const nomeNovoLocal = (document.getElementById('s_local_nome')?.value || '').trim();
-                    if (!nomeNovoLocal) { alert('Indique o nome do novo local.'); return; }
+                    if (!nomeNovoLocal) { alert('Indique o nome da nova instalação.'); return; }
                     const clienteIdNovoLocal = document.getElementById('s_cliente').value;
                     // Evita criar um local repetido por engano (ex.: escolheste sempre "Criar novo
                     // local" em vez de escolher o já existente na lista) — isso estava a fazer
@@ -27047,7 +27054,7 @@ async function salvarAdmin(e) {
                     _foLocalId = document.getElementById('fo_local')?.value || '';
                     if (_foLocalId === '__novo__') {
                         const nomeNovoLocal = (document.getElementById('fo_local_nome')?.value || '').trim();
-                        if (!nomeNovoLocal) { alert('Indique o nome do novo local.'); return; }
+                        if (!nomeNovoLocal) { alert('Indique o nome da nova instalação.'); return; }
                         const novoLocalId = gerarId();
                         dados.locais = dados.locais || [];
                         dados.locais.push({ id: novoLocalId, adminId: _foAdminId, clienteId: _foClienteId, nome: nomeNovoLocal, morada: _foCliente?.morada || '', dataCriacao: Date.now() });
@@ -27259,7 +27266,7 @@ async function salvarAdmin(e) {
                 let _obMorada = '', _obCp = '', _obCidade = '', _obNumero = '', _obFreguesia = '';
                 if (_obLocalId === '__novo__') {
                     const nomeNovoLocal = (document.getElementById('ob_local_nome')?.value || '').trim();
-                    if (!nomeNovoLocal) { alert('Indique o nome do novo local.'); return; }
+                    if (!nomeNovoLocal) { alert('Indique o nome da nova instalação.'); return; }
                     _obMorada = document.getElementById('ob_morada')?.value.trim() || '';
                     _obNumero = document.getElementById('ob_local_numero')?.value.trim() || '';
                     _obCp = document.getElementById('ob_cp')?.value.trim() || '';
@@ -29503,7 +29510,7 @@ window._relPrefill = function(msg){
             }
         }
 
-        // Novo local/instalação OU editar um já existente — mesmo formulário para os dois casos.
+        // Nova instalação/instalação OU editar um já existente — mesmo formulário para os dois casos.
         // Chamada com só clienteId = criar; com localId também = editar esse local.
         function abrirModalNovoLocalCliente(clienteId) { abrirModalLocalCliente(clienteId, null); }
         function abrirModalEditarLocalCliente(localId, clienteId) { abrirModalLocalCliente(clienteId, localId); }
@@ -29512,10 +29519,10 @@ window._relPrefill = function(msg){
             if (!cli) return;
             const local = localId ? dados.locais?.find(l => l.id === localId) : null;
             document.getElementById('modalGenericoTitulo').innerHTML = local
-                ? `<i class="fas fa-map-pin"></i> Editar morada — ${escapeHtmlSimples(local.nome)}`
-                : `<i class="fas fa-map-pin"></i> Nova morada/instalação — ${escapeHtmlSimples(_clienteLabel(cli))}`;
+                ? `<i class="fas fa-map-pin"></i> Editar instalação — ${escapeHtmlSimples(local.nome)}`
+                : `<i class="fas fa-map-pin"></i> Nova instalação — ${escapeHtmlSimples(_clienteLabel(cli))}`;
             document.getElementById('modalGenericoCampos').innerHTML = `
-                <div class="form-group"><label>Nome do local *</label><input type="text" id="nl_nome" value="${escapeHtmlSimples(local?.nome || '')}" placeholder="Ex: Loja Centro, Armazém 2..." required /></div>
+                <div class="form-group"><label>Nome da instalação *</label><input type="text" id="nl_nome" value="${escapeHtmlSimples(local?.nome || '')}" placeholder="Ex: Loja Centro, Armazém 2..." required /></div>
                 <div class="form-group"><label>Morada</label><input type="text" id="nl_morada" value="${escapeHtmlSimples(local ? (local.morada || '') : (cli.morada || ''))}" placeholder="Rua/Avenida" autocomplete="off" /></div>
                 <div class="form-group"><label>Número de porta</label><input type="text" id="nl_numero" value="${escapeHtmlSimples(local?.numeroPorta || '')}" placeholder="Ex.: 12, 3º Dto" /></div>
                 <div class="form-group"><label>Código Postal</label><input type="text" id="nl_cp" value="${escapeHtmlSimples(local?.codigoPostal || '')}" placeholder="0000-000" autocomplete="off" oninput="aplicarMascaraCP(this); _cttPreencherPorCP(this.value,{cidade:'nl_cidade',freguesia:'nl_freguesia',morada:'nl_morada'})" maxlength="8" /></div>
@@ -29531,7 +29538,7 @@ window._relPrefill = function(msg){
             const cli = dados.clientes?.find(c => c.id === clienteId);
             if (!cli) return;
             const nome = document.getElementById('nl_nome').value.trim();
-            if (!nome) { alert('Indique o nome do local.'); return; }
+            if (!nome) { alert('Indique o nome da instalação.'); return; }
             dados.locais = dados.locais || [];
             let local = localId ? dados.locais.find(l => l.id === localId) : null;
             const isNovo = !local;
@@ -29549,7 +29556,7 @@ window._relPrefill = function(msg){
             guardarDados(dados);
             _fecharModalGenerico();
             renderizarClientes();
-            alert(isNovo ? '✅ Instalação criada.' : '✅ Morada atualizada.');
+            alert(isNovo ? '✅ Instalação criada.' : '✅ Instalação atualizada.');
         }
         function eliminarLocalCliente(localId, clienteId) {
             if (usuarioLogado?.role !== 'admin' && usuarioLogado?.role !== 'subadmin') { alert('Sem permissão.'); return; }

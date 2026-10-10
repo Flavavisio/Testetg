@@ -15,7 +15,7 @@
     };
     const day = v => { if(!v)return 'Sem data';const d=new Date(typeof v==='number'?v:/^\d{4}-\d{2}-\d{2}$/.test(v)?v+'T12:00:00':v);return isNaN(d)?'Sem data':d.toLocaleDateString('pt-PT'); };
     function scope(customerId,localId='') {
-        const u=actor(); if(!u || !['admin','subadmin','funcionario','encarregado'].includes(u.role) || !_licencaValidaTenant())return null;
+        const u=actor(); if(!u || !['admin','subadmin','funcionario','encarregado'].includes(u.role) || !_licencaValidaTenant() || typeof moduloPassaporteAtivo!=='function' || !moduloPassaporteAtivo(adminDoUtilizador()))return null;
         const tenant=u.adminId || u.id;
         const customer=(dados.clientes || []).find(c=>c.id===customerId && c.adminId===tenant); if(!customer)return null;
         const local=localId ? (dados.locais || []).find(l=>l.id===localId && l.adminId===tenant && l.clienteId===customerId) : null;
@@ -38,7 +38,7 @@
         return services.filter(r=>r.adminId===s.tenant && r.clienteId===s.customerId && (r.localId || '')===s.localId && !r.apagadoSuperAdmin)
             .sort((a,b)=>String(b.data || '').localeCompare(String(a.data || '')) || String(b.id).localeCompare(String(a.id)));
     }
-    const valid = st => current===st && st.serial===serial && st.identity===identity() && !!scope(st.customerId,st.localId) && st.host?.isConnected && (!st.workspace || (window._wsAbaAtual==='passaporte' && document.getElementById('wsClienteOverlay')?.classList.contains('open') && document.getElementById('wsClienteOverlay').dataset.clienteAtual===st.customerId));
+    const valid = st => current===st && st.serial===serial && st.identity===identity() && !!scope(st.customerId,st.localId) && st.host?.isConnected && (!st.workspace || (window._wsAbaAtual==='locais' && document.getElementById('wsClienteOverlay')?.classList.contains('open') && document.getElementById('wsClienteOverlay').dataset.clienteAtual===st.customerId));
     function sites(customerId) {
         const s=scope(customerId);if(!s)return [];
         return [{id:'',nome:'Sede',morada:s.customer.morada || s.customer.endereco,passaporteTecnico:s.customer.passaporteTecnico},...(dados.locais || []).filter(l=>l.adminId===s.tenant && l.clienteId===customerId)];
@@ -59,7 +59,7 @@
     async function open(customerId,localId='') {
         if(!scope(customerId,localId))return;
         const manager=['admin','subadmin'].includes(actor().role), ws=document.getElementById('wsClienteOverlay');
-        if(manager && ws?.classList.contains('open')){await _wsClienteAba(customerId,'passaporte');if(current && current.workspace && current.customerId===customerId)await select(localId);}
+        if(manager && ws?.classList.contains('open')){await _wsClienteAba(customerId,'locais');if(current && current.workspace && current.customerId===customerId)await select(localId);}
         else await mount(customerId,localId,ensureOverlay(),false);
     }
     async function show(customerId) {
@@ -67,9 +67,19 @@
         const s=scope(customerId);if(!s?.manager){host.textContent='Sem acesso às instalações deste cliente.';return;}
         const st={serial:++serial,customerId,localId:'',identity:identity(),host,workspace:true,services:[]};current=st;
         host.innerHTML='<section class="tg-passport"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">PASSAPORTE DE INSTALAÇÃO</span><h2>Conhecer o local antes de começar</h2><p>Equipamentos, ligações e intervenções reunidos por instalação.</p></div>'+button('new-site','<i class="fas fa-plus"></i> Nova instalação','','btn-primary')+'</div><div class="tg-pp-sites">'+sites(customerId).map(l=>{
-            const ls=scope(customerId,l.id),eq=equipment(ls),os=records(ls,dados.servicos || []);return `<button type="button" class="tg-pp-site" data-pp-site="${esc(l.id)}">${image(object(l.passaporteTecnico).foto,l.nome)}<div><h3>${esc(l.nome)}</h3><p>${esc(l.morada || 'Morada por registar')}</p><span>${eq.length} equipamentos · ${os.length} OS carregadas</span><strong>Abrir passaporte <i class="fas fa-arrow-right"></i></strong></div></button>`;
+            const ls=scope(customerId,l.id),eq=equipment(ls),os=records(ls,dados.servicos || []);return `<div class="tg-pp-site-entry"><button type="button" class="tg-pp-site" style="width:100%;" data-pp-site="${esc(l.id)}">${image(object(l.passaporteTecnico).foto,l.nome)}<div><h3>${esc(l.nome)}</h3><p>${esc(l.morada || 'Morada por registar')}</p><span>${eq.length} equipamentos · ${os.length} OS carregadas</span><strong>Abrir passaporte <i class="fas fa-arrow-right"></i></strong></div></button><div class="tg-pp-actions" style="margin-top:8px;">${button('edit-address','<i class="fas fa-pen"></i> Editar instalação',l.id)}</div></div>`;
         }).join('')+'</div></section>';
-        host.onclick=event=>{const site=event.target.closest('[data-pp-site]');if(site && valid(st))select(site.dataset.ppSite);else if(event.target.closest('[data-pp-action="new-site"]') && valid(st)){_wsSairPara(customerId);abrirModalNovoLocalCliente(customerId);}};
+        host.onclick=event=>{
+            if(!valid(st))return;
+            const site=event.target.closest('[data-pp-site]'),action=event.target.closest('[data-pp-action]');
+            if(site)select(site.dataset.ppSite);
+            else if(action?.dataset.ppAction==='new-site'){_wsSairPara(customerId);abrirModalNovoLocalCliente(customerId);}
+            else if(action?.dataset.ppAction==='edit-address'){
+                const localId=action.dataset.ppId || '';if(!scope(customerId,localId))return;
+                _wsSairPara(customerId);
+                if(localId)abrirModalLocalCliente(customerId,localId);else abrirModal('cliente',customerId);
+            }
+        };
     }
     async function select(localId) {
         if(!current || !scope(current.customerId,localId))return;

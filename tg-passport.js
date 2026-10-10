@@ -45,6 +45,16 @@
     }
     const image = (v,alt,cls='') => url(v) ? `<img class="${cls}" src="${esc(url(v))}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="tg-pp-placeholder ${cls}"><i class="fas fa-building" aria-hidden="true"></i><span>${esc(alt)}</span></div>`;
     const button = (action,label,id='',cls='btn-outline') => `<button type="button" class="btn ${cls}" data-pp-action="${action}"${id?` data-pp-id="${esc(id)}"`:''}>${label}</button>`;
+    function passportLink(st) {
+        const u=new URL('login.html',location.href);u.searchParams.set('tg_cliente',st.customerId);u.searchParams.set('tg_local',st.localId);u.searchParams.set('tg_passaporte','1');return u.href;
+    }
+    function osReports(st,os) {
+        const s=scope(st.customerId,st.localId);if(!s)return [];
+        return [...new Map([...(st.reports || []),...(dados.relatoriosEspecialidade || [])].map(r=>[r.id,r])).values()].filter(r=>r.adminId===s.tenant && r.clienteId===s.customerId && r.servicoId===os.id && (r.localId || '')===s.localId);
+    }
+    function reportButtons(st,os) {
+        return osReports(st,os).map(r=>button('report','Relatório '+esc(r.tipo || '')+(r.campos?.equipamentoNome?' · '+esc(r.campos.equipamentoNome):'')+(r.rascunho?' · Rascunho':''),r.id)).join('');
+    }
     const text = (label,value) => `<div><dt>${esc(label)}</dt><dd>${esc(value || 'Não registado')}</dd></div>`;
     const photoURL = f => typeof f==='string'?f:f?.url;
     function osButton(os) {
@@ -100,7 +110,14 @@
             rows=[...new Map([...(data || []).map(M.servicos.from),...rows].map(r=>[r.id,r])).values()];
         } catch (_) {st.incomplete=true;}
         if(!valid(st))return;
-        st.services=rows;render(st);
+        st.services=rows;
+        try {
+            const q=supa.from('relatorios_especialidade').select('*').eq('admin_id',s.tenant).eq('cliente_id',customerId).order('id',{ascending:false});
+            const {data,error}=await _buscarPaginadoGenerico(q);if(error)throw error;
+            if(!valid(st))return;
+            st.reports=(data || []).map(M.relatoriosEspecialidade.from).filter(r=>r.adminId===s.tenant && r.clienteId===customerId && records(s,rows).some(os=>os.id===r.servicoId));
+        } catch (_) {st.reportsIncomplete=true;}
+        if(valid(st))render(st);
     }
     function render(st=current) {
         if(!st || !valid(st))return;
@@ -112,9 +129,9 @@
             ${st.incomplete?'<p class="tg-pp-warning" role="status">Não foi possível obter todas as OS antigas. A mostrar os registos disponíveis. '+button('retry','Tentar novamente')+'</p>':''}
             <div class="tg-pp-overview"><div class="tg-pp-cover">${image(m.foto,name)}<span>${eq.length} equipamentos · ${history.length} intervenções</span></div><div class="tg-pp-before"><span class="tg-pp-eyebrow">ANTES DE COMEÇAR</span><h3>O que o próximo técnico precisa de saber</h3><dl>${text('Armário técnico / acesso',m.armario)}${text('Notas de acesso',m.acesso)}${text('Contacto no local',m.contacto)}${text('Pendências conhecidas',m.pendencias || (faults.length?faults.length+' equipamento(s) com avaria':''))}${text('Última nota para o técnico',lastNote || m.notas)}</dl></div></div>
             <div class="tg-pp-main"><div><section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">INVENTÁRIO</span><h3>Equipamentos e ligações</h3></div>${s.manager?button('edit-equipment','+ Equipamento'):''}</div><div class="tg-pp-filters"><label>Pesquisar<input type="search" data-pp-search value="${esc(st.term)}" placeholder="Nome, modelo, IP, porta…"></label><label>Sistema<select data-pp-type><option value="">Todos os sistemas</option>${Object.entries(types).map(([k,v])=>`<option value="${k}" ${st.type===k?'selected':''}>${v}</option>`).join('')}</select></label></div><div class="tg-pp-equipment" data-pp-equipment></div></section>
-            <section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">CONTINUIDADE</span><h3>Intervenções nesta instalação</h3><p>Os mesmos registos das ordens de serviço e do histórico atual.</p></div>${st.workspace?button('history','Histórico completo do cliente'):''}</div><div class="tg-pp-timeline">${history.slice(0,st.limit).map(r=>{const detail=object(r.passaporteIntervencao);return `<article><time>${day(r.data)}</time><div><h4>OS ${esc(r.numeroRegisto || '—')} <span class="tg-pp-badge">${esc(r.status || 'Pendente')}</span></h4><p>${esc(r.descricao || 'Intervenção')}</p>${detail.trabalho?'<p>'+esc(detail.trabalho)+'</p>':''}${detail.proximoTecnico?'<p><strong>Para o próximo técnico:</strong> '+esc(detail.proximoTecnico)+'</p>':''}<div class="tg-pp-actions">${button('view-os','Ver OS',r.id)}${button('work-sheet','Folha de obra',r.id)}${button('work-sheet-pdf','PDF da folha',r.id)}</div></div></article>`;}).join('') || '<p class="tg-pp-empty">Sem intervenções registadas nesta instalação.</p>'}</div>${history.length>st.limit?button('more','Mostrar mais intervenções'):''}</section></div>
+            <section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">CONTINUIDADE</span><h3>Intervenções nesta instalação</h3><p>Os mesmos registos das ordens de serviço e do histórico atual.</p></div>${st.workspace?button('history','Histórico completo do cliente'):''}</div>${st.reportsIncomplete?'<p class="tg-pp-warning" role="status">Não foi possível confirmar todos os relatórios. '+button('retry','Tentar novamente')+'</p>':''}<div class="tg-pp-timeline">${history.slice(0,st.limit).map(r=>{const detail=object(r.passaporteIntervencao);return `<article><time>${day(r.data)}</time><div><h4>OS ${esc(r.numeroRegisto || '—')} <span class="tg-pp-badge">${esc(r.status || 'Pendente')}</span></h4><p>${esc(r.descricao || 'Intervenção')}</p>${detail.trabalho?'<p>'+esc(detail.trabalho)+'</p>':''}${detail.proximoTecnico?'<p><strong>Para o próximo técnico:</strong> '+esc(detail.proximoTecnico)+'</p>':''}<div class="tg-pp-actions">${button('view-os','Ver OS',r.id)}${button('work-sheet','Folha de obra',r.id)}${button('work-sheet-pdf','PDF da folha',r.id)}${reportButtons(st,r)}</div></div></article>`;}).join('') || '<p class="tg-pp-empty">Sem intervenções registadas nesta instalação.</p>'}</div>${history.length>st.limit?button('more','Mostrar mais intervenções'):''}</section></div>
             <aside><section class="tg-pp-panel"><span class="tg-pp-eyebrow">ÚLTIMA INTERVENÇÃO</span><h3>${last?'OS '+esc(last.numeroRegisto || '—'):'Sem registos'}</h3><p>${last?day(last.data)+' · '+esc(last.status || ''):'As fotografias aparecerão aqui quando forem anexadas a uma OS.'}</p><div class="tg-pp-photos">${lastPhotos.map((f,i)=>`<a href="${esc(url(photoURL(f)))}" target="_blank" rel="noopener noreferrer">${image(photoURL(f),'Foto '+(i+1)+' da última intervenção')}</a>`).join('')}</div>${last && canEditOS(last,s)?button('photos','Adicionar foto à OS',last.id):''}</section>
-            ${contractPanel(s)}<section class="tg-pp-panel"><div class="tg-pp-heading"><h3>Documentos e esquemas</h3>${s.manager?button('edit-site','Gerir'):''}</div>${documents(s).map(d=>`<a class="tg-pp-document" href="${esc(url(d.url))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-lines"></i><span>${esc(d.nome || 'Documento')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join('') || '<p class="tg-pp-empty">Sem documentos associados.</p>'}</section><section class="tg-pp-panel"><h3>Consulta no terreno</h3><p>Na OS, use “Consultar instalação” para abrir este passaporte.</p>${button('link','Copiar ligação desta instalação')}<p class="tg-pp-muted">A ligação exige uma sessão com acesso à instalação.</p></section></aside></div><div data-pp-editor></div></section>`;
+            ${contractPanel(s)}<section class="tg-pp-panel"><div class="tg-pp-heading"><h3>Documentos e esquemas</h3>${s.manager?button('edit-site','Gerir'):''}</div>${documents(s).map(d=>`<a class="tg-pp-document" href="${esc(url(d.url))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-lines"></i><span>${esc(d.nome || 'Documento')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join('') || '<p class="tg-pp-empty">Sem documentos associados.</p>'}</section><section class="tg-pp-panel"><h3>Consulta no terreno</h3><p>Leia o QR para consultar o passaporte desta instalação.</p><a href="${esc(passportLink(st))}" target="_blank" rel="noopener noreferrer"><img data-pp-qr src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&amp;data=${encodeURIComponent(passportLink(st))}" alt="QR do passaporte desta instalação" width="200" height="200" loading="lazy" referrerpolicy="no-referrer"></a>${button('link','Copiar ligação desta instalação')}<p class="tg-pp-muted">A ligação exige uma sessão com acesso à instalação.</p></section></aside></div><div data-pp-editor></div></section>`;
         st.host.onclick=event=>handle(event,st);
         st.host.oninput=event=>{if(event.target.matches('[data-pp-search]')){st.term=event.target.value;renderEquipment(st);}};
         st.host.onchange=event=>{if(event.target.matches('[data-pp-type]')){st.type=event.target.value;renderEquipment(st);}};
@@ -154,7 +171,7 @@
         if(action==='more'){st.limit+=20;render(st);return;}
         if(action==='cancel'){st.host.querySelector('[data-pp-editor]').innerHTML='';return;}
         if(action==='link'){
-            const u=new URL('login.html',location.href);u.searchParams.set('tg_cliente',st.customerId);u.searchParams.set('tg_local',st.localId);u.searchParams.set('tg_passaporte','1');
+            const u={href:passportLink(st)};
             try{await navigator.clipboard.writeText(u.href);alert('✅ Ligação copiada.');}catch(_){editor(st,'Ligação de consulta','<label>Copie a ligação<input readonly value="'+esc(u.href)+'"></label>');}return;
         }
         if(action==='new-os' && s.manager){
@@ -165,6 +182,14 @@
         if(action==='edit-site' && s.manager){siteEditor(st);return;}
         if(action==='edit-equipment' && s.manager){equipmentEditor(st,id);return;}
         if(action==='equipment'){equipmentDetail(st,id);return;}
+        if(action==='report'){
+            const report=records(s,st.services).flatMap(os=>osReports(st,os)).find(r=>r.id===id);if(!report)return;
+            dados.relatoriosEspecialidade ||= [];
+            if(!dados.relatoriosEspecialidade.some(r=>r.id===id && r.adminId===s.tenant)){
+                dados.relatoriosEspecialidade.push(report);_snap.relatoriosEspecialidade ||= new Map();_snap.relatoriosEspecialidade.set(id,JSON.stringify(M.relatoriosEspecialidade.to(report)));
+            }
+            await _verRelatorioEspecialidadeSnapshot(id,false);return;
+        }
         const os=getOS(st,id);
         if(action==='view-os' && os){cacheOS(os);if(st.workspace)_wsSairPara(st.customerId);else document.getElementById('tgPassportOverlay')?.classList.remove('open');abrirVerOS(id);return;}
         if(action==='photos' && os && canEditOS(os,s)){cacheOS(os);_osPedirFoto(id);return;}
@@ -247,7 +272,7 @@
         const sheets=(dados.folhasObra || []).filter(f=>f.adminId===s.tenant && f.servicoId===os.id).sort((a,b)=>String(b.data || '').localeCompare(String(a.data || '')) || String(b.id).localeCompare(String(a.id)));
         if(sheets.length===1 && !failed){await openSheet(st,os,sheets[0],pdf);return;}
         const warning=failed?'<p class="tg-pp-warning" role="status">Não foi possível confirmar todas as folhas desta OS. '+button(pdf?'work-sheet-pdf':'work-sheet','Tentar novamente',os.id)+'</p>':'';
-        editor(st,'Folhas de obra · OS '+(os.numeroRegisto || '—'),warning+(sheets.length?sheets.map(f=>'<article class="tg-pp-panel"><h4>Folha de obra · '+esc(day(f.data))+'</h4><p>'+esc(f.descricao || f.obraDescricao || 'Sem descrição')+'</p><div class="tg-pp-actions">'+button('open-sheet','Ver folha de obra',f.id)+button('pdf-sheet','PDF da folha',f.id)+'</div></article>').join(''):failed?'':'<p class="tg-pp-empty">Ainda não existe uma folha de obra para esta OS.</p>'));
+        editor(st,'Folhas de obra · OS '+(os.numeroRegisto || '—'),warning+(sheets.length?sheets.map(f=>'<article class="tg-pp-panel"><h4>Folha de obra · '+esc(day(f.data))+'</h4><p>'+esc(f.descricao || f.obraDescricao || 'Sem descrição')+'</p><div class="tg-pp-actions">'+button('open-sheet','Ver folha de obra',f.id)+button('pdf-sheet','PDF da folha',f.id)+reportButtons(st,os)+'</div></article>').join(''):failed?'':'<p class="tg-pp-empty">Ainda não existe uma folha de obra para esta OS.</p>'));
     }
     async function openSheet(st,os,sheet,pdf) {
         if(!valid(st))return;

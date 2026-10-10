@@ -16,30 +16,33 @@
     const select = (id,label,labels,value) => `<div class="form-group"><label>${esc(label)}<select id="${id}">${option(labels,value)}</select></label></div>`;
     const section = (id,title,html) => `<section id="${id}" class="ff-secao"><div class="ff-secao-head">${esc(title)}</div><div class="ff-secao-body">${html}</div></section>`;
     let draft = {}, editing = null, historySerial = 0;
+    const planLabel = p => p.equipamentoNome || EQUIP_TIPOS[p.tipo] || p.tipo;
+    const covers = (p,e) => p.equipamentoId ? p.equipamentoId===e.id : p.tipo===e.tipo;
     const plans = c => Array.isArray(c?.gestaoManutencao?.plano) ? c.gestaoManutencao.plano.filter(p=>p && p.ativo!==false) : [];
     function draftContract() {
         return {adminId:usuarioLogado?.adminId || usuarioLogado?.id,clienteId:read('ct_cliente'),localId:read('ct_local'),locaisIds:[read('ct_local')],equipamentosIds:[..._ctEquipamentosAtuais]};
     }
     function capturePlan() {
-        const rows=[...document.querySelectorAll('[data-ct-system]')]; if (!rows.length) return draft.plano || [];
+        const rows=[...document.querySelectorAll('[data-ct-system]')]; if (!rows.length) return [];
         return rows.map(row=>{
-            const tipo=row.dataset.ctSystem, old=(draft.plano || []).find(p=>p.tipo===tipo) || {};
+            const tipo=row.dataset.ctSystem, equipamentoId=row.dataset.ctEquipment, old=(draft.plano || []).find(p=>p.equipamentoId===equipamentoId) || (draft.plano || []).find(p=>!p.equipamentoId && p.tipo===tipo) || {};
             const periodicidade=row.querySelector('[data-period]').value;
             const intervencao=row.querySelector('[data-intervention]').value;
             if (tipoExigePresencialAnual(tipo) && (periodicidade!=='anual' || intervencao!=='presencial')) throw Error('Este sistema exige manutenção anual presencial.');
             const linhas=row.querySelector('textarea').value.split('\n').map(t=>t.trim()).filter(Boolean);
             if (linhas.length>100 || linhas.some(t=>t.length>500)) throw Error('Usa até 100 tarefas por sistema, com até 500 caracteres por tarefa.');
-            return {...old,id:old.id || gerarId(),tipo,ativo:true,periodicidade,intervencao,tarefas:linhas.map((texto,i)=>({id:old.tarefas?.[i]?.texto===texto?old.tarefas[i].id:gerarId(),texto}))};
+            return {...old,id:old.equipamentoId?old.id:gerarId(),origemSistemaId:old.origemSistemaId || (!old.equipamentoId?old.id:undefined),equipamentoId,equipamentoNome:row.dataset.ctEquipmentName,tipo,ativo:true,periodicidade,intervencao,tarefas:linhas.map((texto,i)=>({id:old.tarefas?.[i]?.texto===texto?old.tarefas[i].id:gerarId(),texto}))};
         });
     }
     function refreshPlan() {
         const root=document.getElementById('ct_plano_sistemas'); if (!root) return;
-        try {draft.plano=capturePlan();} catch (_) {return;}
+        try {const current=capturePlan();draft.plano=[...(draft.plano || []).filter(p=>!current.some(n=>n.equipamentoId===p.equipamentoId)),...current];} catch (_) {return;}
         const c=draftContract();
-        const types=[...new Set([..._contratoEquipamentos(c),...(dados.equipamentos || []).filter(e=>e.adminId===c.adminId && e.localId==='__novo__' && e.clienteId===c.clienteId && c.equipamentosIds.includes(e.id))].map(e=>e.tipo))];
-        root.innerHTML=types.map(tipo=>{
-            const p=(draft.plano || []).find(p=>p.tipo===tipo) || {}, forced=tipoExigePresencialAnual(tipo);
-            return `<div data-ct-system="${esc(tipo)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(EQUIP_TIPOS[tipo] || tipo)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
+        const equipment=[..._contratoEquipamentos(c),...(dados.equipamentos || []).filter(e=>e.adminId===c.adminId && e.localId==='__novo__' && e.clienteId===c.clienteId && c.equipamentosIds.includes(e.id))];
+        root.innerHTML=equipment.map(e=>{
+            const tipo=e.tipo, name=[EQUIP_TIPOS[tipo] || tipo,e.nome,e.marca,e.modelo].filter(Boolean).join(' · ');
+            const p=(draft.plano || []).find(p=>p.equipamentoId===e.id) || (draft.plano || []).find(p=>!p.equipamentoId && p.tipo===tipo) || {}, forced=tipoExigePresencialAnual(tipo);
+            return `<div data-ct-system="${esc(tipo)}" data-ct-equipment="${esc(e.id)}" data-ct-equipment-name="${esc(name)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(name)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
         }).join('') || '<p class="help-text">Seleciona primeiro os equipamentos abrangidos.</p>';
     }
     function mount(c) {
@@ -48,8 +51,9 @@
         root.querySelector('#ct_tipos_trabalho_cont')?.closest('.ff-secao')?.remove();
         if(_contratoLocalIds(c || {}).length>1)root.querySelector('#ct_cobertura')?.insertAdjacentHTML('afterend','<p class="help-text">Este contrato antigo abrangia várias instalações. Para guardar, escolhe uma instalação e mantém apenas os equipamentos dessa instalação. O histórico anterior é preservado.</p>');
         const srv=obj(draft.servicos),com=obj(draft.comercial);
-        root.insertAdjacentHTML('beforeend',section('ct_plano_extra','Plano de manutenção por sistema','<div class="form-group ff-span2 help-text">Define a frequência e as tarefas de cada sistema. A agenda considera cada instalação e as intervenções realizadas.</div><div id="ct_plano_sistemas" class="form-group ff-span2"></div>'));
+        root.insertAdjacentHTML('beforeend',section('ct_plano_extra','Plano de manutenção por equipamento','<div class="form-group ff-span2 help-text">Define a periodicidade e as tarefas de cada equipamento desta instalação. Cada equipamento tem a sua próxima manutenção.</div><div id="ct_plano_sistemas" class="form-group ff-span2"></div>'));
         refreshPlan();
+        root.querySelector('#ct_period')?.closest('.ff-secao')?.querySelectorAll('.form-group').forEach(el=>{if(el.querySelector('#ct_period,#ct_interv'))el.style.display='none';});
         root.insertAdjacentHTML('beforeend',section('ct_servicos_extra','Serviços incluídos',
             input('ct_visitas','Visitas incluídas por ano (vazio: não definido)',srv.visitasAno,'number')+
             select('ct_labor','Mão de obra',{indefinido:'Não definido',incluida:'Incluída',limitada:'Incluída até ao limite',excluida:'Não incluída'},srv.maoObra || 'indefinido')+
@@ -95,13 +99,16 @@
         if(!document.getElementById('ct_plano_sistemas'))return null;
         if(read('ct_validade') && read('ct_inicio') && read('ct_validade')<read('ct_inicio'))throw Error('A validade não pode ser anterior ao início do contrato.');
         const valor=Number(read('ct_valor'));if(!Number.isFinite(valor) || valor<0)throw Error('Indica um valor válido para o contrato.');
-        const plano=capturePlan(),srv={...obj(draft.servicos),visitasAno:number('ct_visitas',true),maoObra:read('ct_labor'),horasAno:number('ct_horas'),deslocacoes:read('ct_viagens'),zona:read('ct_zona').trim(),materiais:read('ct_material'),notas:read('ct_srv_notas').trim()};
+        const plano=capturePlan();
+        const selected=draftContract().equipamentosIds;
+        if(plano.length!==selected.length || plano.some(p=>!selected.includes(p.equipamentoId) || !PERIODICIDADE_LABEL[p.periodicidade]))throw Error('Confirma a periodicidade de cada equipamento desta instalação no plano de manutenção.');
+        const srv={...obj(draft.servicos),visitasAno:number('ct_visitas',true),maoObra:read('ct_labor'),horasAno:number('ct_horas'),deslocacoes:read('ct_viagens'),zona:read('ct_zona').trim(),materiais:read('ct_material'),notas:read('ct_srv_notas').trim()};
         if(srv.maoObra==='limitada' && srv.horasAno===null)throw Error('Indica o limite de horas de mão de obra.');
         if(srv.deslocacoes==='limitadas' && !srv.zona)throw Error('Indica a zona ou condições das deslocações.');
         if(srv.materiais==='parcial' && !srv.notas)throw Error('Descreve os materiais abrangidos.');
         const avisoDias=number('ct_alerta_dias',true) ?? 30,urgenteDias=number('ct_urgente_dias',true) ?? 7;
         if(urgenteDias>avisoDias)throw Error('O aviso urgente deve ser igual ou inferior à antecedência do aviso.');
-        return {...draft,versao:1,plano,servicos:srv,alertas:{...obj(draft.alertas),avisoDias,urgenteDias},comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
+        return {...draft,versao:2,plano,servicos:srv,alertas:{...obj(draft.alertas),avisoDias,urgenteDias},comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
     }
     function recordLocation(r,c) {
         if(r.localId != null || Array.isArray(r.sistemasIds))return r.localId || '';
@@ -110,9 +117,9 @@
     }
     function schedule(c) {
         return _contratoInstalacoes(c).flatMap(l=>{
-            const eq=_contratoEquipamentos(c,l.id),types=new Set(eq.map(e=>e.tipo));
-            return plans(c).filter(p=>types.has(p.tipo)).map(p=>{
-                const regs=(dados.registosManutencao || []).filter(r=>r.adminId===c.adminId && r.contratoId===c.id && recordLocation(r,c)===(l.id || '') && r.dataRealizacao && (Array.isArray(r.sistemasIds)?r.sistemasIds.includes(p.id):true)).sort((a,b)=>b.dataRealizacao.localeCompare(a.dataRealizacao));
+            const eq=_contratoEquipamentos(c,l.id);
+            return plans(c).filter(p=>eq.some(e=>covers(p,e))).map(p=>{
+                const regs=(dados.registosManutencao || []).filter(r=>r.adminId===c.adminId && r.contratoId===c.id && recordLocation(r,c)===(l.id || '') && r.dataRealizacao && (Array.isArray(r.sistemasIds)?(r.sistemasIds.includes(p.id) || (p.origemSistemaId && r.sistemasIds.includes(p.origemSistemaId))):true)).sort((a,b)=>b.dataRealizacao.localeCompare(a.dataRealizacao));
                 return {localId:l.id,localNome:l.nome,plan:p,data:avancarPeriodicidade(regs[0]?.dataRealizacao || c.dataInicio,p.periodicidade)};
             });
         });
@@ -121,7 +128,7 @@
     function due(c,localId,data) {return schedule(c).filter(s=>s.localId===(localId || '') && s.data && s.data<=data).map(s=>s.plan.id);}
     function choices(c,localId,data) {
         const rows=schedule(c).filter(s=>s.localId===(localId || '')),selected=new Set(due(c,localId,data));
-        return rows.map(s=>`<label style="display:flex;gap:8px;align-items:center;padding:5px 0"><input type="checkbox" class="ct-os-system" value="${esc(s.plan.id)}" ${selected.has(s.plan.id)?'checked':''} style="width:auto">${esc(EQUIP_TIPOS[s.plan.tipo] || s.plan.tipo)} · próxima ${esc(s.data || 'por definir')}</label>`).join('');
+        return rows.map(s=>`<label style="display:flex;gap:8px;align-items:center;padding:5px 0"><input type="checkbox" class="ct-os-system" value="${esc(s.plan.id)}" ${selected.has(s.plan.id)?'checked':''} style="width:auto">${esc(planLabel(s.plan))} · próxima ${esc(s.data || 'por definir')}</label>`).join('');
     }
     function osPicker(c) {
         if(!plans(c).length)return;
@@ -138,20 +145,21 @@
         return ids;
     }
     function equipmentForOS(c,localId,ids) {
-        const types=new Set(plans(c).filter(p=>ids.includes(p.id)).map(p=>p.tipo));
-        return _contratoEquipamentos(c,localId).filter(e=>!plans(c).length || types.has(e.tipo));
+        const selected=plans(c).filter(p=>ids.includes(p.id));
+        return _contratoEquipamentos(c,localId).filter(e=>!plans(c).length || selected.some(p=>covers(p,e)));
     }
+
     function recordNext(c,data,ids) {
-        return plans(c).filter(p=>ids.includes(p.id)).map(p=>avancarPeriodicidade(data,p.periodicidade)).filter(Boolean).sort()[0] || avancarPeriodicidade(data,c.periodicidade);
+        return plans(c).filter(p=>ids.includes(p.id) || (p.origemSistemaId && ids.includes(p.origemSistemaId))).map(p=>avancarPeriodicidade(data,p.periodicidade)).filter(Boolean).sort()[0] || avancarPeriodicidade(data,c.periodicidade);
     }
     function snapshot(os,c,ids) {
         window.TGEquipmentReports?.snapshot(os,equipmentForOS(c,os.localId,ids));
         if(!plans(c).length)return;
         const available=schedule(c).filter(s=>s.localId===(os.localId || '') && ids.includes(s.plan.id)).map(s=>s.plan);
         if(!available.length)throw Error('Sem sistemas abrangidos nesta instalação.');
-        const types=new Set(available.map(p=>p.tipo));
-        os.planoManutencao={...os.planoManutencao,sistemasIds:available.map(p=>p.id),equipamentosIds:_contratoEquipamentos(c,os.localId).filter(e=>types.has(e.tipo)).map(e=>e.id),tarefas:available.flatMap(p=>(p.tarefas || []).map(t=>({id:'contrato-'+p.id+'-'+t.id,texto:(EQUIP_TIPOS[p.tipo] || p.tipo)+' — '+t.texto,sistemaId:p.id})))};
-        os.observacoes=[os.observacoes,'Sistemas: '+available.map(p=>EQUIP_TIPOS[p.tipo] || p.tipo).join(', ')].filter(Boolean).join('\n');
+        const equipment=_contratoEquipamentos(c,os.localId).filter(e=>available.some(p=>covers(p,e)));
+        os.planoManutencao={...os.planoManutencao,sistemasIds:available.map(p=>p.id),equipamentosIds:equipment.map(e=>e.id),tarefas:available.flatMap(p=>(p.tarefas || []).map(t=>({id:'contrato-'+p.id+'-'+t.id,texto:planLabel(p)+' — '+t.texto,sistemaId:p.id,equipamentoId:p.equipamentoId || null})))};
+        os.observacoes=[os.observacoes,'Sistemas: '+available.map(planLabel).join(', ')].filter(Boolean).join('\n');
     }
     function registerMaintenance(os,sheet) {
         if(!os || !sheet || os.adminId!==sheet.adminId || sheet.servicoId!==os.id || !completedTasks(os) || window.TGEquipmentReports?.pending(os).length)return false;
@@ -234,7 +242,7 @@
     }
     const openOS = os => !['concluído','concluido','cancelado','cancelada','anulado','anulada'].includes(String(os.status || '').toLowerCase()) && !os.apagadoSuperAdmin;
     function pendingOS(c,localId,systemId) {
-        return (dados.servicos || []).find(os=>os.adminId===c.adminId && os.clienteId===c.clienteId && os.contratoId===c.id && (os.localId || '')===(localId || '') && openOS(os) && (!os.planoManutencao?.sistemasIds?.length || os.planoManutencao.sistemasIds.includes(systemId)));
+        return (dados.servicos || []).find(os=>os.adminId===c.adminId && os.clienteId===c.clienteId && os.contratoId===c.id && (os.localId || '')===(localId || '') && openOS(os) && (!os.planoManutencao?.sistemasIds?.length || os.planoManutencao.sistemasIds.includes(systemId) || plans(c).some(p=>p.id===systemId && p.origemSistemaId && os.planoManutencao.sistemasIds.includes(p.origemSistemaId))));
     }
     function maintenanceRows(clienteId,today=getDataHoje()) {
         const rows=[];
@@ -259,7 +267,7 @@
             const first=list[0],c=first.contrato;
             return `<article data-maint-contract="${esc(c.id)}" data-maint-local="${esc(first.localId)}" style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:10px"><strong>${esc(first.cliente?.nome || 'Cliente')} · Contrato ${esc(c.numero || '—')}</strong><p class="help-text">Instalação: ${esc(first.localNome)}</p>`+list.map(r=>{
                 const selectable=!r.os && !r.expired,color=r.days<0?'#b91c1c':r.days<=r.urgent?'#b45309':'#475569';
-                return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #e2e8f0">${selectable?`<input type="checkbox" class="ct-maint-select" value="${esc(r.plan.id)}" aria-label="Selecionar ${esc(EQUIP_TIPOS[r.plan.tipo] || r.plan.tipo)}" style="width:auto">`:''}<span style="flex:1;min-width:150px"><strong>${esc(EQUIP_TIPOS[r.plan.tipo] || r.plan.tipo)}</strong> · ${esc(r.data)}<br><small style="color:${color}">${esc(r.state)}${r.os?' · OS '+esc(r.os.numeroRegisto || '—')+' · '+esc(r.os.data || 'sem data'):r.days<0?' · '+(-r.days)+' dia(s)':r.days===0?'':' · faltam '+r.days+' dia(s)'}</small></span><button type="button" class="btn btn-sm btn-outline" data-maint-action="${r.os?'os':r.expired?'plan':'create'}" data-maint-system="${esc(r.plan.id)}">${r.os?'Ver OS':r.expired?'Rever contrato':'Criar OS'}</button><button type="button" class="btn btn-sm btn-outline" data-maint-action="plan">Ver plano</button></div>`;
+                return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #e2e8f0">${selectable?`<input type="checkbox" class="ct-maint-select" value="${esc(r.plan.id)}" aria-label="Selecionar ${esc(planLabel(r.plan))}" style="width:auto">`:''}<span style="flex:1;min-width:150px"><strong>${esc(planLabel(r.plan))}</strong> · ${esc(r.data)}<br><small style="color:${color}">${esc(r.state)}${r.os?' · OS '+esc(r.os.numeroRegisto || '—')+' · '+esc(r.os.data || 'sem data'):r.days<0?' · '+(-r.days)+' dia(s)':r.days===0?'':' · faltam '+r.days+' dia(s)'}</small></span><button type="button" class="btn btn-sm btn-outline" data-maint-action="${r.os?'os':r.expired?'plan':'create'}" data-maint-system="${esc(r.plan.id)}">${r.os?'Ver OS':r.expired?'Rever contrato':'Criar OS'}</button><button type="button" class="btn btn-sm btn-outline" data-maint-action="plan">Ver plano</button></div>`;
             }).join('')+(list.filter(r=>!r.os&&!r.expired).length>1?'<button type="button" class="btn btn-sm btn-primary" data-maint-action="group">Criar OS para as selecionadas</button>':'')+'</article>';
         }).join('')+(rows.length?'':'<p class="help-text">Não há manutenções a vencer ou em atraso no período de aviso.</p>')+'</div></section>';
     }

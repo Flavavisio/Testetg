@@ -5200,7 +5200,7 @@
         //  Financeiro) mostram uma mensagem simples por agora — ficam para as
         //  próximas fases, sem quebrar nada do que já existe nesses menus.
         // =====================================================================
-        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'relatorios', 'equipamentos', 'financeiro'];
+        const WS_CLIENTE_ABAS = ['resumo', 'historico', 'locais', 'os', 'obras', 'assistencias', 'contratos', 'financeiro'];
         const WS_CLIENTE_ABAS_LABEL = { resumo: 'Resumo', historico: 'Histórico', locais: 'Instalações', os: 'Ordens de Serviço', obras: 'Obras', assistencias: 'Assistências', contratos: 'Contratos', relatorios: 'Relatórios', equipamentos: 'Equipamentos', financeiro: 'Financeiro' };
         function abrirWorkspaceCliente(clienteId) {
             const cliente = dados.clientes?.find(c => c.id === clienteId);
@@ -5252,6 +5252,7 @@
                 if (a === 'relatorios') return admin?.segurancaAtivo === true;
                 return true;
             });
+            if (aba === 'equipamentos' || aba === 'relatorios') aba = 'locais';
             if (!abasVisiveis.includes(aba)) aba = 'resumo'; // a aba pedida já não está disponível
             window._wsAbaAtual = aba;
             const cliente = dados.clientes?.find(c => c.id === clienteId);
@@ -9942,6 +9943,9 @@
             if (!principalChanged) { const chosen=document.querySelector('.ct-local-chk:checked'); if(chosen)select.value=chosen.value; }
             document.querySelectorAll('.ct-local-chk').forEach(chk => chk.checked=chk.value===select.value);
             select.dataset.principalAnterior=select.value;
+            const available = new Set(_ctEquipamentosDisponiveis().map(e => e.id));
+            _ctEquipamentosAtuais = _ctEquipamentosAtuais.filter(id => available.has(id));
+            _renderListaEquipContrato();
             if (document.getElementById('ct_equip_add')) _atualizarSelectEquipDisponivel();
             window.TGContractMaintenance?.refreshPlan();
         }
@@ -10682,7 +10686,7 @@
                 });
                 locaisIds.push(localId);
                 // corrige equipamentos criados antes do local ser gravado (ficavam com localId literal '__novo__')
-                (dados.equipamentos || []).forEach(eq => { if (eq.localId === '__novo__') eq.localId = localId; });
+                (dados.equipamentos || []).forEach(eq => { if (eq.adminId === adminId && eq.clienteId === clienteId && equipamentosIds.includes(eq.id) && eq.localId === '__novo__') eq.localId = localId; });
             }
             if (!dados.contratos) dados.contratos = [];
             const tiposTrabalho = _ctTiposTrabalhoSelecionados();

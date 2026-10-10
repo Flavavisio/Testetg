@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const {JSDOM}=require(process.env.JSDOM_PATH || 'jsdom');
 const main=fs.readFileSync('app-principal.js','utf8'),moduleSource=fs.readFileSync('tg-passport.js','utf8');
-const mappingSource=['clientes','locais','equipamentos','servicos','folhasObra'].map(key=>{const start=main.indexOf('            '+key+': {',main.indexOf('const M ='));return main.slice(start,main.indexOf('\n            },',start)+15);}).join('\n');
+const mappingSource=['clientes','locais','equipamentos','servicos','folhasObra','relatoriosEspecialidade'].map(key=>{const start=main.indexOf('            '+key+': {',main.indexOf('const M ='));return main.slice(start,main.indexOf('\n            },',start)+15);}).join('\n');
 function setup(){
  const dom=new JSDOM('<div id="wsClienteOverlay" class="open" data-cliente-atual="c"><div id="wsClienteConteudo"></div></div>',{url:'https://totalgest.example/login.html',runScripts:'outside-only'}),w=dom.window;
  w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};w.alerts=[];w.alert=v=>w.alerts.push(v);w.usuarioLogado={id:'a',role:'admin',nome:'Técnico Teste'};w._wsAbaAtual='locais';w.licensed=true;w.contracts=true;w._licencaValidaTenant=()=>w.licensed;w.admin={packAtual:'expert'};w.adminDoUtilizador=()=>w.admin;w.moduloContratosAtivo=()=>w.contracts;
@@ -9,7 +9,7 @@ function setup(){
  w.eval("var msToISO=ms=>ms==null?null:new Date(Number(ms)).toISOString(),isoToMs=iso=>iso==null?null:Date.parse(iso),nn=v=>(v===''||v===undefined)?null:v,hhmm=t=>t?String(t).slice(0,5):null;window.M={\n"+mappingSource+'\n};');
  w._snap={servicos:new Map()};w._snap.servicos.set('live',JSON.stringify(w.M.servicos.to(w.dados.servicos[0])));
  w.calls=[];const q={select(v){w.calls.push(['select',v]);return this},eq(k,v){w.calls.push(['eq',k,v]);return this},order(k,v){w.calls.push(['order',k,v]);return this}};w.supa={from:t=>{w.queryTable=t;w.calls.push(['from',t]);return q}};
- w.archive=[{id:'old',admin_id:'a',cliente_id:'c',local_id:'l',numero_registo:'OLD-1',data:'2020-01-01',descricao:'Manutenção antiga',status:'concluído',checklist:{OLD:true},fotos:[]}];w.archiveSheets=[];w._buscarPaginadoGenerico=async()=>({data:w.queryTable==='folhas_obra'?w.archiveSheets:w.archive,error:null});w.abrirFolhaDetalhe=async id=>w.openedSheet=id;w.gerarPDFFolha=async(id,type)=>w.pdfSheet=[id,type];
+ w.archive=[{id:'old',admin_id:'a',cliente_id:'c',local_id:'l',numero_registo:'OLD-1',data:'2020-01-01',descricao:'Manutenção antiga',status:'concluído',checklist:{OLD:true},fotos:[]}];w.archiveSheets=[];w.archiveReports=[];w._buscarPaginadoGenerico=async()=>({data:w.queryTable==='folhas_obra'?w.archiveSheets:w.queryTable==='relatorios_especialidade'?w.archiveReports:w.archive,error:null});w.abrirFolhaDetalhe=async id=>w.openedSheet=id;w.gerarPDFFolha=async(id,type)=>w.pdfSheet=[id,type];
  w.saveCalls=0;w.guardarDados=async()=>{w.saveCalls++;if(w.failSave)throw Error('Servidor indisponível');};let seq=0;w.gerarId=()=>`new-${++seq}`;
  w._wsSairPara=id=>w.left=id;w.abrirVerOS=id=>w.opened=id;w._wsClienteAba=async(id,tab)=>{w._wsAbaAtual=tab;if(tab==='locais')await w.TGPassport.show(id)};w._wsMarcarOS=id=>w.marked=id;w._osPedirFoto=id=>w.photoOS=id;
  w.eval('const PACKS={express:{},expert:{},pro:{},supreme:{}};'+['packDoAdmin','moduloPassaporteAtivo'].map(name=>main.match(new RegExp('        function '+name+'\\([^]*?\\n        \\}'))[0]).join('\n'));
@@ -92,3 +92,15 @@ test('a shared contract opens from each covered passport and unlocated equipment
  await w.TGPassport.open('c','l');assert(w.document.querySelector('[data-pp-action="contract"]'));
  w.moduloContratosAtivo=()=>false;await w.TGPassport.open('c','l');assert(!w.document.querySelector('[data-pp-action="contract"]'));assert(!w.document.body.textContent.includes('Condições CT-MULTI'));
 }finally{w.close()}});
+test('installation QR points to this passport and requires the existing authenticated route',async()=>{const w=setup();try{
+ await w.TGPassport.open('c','l');const image=w.document.querySelector('[data-pp-qr]');assert(image);const qr=new URL(image.src),target=new URL(qr.searchParams.get('data'));assert.equal(target.pathname,'/login.html');assert.equal(target.searchParams.get('tg_cliente'),'c');assert.equal(target.searchParams.get('tg_local'),'l');assert.equal(target.searchParams.get('tg_passaporte'),'1');assert.equal(image.closest('a').href,target.href);assert(w.document.body.textContent.includes('A ligação exige uma sessão'));
+ await w.TGPassport.open('c','');assert.equal(new URL(new URL(w.document.querySelector('[data-pp-qr]').src).searchParams.get('data')).searchParams.get('tg_local'),'');
+}finally{w.close()}});
+test('archived reports appear beside their own OS PDF only and open the original snapshot without writes',async()=>{const w=setup();try{
+ w.archiveReports=[{id:'right',admin_id:'a',cliente_id:'c',local_id:'l',servico_id:'old',tipo:'RCCTV',campos:{htmlSnapshot:'Original',equipamentoNome:'Câmara 03'}},{id:'second',admin_id:'a',cliente_id:'c',local_id:'l',servico_id:'live',tipo:'RIN',campos:{htmlSnapshot:'Second'}},{id:'foreign-report',admin_id:'b',cliente_id:'c',local_id:'l',servico_id:'old',tipo:'REX'},{id:'other-os',admin_id:'a',cliente_id:'c',local_id:'l',servico_id:'unrelated',tipo:'REX'},{id:'other-site',admin_id:'a',cliente_id:'c',local_id:'',servico_id:'old',tipo:'REX'}];w._verRelatorioEspecialidadeSnapshot=async(id,print)=>w.reportViewed=[id,print];
+ await w.TGPassport.open('c','l');const pdf=w.document.querySelector('[data-pp-action="work-sheet-pdf"][data-pp-id="old"]'),report=pdf.nextElementSibling;assert.equal(report.dataset.ppAction,'report');assert.equal(report.dataset.ppId,'right');assert(report.textContent.includes('Câmara 03'));assert.deepEqual([...w.document.querySelectorAll('[data-pp-action="report"]')].map(b=>b.dataset.ppId),['second','right']);report.click();await flush();assert.deepEqual(w.reportViewed,['right',false]);assert.equal(w.saveCalls,0);assert.equal(w._snap.relatoriosEspecialidade.get('right'),JSON.stringify(w.M.relatoriosEspecialidade.to(w.dados.relatoriosEspecialidade.find(r=>r.id==='right'))));
+ assert(w.calls.some(([k,v])=>k==='from'&&v==='relatorios_especialidade'));
+}finally{w.close()}});
+test('client workspace removes duplicate equipment and report tabs and routes older links to installations',()=>{
+ const tabs=main.match(/const WS_CLIENTE_ABAS =[^\n]+/)[0];assert(!tabs.includes("'equipamentos'"));assert(!tabs.includes("'relatorios'"));assert(main.includes("if (aba === 'equipamentos' || aba === 'relatorios') aba = 'locais'"));
+});

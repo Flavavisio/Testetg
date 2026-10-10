@@ -108,3 +108,24 @@ test('both web and installed-app entry pages load the same maintenance and passp
  for(const html of [index,login]){const names=scripts(html);assert(names.findIndex(s=>s.startsWith('tg-contract-maintenance.js?'))>names.findIndex(s=>s.startsWith('app-principal.js?')));}
  for(const name of ['_wsResumoHtml','_wsContratosHtml'])assert(fn(name).includes('tg_maintenance_customer'));
 });
+
+test('changing installation clears selected equipment and plans without altering saved ownership or history',()=>{const w=setup();try{
+ w.abrirModalContrato('ct');assert.deepEqual(plain(w.eval('_ctEquipamentosAtuais')),['e1','e3']);
+ w.document.getElementById('ct_local').value='b';w.onLocalContratoChange();assert.deepEqual(plain(w.eval('_ctEquipamentosAtuais')),[]);assert.equal(w.document.querySelectorAll('[data-ct-equipment]').length,0);assert.equal(w.TGContractMaintenance.collect().plano.length,0);
+ w._ctAdicionarTodosEquipamentos();assert.deepEqual(plain(w.eval('_ctEquipamentosAtuais')),['e2']);assert.equal(w.document.querySelector('[data-ct-equipment]').dataset.ctEquipment,'e2');
+ w.document.querySelector('.ct-local-chk[value="l"]').checked=true;w._ctCoberturaChange();assert.equal(w.document.getElementById('ct_local').value,'l');assert.deepEqual(plain(w.eval('_ctEquipamentosAtuais')),[]);
+ assert.deepEqual(plain(w.c.equipamentosIds),['e1','e2','e3']);assert.equal(w.dados.equipamentos.find(e=>e.id==='e2').localId,'b');
+}finally{w.close()}});
+test('same-type equipment has independent periodicity, alerts, tasks and OS snapshots',()=>{const w=setup();try{
+ w.dados.equipamentos.push({id:'e5',adminId:'a',clienteId:'c',localId:'l',tipo:'cctv',marca:'Second'});w.c.locaisIds=['l'];w.c.equipamentosIds=['e1','e5'];w.c.dataInicio='2026-01-01';w.abrirModalContrato('ct');
+ const first=w.document.querySelector('[data-ct-equipment="e1"]'),second=w.document.querySelector('[data-ct-equipment="e5"]');assert(first&&second);first.querySelector('[data-period]').value='mensal';second.querySelector('[data-period]').value='semestral';first.querySelector('textarea').value='First task';second.querySelector('textarea').value='Second task';
+ w.c.gestaoManutencao=w.TGContractMaintenance.collect();const [a,b]=w.c.gestaoManutencao.plano;assert.notEqual(a.id,b.id);assert.equal(a.equipamentoId,'e1');assert.equal(b.equipamentoId,'e5');
+ let rows=w.TGContractMaintenance.schedule(w.c);assert.equal(rows.find(r=>r.plan.id===a.id).data,'2026-01-31');assert.equal(rows.find(r=>r.plan.id===b.id).data,'2026-07-01');
+ const os={id:'selected-os',adminId:'a',clienteId:'c',contratoId:'ct',localId:'l'};w.TGContractMaintenance.snapshot(os,w.c,[a.id]);assert.deepEqual(plain(os.planoManutencao.equipamentosIds),['e1']);assert.equal(os.planoManutencao.tarefas.length,1);assert.equal(os.planoManutencao.tarefas[0].equipamentoId,'e1');assert(w.TGContractMaintenance.maintenanceHTML('c').includes('Second'));
+ w.dados.registosManutencao.push({id:'reg',adminId:'a',contratoId:'ct',localId:'l',dataRealizacao:'2026-10-10',sistemasIds:[a.id]});rows=w.TGContractMaintenance.schedule(w.c);assert.equal(rows.find(r=>r.plan.id===a.id).data,'2026-11-09');assert.equal(rows.find(r=>r.plan.id===b.id).data,'2026-07-01');
+ w.c.gestaoManutencao.plano[0].tarefas[0].texto='Changed';assert(os.planoManutencao.tarefas[0].texto.includes('First task'));
+}finally{w.close()}});
+test('editing a legacy system plan inherits its original maintenance and open OS without conflating new equipment plans',()=>{const w=setup();try{
+ w.c.locaisIds=['l'];w.c.equipamentosIds=['e1'];w.dados.registosManutencao.push({id:'old',adminId:'a',contratoId:'ct',localId:'l',dataRealizacao:'2026-09-01',sistemasIds:['cctv-plan']});w.dados.servicos.push({id:'old-os',adminId:'a',clienteId:'c',contratoId:'ct',localId:'l',status:'pendente',planoManutencao:{sistemasIds:['cctv-plan']}});
+ w.abrirModalContrato('ct');w.c.gestaoManutencao=w.TGContractMaintenance.collect();const p=w.c.gestaoManutencao.plano[0];assert.equal(p.origemSistemaId,'cctv-plan');assert.equal(w.TGContractMaintenance.schedule(w.c)[0].data,'2026-12-01');assert.equal(w.TGContractMaintenance.pendingOS(w.c,'l',p.id).id,'old-os');
+}finally{w.close()}});

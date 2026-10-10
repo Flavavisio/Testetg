@@ -5687,6 +5687,7 @@
                 </div>`;
             }).join('');
             return `
+                <div id="tg_maintenance_customer">${window.TGContractMaintenance?.maintenanceHTML(clienteId) || ''}</div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div class="help-text" style="margin:0;">${contratosCliente.length} contrato${contratosCliente.length === 1 ? '' : 's'} registado${contratosCliente.length === 1 ? '' : 's'}.</div>
                     <button class="btn btn-sm btn-primary" onclick="_wsNovoContrato('${clienteId}')"><i class="fas fa-plus"></i> Novo contrato</button>
@@ -5797,6 +5798,7 @@
                 </div>`;
             }).join('');
             return `
+                <div id="tg_maintenance_customer">${window.TGContractMaintenance?.maintenanceHTML(clienteId) || ''}</div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
                     <div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">Instalações</div><div style="font-size:1.5rem;font-weight:700;">${locaisParaMostrar.length}</div></div>
                     <div style="background:#f8fafc;border-radius:10px;padding:14px;"><div style="font-size:.76rem;color:#64748b;text-align:left;">OS abertas</div><div style="font-size:1.5rem;font-weight:700;">${osAbertas}</div></div>
@@ -7931,9 +7933,9 @@
         function tipoExigePresencialAnual(tipo) { return ['intrusao', 'incendio', 'extintores'].includes(tipo); }
         function addMeses(dataStr, meses) {
             if (!dataStr) return null;
-            const d = new Date(dataStr + 'T00:00:00');
+            const d = new Date(dataStr + 'T00:00:00Z');
             if (isNaN(d.getTime())) return null;
-            d.setMonth(d.getMonth() + meses);
+            d.setUTCMonth(d.getUTCMonth() + meses);
             if (isNaN(d.getTime())) return null;
             return d.toISOString().slice(0, 10);
         }
@@ -7941,9 +7943,9 @@
         // preciso para intervalos pequenos (um "mês" de calendário varia entre 28-31 dias).
         function addDias(dataStr, dias) {
             if (!dataStr) return null;
-            const d = new Date(dataStr + 'T00:00:00');
+            const d = new Date(dataStr + 'T00:00:00Z');
             if (isNaN(d.getTime())) return null;
-            d.setDate(d.getDate() + dias);
+            d.setUTCDate(d.getUTCDate() + dias);
             if (isNaN(d.getTime())) return null;
             return d.toISOString().slice(0, 10);
         }
@@ -9684,16 +9686,21 @@
             const hora = document.getElementById('massa_hora').value || '09:00';
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
             const diasIntervalo = Math.floor((new Date(dataFim) - new Date(dataIni)) / 86400000) + 1;
+            if (gerarOSEmMassaConfirmar.emCurso) return;
+            gerarOSEmMassaConfirmar.emCurso=true;
+            try {
             dados.servicos = dados.servicos || [];
             const visitas = ids.flatMap(id => { const c = dados.contratos?.find(x => x.id === id && x.adminId === adminId); return c ? _contratoInstalacoes(c).map(local => ({ c, local })) : []; });
             let criadas = 0;
+            const ignoradas=[];
             for (let i = 0; i < visitas.length; i++) {
                 const { c, local } = visitas[i];
                 const diaOffset = diasIntervalo > 1 ? Math.floor(i * diasIntervalo / visitas.length) : 0;
-                const dataOSDate = new Date(dataIni + 'T00:00:00'); dataOSDate.setDate(dataOSDate.getDate() + diaOffset);
+                const dataOSDate = new Date(dataIni + 'T00:00:00Z'); dataOSDate.setUTCDate(dataOSDate.getUTCDate() + diaOffset);
                 const dataStr = dataOSDate.toISOString().slice(0, 10);
                 const sistemasIds=window.TGContractMaintenance?.due(c,local.id,dataStr) || [];
                 if (window.TGContractMaintenance?.plans(c).length && !sistemasIds.length) continue;
+                try { await window.TGContractMaintenance?.availability(c,local.id,sistemasIds); } catch(e) { ignoradas.push(`${c.numero} / ${local.nome}: ${e.message}`); continue; }
                 const equipamentosOS = window.TGContractMaintenance?.equipmentForOS(c,local.id,sistemasIds) || _contratoEquipamentos(c, local.id);
                 const equipStr = equipamentosOS.map(e => (EQUIP_TIPOS[e.tipo] || e.tipo) + (e.marca ? " — " + e.marca : "")).join(", ") || "Sem equipamentos abrangidos nesta instalação";
                 const novaOS = {
@@ -9722,11 +9729,17 @@
                 c.ultimaOSGeradaId = novaOS.id;
                 criadas++;
             }
-            guardarDados(dados);
+            try { await guardarDados(dados); } catch(e) {
+                renderizarTudo();
+                alert("As OS foram guardadas neste dispositivo, mas a sincronização está por confirmar. Verifica a ligação antes de repetir a geração.");
+                return;
+            }
             document.getElementById('modalGerarOSMassaOverlay').classList.remove('open');
             _contratosSelecionados = [];
             renderizarTudo();
-            alert(`✅ ${criadas} Ordens de Serviço geradas entre ${dataIni.split('-').reverse().join('/')} e ${dataFim.split('-').reverse().join('/')}, atribuídas ao responsável escolhido.`);
+            alert(`✅ ${criadas} Ordens de Serviço geradas entre ${dataIni.split('-').reverse().join('/')} e ${dataFim.split('-').reverse().join('/')}, atribuídas ao responsável escolhido.${ignoradas.length ? "\n\nNão criadas:\n" + ignoradas.join("\n") : ""}`);
+            } catch(e) { alert(e.message || "Não foi possível terminar a geração de OS."); }
+            finally { gerarOSEmMassaConfirmar.emCurso=false; }
         }
 
         let gerarOSContratoId = null;
@@ -9808,6 +9821,10 @@
             const hora = document.getElementById('os_hora').value;
             const notas = document.getElementById('os_notas').value.trim();
 
+            if (confirmarGerarOS.emCurso) return;
+            confirmarGerarOS.emCurso=true;
+            try {
+            await window.TGContractMaintenance?.availability(c,localId,sistemasIds);
             if (data && hora) {
                 const duracaoMin = 60;
                 const inicioNovo = _horaMin(hora);
@@ -9855,10 +9872,17 @@
             dados.servicos.push(novaOS);
             c.ultimaOSGeradaData = data;
             c.ultimaOSGeradaId = novaOS.id;
-            guardarDados(dados);
+            try { await guardarDados(dados); } catch(e) {
+                renderizarTudo();
+                fecharGerarOS();
+                alert("A OS foi guardada neste dispositivo, mas ainda não foi possível confirmar a sincronização. Verifica a ligação antes de criar outra OS.");
+                return;
+            }
             fecharGerarOS();
             renderizarTudo();
             alert('✅ Ordem de serviço gerada e atribuída a ' + idsSelecionados.length + ' pessoa(s).');
+            } catch(e) { alert(e.message || 'Não foi possível criar a OS. Tenta novamente.'); }
+            finally { confirmarGerarOS.emCurso=false; }
         }
 
         // Empty string represents the customer's Sede; missing coverage keeps legacy contracts intact.

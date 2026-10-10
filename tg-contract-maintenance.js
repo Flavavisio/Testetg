@@ -56,6 +56,7 @@
             input('ct_zona','Zona / condições das deslocações',srv.zona)+
             select('ct_material','Materiais',{indefinido:'Não definido',incluidos:'Incluídos',parcial:'Apenas os materiais descritos',excluidos:'Não incluídos'},srv.materiais || 'indefinido')+
             textarea('ct_srv_notas','Materiais abrangidos, limites e exclusões',srv.notas)));
+        root.insertAdjacentHTML('beforeend',section('ct_alertas_extra','Avisos de manutenção',input('ct_alerta_dias','Avisar com antecedência (dias)',draft.alertas?.avisoDias ?? 30,'number')+input('ct_urgente_dias','Marcar como urgente quando faltar (dias)',draft.alertas?.urgenteDias ?? 7,'number')));
         root.insertAdjacentHTML('beforeend',section('ct_comercial_extra','Condições comerciais',
             select('ct_faturacao','O valor indicado corresponde a',{indefinido:'Período não definido',mensal:'Mensal',trimestral:'Trimestral',semestral:'Semestral',anual:'Anual',pontual:'Pagamento único'},com.faturacao || 'indefinido')+
             input('ct_pagamento','Prazo de pagamento (dias)',com.prazoPagamento,'number')+
@@ -96,7 +97,9 @@
         if(srv.maoObra==='limitada' && srv.horasAno===null)throw Error('Indica o limite de horas de mão de obra.');
         if(srv.deslocacoes==='limitadas' && !srv.zona)throw Error('Indica a zona ou condições das deslocações.');
         if(srv.materiais==='parcial' && !srv.notas)throw Error('Descreve os materiais abrangidos.');
-        return {...draft,versao:1,plano,servicos:srv,comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
+        const avisoDias=number('ct_alerta_dias',true) ?? 30,urgenteDias=number('ct_urgente_dias',true) ?? 7;
+        if(urgenteDias>avisoDias)throw Error('O aviso urgente deve ser igual ou inferior à antecedência do aviso.');
+        return {...draft,versao:1,plano,servicos:srv,alertas:{...obj(draft.alertas),avisoDias,urgenteDias},comercial:{...obj(draft.comercial),faturacao:read('ct_faturacao'),prazoPagamento:number('ct_pagamento',true),metodo:read('ct_metodo').trim(),renovacao:read('ct_renovacao'),avisoDias:number('ct_aviso',true) ?? 30,notas:read('ct_com_notas').trim()}};
     }
     function recordLocation(r,c) {
         if(r.localId != null || Array.isArray(r.sistemasIds))return r.localId || '';
@@ -157,7 +160,13 @@
     function completedTasks(os) {return (os?.planoManutencao?.tarefas || []).every(t=>os.checklist?.[t.id]===true);}
     function cache(key,rows,filter) {
         dados[key] ||= [];_snap[key] ||= new Map();
-        for(const raw of rows || []){const r=M[key].from(raw);if(!filter(r) || dados[key].some(x=>x.id===r.id))continue;dados[key].push(r);_snap[key].set(r.id,JSON.stringify(M[key].to(r)));}
+        for(const raw of rows || []){
+            const r=M[key].from(raw);if(!filter(r))continue;
+            const index=dados[key].findIndex(x=>x.id===r.id);
+            if(index>=0){if(_snap[key].get(r.id)!==JSON.stringify(M[key].to(dados[key][index])))continue;dados[key][index]=r;}
+            else dados[key].push(r);
+            _snap[key].set(r.id,JSON.stringify(M[key].to(r)));
+        }
     }
     async function loadHistory(c) {
         const q=t=>supa.from(t).select('*').eq('admin_id',c.adminId).eq('contrato_id',c.id).order('id',{ascending:false});
@@ -210,5 +219,82 @@
         const delta=Math.round((new Date(c.validadeContrato+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
         return delta<=days?{dias:delta,data:c.validadeContrato,renovacao:obj(c.gestaoManutencao?.comercial).renovacao || 'manual'}:null;
     }
-    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registoPicker,completedTasks,history,historyHTML,loadHistory,alerts};
+    const openOS = os => !['concluído','concluido','cancelado','cancelada','anulado','anulada'].includes(String(os.status || '').toLowerCase()) && !os.apagadoSuperAdmin;
+    function pendingOS(c,localId,systemId) {
+        return (dados.servicos || []).find(os=>os.adminId===c.adminId && os.clienteId===c.clienteId && os.contratoId===c.id && (os.localId || '')===(localId || '') && openOS(os) && (!os.planoManutencao?.sistemasIds?.length || os.planoManutencao.sistemasIds.includes(systemId)));
+    }
+    function maintenanceRows(clienteId,today=getDataHoje()) {
+        const rows=[];
+        for(const c of dados.contratos || []) {
+            if(!manager(c) || (clienteId && c.clienteId!==clienteId))continue;
+            const settings=obj(c.gestaoManutencao?.alertas),notice=settings.avisoDias ?? 30,urgent=settings.urgenteDias ?? 7;
+            const scheduled=plans(c).length?schedule(c):_contratoInstalacoes(c).map(l=>({localId:l.id,localNome:l.nome,plan:{id:'legacy',tipo:c.tipo || 'Manutenção'},data:calcularProximaManutencao(c)}));
+            for(const s of scheduled){
+                if(!s.data)continue;const days=Math.round((new Date(s.data+'T12:00:00')-new Date(today+'T12:00:00'))/86400000);
+                if(!Number.isFinite(days) || days>notice)continue;
+                const os=pendingOS(c,s.localId,s.plan.id),expired=!!c.validadeContrato && c.validadeContrato<today;
+                rows.push({...s,contrato:c,cliente:(dados.clientes || []).find(cl=>cl.id===c.clienteId && cl.adminId===c.adminId),days,urgent,os,expired,state:expired?'Contrato expirado':os?'OS agendada':days<0?'Em atraso':days===0?'Vence hoje':days<=urgent?'Urgente':'A vencer'});
+            }
+        }
+        return rows.sort((a,b)=>a.data.localeCompare(b.data) || a.localNome.localeCompare(b.localNome));
+    }
+    function maintenanceHTML(clienteId) {
+        if(!['admin','subadmin'].includes(usuarioLogado?.role) || !moduloContratosAtivo(adminAtual()))return '';
+        const rows=maintenanceRows(clienteId),groups=new Map();
+        for(const r of rows){const key=JSON.stringify([r.contrato.id,r.localId]);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);}
+        return '<section class="ff-secao" style="margin:16px 0"><div class="ff-secao-head">Manutenções a tratar · '+rows.length+'</div><div style="padding:12px">'+[...groups.values()].map(list=>{
+            const first=list[0],c=first.contrato;
+            return `<article data-maint-contract="${esc(c.id)}" data-maint-local="${esc(first.localId)}" style="padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:10px"><strong>${esc(first.cliente?.nome || 'Cliente')} · Contrato ${esc(c.numero || '—')}</strong><p class="help-text">Instalação: ${esc(first.localNome)}</p>`+list.map(r=>{
+                const selectable=!r.os && !r.expired,color=r.days<0?'#b91c1c':r.days<=r.urgent?'#b45309':'#475569';
+                return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid #e2e8f0">${selectable?`<input type="checkbox" class="ct-maint-select" value="${esc(r.plan.id)}" aria-label="Selecionar ${esc(EQUIP_TIPOS[r.plan.tipo] || r.plan.tipo)}" style="width:auto">`:''}<span style="flex:1;min-width:150px"><strong>${esc(EQUIP_TIPOS[r.plan.tipo] || r.plan.tipo)}</strong> · ${esc(r.data)}<br><small style="color:${color}">${esc(r.state)}${r.os?' · OS '+esc(r.os.numeroRegisto || '—')+' · '+esc(r.os.data || 'sem data'):r.days<0?' · '+(-r.days)+' dia(s)':r.days===0?'':' · faltam '+r.days+' dia(s)'}</small></span><button type="button" class="btn btn-sm btn-outline" data-maint-action="${r.os?'os':r.expired?'plan':'create'}" data-maint-system="${esc(r.plan.id)}">${r.os?'Ver OS':r.expired?'Rever contrato':'Criar OS'}</button><button type="button" class="btn btn-sm btn-outline" data-maint-action="plan">Ver plano</button></div>`;
+            }).join('')+(list.filter(r=>!r.os&&!r.expired).length>1?'<button type="button" class="btn btn-sm btn-primary" data-maint-action="group">Criar OS para as selecionadas</button>':'')+'</article>';
+        }).join('')+(rows.length?'':'<p class="help-text">Não há manutenções a vencer ou em atraso no período de aviso.</p>')+'</div></section>';
+    }
+    function renderMaintenance() {
+        for(const [anchor,id] of [['dashboardCentralConteudo','tg_maintenance_dashboard'],['agendaConteudo','tg_maintenance_agenda'],['homeAgendaWrap','tg_maintenance_home']]) {
+            const target=document.getElementById(anchor);if(!target)continue;
+            let root=document.getElementById(id);if(!root){root=document.createElement('div');root.id=id;target.before(root);}root.innerHTML=maintenanceHTML();
+        }
+        const workspace=document.getElementById('wsClienteOverlay');
+        if(workspace?.classList.contains('open')) {
+            const existing=document.getElementById('tg_maintenance_customer');if(existing)existing.innerHTML=maintenanceHTML(workspace.dataset.clienteAtual);
+        }
+    }
+    async function openMaintenance(c,localId,ids) {
+        if(!manager(c))return;
+        if(c.validadeContrato && c.validadeContrato<getDataHoje()){alert('Reveja a validade do contrato antes de criar uma nova manutenção.');return;}
+        let incomplete=false;try{incomplete=await loadHistory(c);}catch(_){incomplete=true;}
+        if(!manager(c))return;
+        if(incomplete){alert('Não foi possível confirmar as OS existentes. Verifica a ligação e tenta novamente para evitar duplicações.');return;}
+        const existing=ids.map(id=>pendingOS(c,localId,id)).find(Boolean);if(existing){alert('Já existe uma OS aberta para esta manutenção.');abrirVerOS(existing.id);return;}
+        if(typeof _wsSairPara==='function' && document.getElementById('wsClienteOverlay')?.classList.contains('open'))_wsSairPara(c.clienteId);
+        abrirGerarOSContrato(c.id);const local=document.getElementById('os_gerar_local');if(!local)return;local.value=localId || '';local.dispatchEvent(new Event('change'));
+        document.querySelectorAll('#ct_os_planos .ct-os-system').forEach(el=>el.checked=ids.includes(el.value));
+    }
+    async function availability(c,localId,ids) {
+        if(!manager(c))throw Error('Sem acesso ao contrato.');
+        if(c.validadeContrato && c.validadeContrato<getDataHoje())throw Error('Reveja a validade do contrato antes de criar uma nova manutenção.');
+        if(await loadHistory(c))throw Error('Não foi possível confirmar as OS existentes. Verifica a ligação e tenta novamente.');
+        if(!manager(c))throw Error('Sem acesso ao contrato.');
+        const existing=(ids.length?ids:['legacy']).map(id=>pendingOS(c,localId,id)).find(Boolean);
+        if(existing)throw Error('Já existe uma OS aberta para esta manutenção: '+(existing.numeroRegisto || existing.id)+'.');
+    }
+    document.addEventListener('click',async e=>{
+        const b=e.target.closest('[data-maint-action]');if(!b || b.disabled)return;
+        const group=b.closest('[data-maint-contract]');if(!group)return;
+        const c=(dados.contratos || []).find(c=>c.id===group.dataset.maintContract);if(!manager(c))return;
+        const localId=group.dataset.maintLocal,action=b.dataset.maintAction;
+        if(action==='plan' || action==='os'){
+            if(typeof _wsSairPara==='function' && document.getElementById('wsClienteOverlay')?.classList.contains('open'))_wsSairPara(c.clienteId);
+            if(action==='plan'){abrirModalContrato(c.id);tab('plano');return;}
+            const os=pendingOS(c,localId,b.dataset.maintSystem);if(os)abrirVerOS(os.id);return;
+        }
+        const ids=action==='group'?[...group.querySelectorAll('.ct-maint-select:checked')].map(x=>x.value):[b.dataset.maintSystem];
+        if(!ids.length){alert('Seleciona os sistemas que queres juntar na mesma OS.');return;}
+        b.disabled=true;try{await openMaintenance(c,localId,ids);}catch(_){alert('Não foi possível abrir a manutenção. Tenta novamente.');}finally{if(b.isConnected)b.disabled=false;}
+    });
+    document.addEventListener('tg:interface-updated',renderMaintenance);
+
+    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registoPicker,completedTasks,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
+    renderMaintenance();
 })();

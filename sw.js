@@ -1,6 +1,6 @@
 // Service Worker — Total Gest PWA
-const CACHE = 'totalgest-v37-contract-maintenance';
-const ASSETS = ['./tg-contract-maintenance.js?v=1.0.0', './tg-passport.js?v=1.0.5', './tg-passport.css?v=1.0.0', './tg-client-history.js?v=1.0.0', './tg-client-history.css?v=1.0.0', './tg-integrated-modules.js?v=1.0.0', './tg-module-embed.js?v=1.0.0', './tg-integrated-modules.css?v=1.1.0', './app-principal.js?v=contracts-maintenance-2', './tg-nexus.css?v=1.1.1', './tg-nexus.js?v=1.1.0', './tg-reports.css?v=1.0.0', './tg-reports-engine.js?v=1.0.0', './tg-reports-ui.js?v=1.0.0', './responsive-device.css?v=2', './login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'totalgest-v38-maintenance-alerts';
+const ASSETS = ['./tg-contract-maintenance.js?v=1.1.0', './tg-passport.js?v=1.0.5', './tg-passport.css?v=1.0.0', './tg-client-history.js?v=1.0.0', './tg-client-history.css?v=1.0.0', './tg-integrated-modules.js?v=1.0.0', './tg-module-embed.js?v=1.0.0', './tg-integrated-modules.css?v=1.1.0', './app-principal.js?v=contracts-alerts-3', './tg-nexus.css?v=1.1.1', './tg-nexus.js?v=1.1.0', './tg-reports.css?v=1.0.0', './tg-reports-engine.js?v=1.0.0', './tg-reports-ui.js?v=1.0.0', './responsive-device.css?v=2', './login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));

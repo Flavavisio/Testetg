@@ -26,8 +26,8 @@
     }
     function equipment(s) {
         const allowed=typeof moduloContratosAtivo==='function' && moduloContratosAtivo(adminDoUtilizador());
-        const contracts=allowed ? (dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && (c.localId || '')===s.localId) : [];
-        const ids=new Set(contracts.flatMap(c=>[c.equipamentoId,...(c.equipamentosIds || [])].filter(Boolean)));
+        const contracts=allowed ? (dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && _contratoAbrangeLocal(c,s.localId)) : [];
+        const ids=new Set(contracts.filter(c=>(c.localId || '')===s.localId).flatMap(c=>[c.equipamentoId,...(c.equipamentosIds || [])].filter(Boolean)));
         return (dados.equipamentos || []).filter(e=>e.adminId===s.tenant && !e.apagadoSuperAdmin && (
             (e.clienteId===s.customerId && (e.localId || '')===s.localId) ||
             (allowed && e.localId && e.localId===s.localId && (!e.clienteId || e.clienteId===s.customerId)) ||
@@ -114,7 +114,7 @@
             <div class="tg-pp-main"><div><section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">INVENTÁRIO</span><h3>Equipamentos e ligações</h3></div>${s.manager?button('edit-equipment','+ Equipamento'):''}</div><div class="tg-pp-filters"><label>Pesquisar<input type="search" data-pp-search value="${esc(st.term)}" placeholder="Nome, modelo, IP, porta…"></label><label>Sistema<select data-pp-type><option value="">Todos os sistemas</option>${Object.entries(types).map(([k,v])=>`<option value="${k}" ${st.type===k?'selected':''}>${v}</option>`).join('')}</select></label></div><div class="tg-pp-equipment" data-pp-equipment></div></section>
             <section class="tg-pp-panel"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">CONTINUIDADE</span><h3>Intervenções nesta instalação</h3><p>Os mesmos registos das ordens de serviço e do histórico atual.</p></div>${st.workspace?button('history','Histórico completo do cliente'):''}</div><div class="tg-pp-timeline">${history.slice(0,st.limit).map(r=>{const detail=object(r.passaporteIntervencao);return `<article><time>${day(r.data)}</time><div><h4>OS ${esc(r.numeroRegisto || '—')} <span class="tg-pp-badge">${esc(r.status || 'Pendente')}</span></h4><p>${esc(r.descricao || 'Intervenção')}</p>${detail.trabalho?'<p>'+esc(detail.trabalho)+'</p>':''}${detail.proximoTecnico?'<p><strong>Para o próximo técnico:</strong> '+esc(detail.proximoTecnico)+'</p>':''}<div class="tg-pp-actions">${button('view-os','Ver OS',r.id)}${button('work-sheet','Folha de obra',r.id)}${button('work-sheet-pdf','PDF da folha',r.id)}</div></div></article>`;}).join('') || '<p class="tg-pp-empty">Sem intervenções registadas nesta instalação.</p>'}</div>${history.length>st.limit?button('more','Mostrar mais intervenções'):''}</section></div>
             <aside><section class="tg-pp-panel"><span class="tg-pp-eyebrow">ÚLTIMA INTERVENÇÃO</span><h3>${last?'OS '+esc(last.numeroRegisto || '—'):'Sem registos'}</h3><p>${last?day(last.data)+' · '+esc(last.status || ''):'As fotografias aparecerão aqui quando forem anexadas a uma OS.'}</p><div class="tg-pp-photos">${lastPhotos.map((f,i)=>`<a href="${esc(url(photoURL(f)))}" target="_blank" rel="noopener noreferrer">${image(photoURL(f),'Foto '+(i+1)+' da última intervenção')}</a>`).join('')}</div>${last && canEditOS(last,s)?button('photos','Adicionar foto à OS',last.id):''}</section>
-            <section class="tg-pp-panel"><div class="tg-pp-heading"><h3>Documentos e esquemas</h3>${s.manager?button('edit-site','Gerir'):''}</div>${documents(s).map(d=>`<a class="tg-pp-document" href="${esc(url(d.url))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-lines"></i><span>${esc(d.nome || 'Documento')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join('') || '<p class="tg-pp-empty">Sem documentos associados.</p>'}</section><section class="tg-pp-panel"><h3>Consulta no terreno</h3><p>Na OS, use “Consultar instalação” para abrir este passaporte.</p>${button('link','Copiar ligação desta instalação')}<p class="tg-pp-muted">A ligação exige uma sessão com acesso à instalação.</p></section></aside></div><div data-pp-editor></div></section>`;
+            ${contractPanel(s)}<section class="tg-pp-panel"><div class="tg-pp-heading"><h3>Documentos e esquemas</h3>${s.manager?button('edit-site','Gerir'):''}</div>${documents(s).map(d=>`<a class="tg-pp-document" href="${esc(url(d.url))}" target="_blank" rel="noopener noreferrer"><i class="fas fa-file-lines"></i><span>${esc(d.nome || 'Documento')}</span><i class="fas fa-arrow-up-right-from-square"></i></a>`).join('') || '<p class="tg-pp-empty">Sem documentos associados.</p>'}</section><section class="tg-pp-panel"><h3>Consulta no terreno</h3><p>Na OS, use “Consultar instalação” para abrir este passaporte.</p>${button('link','Copiar ligação desta instalação')}<p class="tg-pp-muted">A ligação exige uma sessão com acesso à instalação.</p></section></aside></div><div data-pp-editor></div></section>`;
         st.host.onclick=event=>handle(event,st);
         st.host.oninput=event=>{if(event.target.matches('[data-pp-search]')){st.term=event.target.value;renderEquipment(st);}};
         st.host.onchange=event=>{if(event.target.matches('[data-pp-type]')){st.type=event.target.value;renderEquipment(st);}};
@@ -126,9 +126,17 @@
         const eq=equipment(s).filter(e=>(!st.type || e.tipo===st.type) && norm([e.tipo,e.marca,e.numeroSerie,...Object.values(object(e.fichaTecnica))].join(' ')).includes(norm(st.term)));
         root.innerHTML=eq.map(e=>{const f=object(e.fichaTecnica);return `<button type="button" class="tg-pp-equipment-card" data-pp-action="equipment" data-pp-id="${esc(e.id)}">${image(f.foto,f.nome || types[e.tipo] || e.tipo)}<div><span class="tg-pp-badge tg-pp-${esc(f.estado || 'verificar')}">${esc(statuses[f.estado] || 'Estado por confirmar')}</span><h4>${esc(f.nome || types[e.tipo] || e.tipo || 'Equipamento')}</h4><p>${esc([e.marca,f.modelo].filter(Boolean).join(' · ') || 'Modelo por registar')}</p><dl>${text('Localização',f.posicao)}${text('IP / porta', [f.ip,f.porta].filter(Boolean).join(' · '))}</dl></div></button>`;}).join('') || '<p class="tg-pp-empty">Sem equipamentos para esta pesquisa. Pode registar equipamentos diretamente no passaporte.</p>';
     }
+    function contracts(s) {
+        if(typeof moduloContratosAtivo!=='function' || !moduloContratosAtivo(adminDoUtilizador()))return [];
+        return (dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && _contratoAbrangeLocal(c,s.localId));
+    }
+    function contractPanel(s) {
+        if(!s.manager || !contracts(s).length)return '';
+        return '<section class="tg-pp-panel"><h3>Contratos desta instalação</h3>'+contracts(s).map(c=>'<div class="tg-pp-document"><span>Contrato '+esc(c.numero || '—')+'</span>'+button('contract','Ver contrato',c.id)+'</div>').join('')+'</section>';
+    }
     function documents(s) {
         const all=Array.isArray(s.meta.documentos)?s.meta.documentos.slice():[];
-        if(typeof moduloContratosAtivo==='function' && moduloContratosAtivo(adminDoUtilizador()))(dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && (c.localId || '')===s.localId && c.documentoUrl).forEach(c=>all.push({nome:c.documentoNome || 'Contrato '+(c.numero || ''),url:c.documentoUrl}));
+        if(typeof moduloContratosAtivo==='function' && moduloContratosAtivo(adminDoUtilizador()))(dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && _contratoAbrangeLocal(c,s.localId) && c.documentoUrl).forEach(c=>all.push({nome:c.documentoNome || 'Contrato '+(c.numero || ''),url:c.documentoUrl}));
         return all.filter(d=>url(d.url));
     }
     const canEditOS=(r,s)=>s.manager || (r.status!=='concluído' && assigned(r,actor()));
@@ -153,6 +161,7 @@
             const cid=st.customerId,lid=st.localId;_wsMarcarOS(cid);
             setTimeout(()=>{if(identity()!==st.identity)return;const c=document.getElementById('s_cliente'),select=document.getElementById('s_local');if(c?.value!==cid || !select)return;select.value=lid;_osPreencherMoradaDoLocal(lid);},180);return;
         }
+        if(action==='contract' && s.manager && contracts(s).some(c=>c.id===id)){if(st.workspace)_wsSairPara(st.customerId);else document.getElementById('tgPassportOverlay')?.classList.remove('open');abrirModalContrato(id);return;}
         if(action==='edit-site' && s.manager){siteEditor(st);return;}
         if(action==='edit-equipment' && s.manager){equipmentEditor(st,id);return;}
         if(action==='equipment'){equipmentDetail(st,id);return;}

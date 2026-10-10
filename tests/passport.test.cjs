@@ -104,3 +104,8 @@ test('archived reports appear beside their own OS PDF only and open the original
 test('client workspace removes duplicate equipment and report tabs and routes older links to installations',()=>{
  const tabs=main.match(/const WS_CLIENTE_ABAS =[^\n]+/)[0];assert(!tabs.includes("'equipamentos'"));assert(!tabs.includes("'relatorios'"));assert(main.includes("if (aba === 'equipamentos' || aba === 'relatorios') aba = 'locais'"));
 });
+test('print button beside installation QR prints a scoped label after its QR loads and keeps unsafe names as text',async()=>{const w=setup();try{
+ w.dados.locais[0].nome='Loja <script>alert(1)</script>';await w.TGPassport.open('c','l');const img=w.document.querySelector('[data-pp-qr]'),button=w.document.querySelector('[data-pp-action="print-qr"]');assert(button);assert.equal(img.closest('a').parentElement,button.parentElement);
+ const popup=new JSDOM('',{url:w.location.href}).window;let prints=0;popup.print=()=>prints++;popup.focus=()=>{};w.open=()=>popup;button.click();const qr=popup.document.getElementById('passportLabelQR');assert.equal(popup.document.querySelectorAll('script').length,0);assert.equal(popup.document.querySelector('h1').textContent,'Loja <script>alert(1)</script>');assert.equal(prints,0);assert(popup.document.getElementById('printLabel').disabled);qr.dispatchEvent(new popup.Event('load'));assert.equal(prints,1);assert.equal(popup.document.getElementById('printLabel').disabled,false);assert.equal(new URL(new URL(qr.src).searchParams.get('data')).searchParams.get('tg_local'),'l');popup.close();
+ w.open=()=>null;button.click();assert(w.alerts.some(t=>t.includes('impressão')));
+}finally{w.close()}});

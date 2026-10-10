@@ -67,13 +67,16 @@
         const s=scope(customerId);if(!s?.manager){host.textContent='Sem acesso às instalações deste cliente.';return;}
         const st={serial:++serial,customerId,localId:'',identity:identity(),host,workspace:true,services:[]};current=st;
         host.innerHTML='<section class="tg-passport"><div class="tg-pp-heading"><div><span class="tg-pp-eyebrow">PASSAPORTE DE INSTALAÇÃO</span><h2>Conhecer o local antes de começar</h2><p>Equipamentos, ligações e intervenções reunidos por instalação.</p></div>'+button('new-site','<i class="fas fa-plus"></i> Nova instalação','','btn-primary')+'</div><div class="tg-pp-sites">'+sites(customerId).map(l=>{
-            const ls=scope(customerId,l.id),eq=equipment(ls),os=records(ls,dados.servicos || []);return `<div class="tg-pp-site-entry"><button type="button" class="tg-pp-site" style="width:100%;" data-pp-site="${esc(l.id)}">${image(object(l.passaporteTecnico).foto,l.nome)}<div><h3>${esc(l.nome)}</h3><p>${esc(l.morada || 'Morada por registar')}</p><span>${eq.length} equipamentos · ${os.length} OS carregadas</span><strong>Abrir passaporte <i class="fas fa-arrow-right"></i></strong></div></button><div class="tg-pp-actions" style="margin-top:8px;">${button('edit-address','<i class="fas fa-pen"></i> Editar instalação',l.id)}</div></div>`;
+            const ls=scope(customerId,l.id),eq=equipment(ls),os=records(ls,dados.servicos || []);return `<div class="tg-pp-site-entry"><button type="button" class="tg-pp-site" style="width:100%;" data-pp-site="${esc(l.id)}">${image(object(l.passaporteTecnico).foto,l.nome)}<div><h3>${esc(l.nome)}</h3><p>${esc(l.morada || 'Morada por registar')}</p><span>${eq.length} equipamentos · ${os.length} OS carregadas</span><strong>Abrir passaporte <i class="fas fa-arrow-right"></i></strong></div></button><div class="tg-pp-actions" style="margin-top:8px;">${button('edit-address','<i class="fas fa-pen"></i> Editar instalação',l.id)}${l.id?button('delete-site','<i class="fas fa-trash"></i> Apagar',l.id,'btn-danger'):''}</div></div>`;
         }).join('')+'</div></section>';
-        host.onclick=event=>{
+        host.onclick=async event=>{
             if(!valid(st))return;
             const site=event.target.closest('[data-pp-site]'),action=event.target.closest('[data-pp-action]');
             if(site)select(site.dataset.ppSite);
             else if(action?.dataset.ppAction==='new-site'){_wsSairPara(customerId);abrirModalNovoLocalCliente(customerId);}
+            else if(action?.dataset.ppAction==='delete-site'){
+                const localId=action.dataset.ppId;if(localId && scope(customerId,localId))await eliminarLocalCliente(localId,customerId);
+            }
             else if(action?.dataset.ppAction==='edit-address'){
                 const localId=action.dataset.ppId || '';if(!scope(customerId,localId))return;
                 _wsSairPara(customerId);

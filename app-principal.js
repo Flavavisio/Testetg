@@ -5827,7 +5827,7 @@
                 </div>`;
             const linhaSede = linhaLocal('sede', 'fa-building', 'Sede', cliente.endereco);
             const linhasExtra = locaisCliente.map(l => linhaLocal(l.id, 'fa-map-pin', l.nome, l.morada,
-                `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();_wsSairPara('${clienteId}');abrirModalLocalCliente('${clienteId}','${l.id}')"><i class="fas fa-edit"></i></button>`
+                `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();_wsSairPara('${clienteId}');abrirModalLocalCliente('${clienteId}','${l.id}')"><i class="fas fa-edit"></i></button><button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation();eliminarLocalCliente('${l.id}','${clienteId}')"><i class="fas fa-trash"></i> Apagar</button>`
             )).join('');
             return `
                 <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:0 18px;">
@@ -10057,24 +10057,14 @@
             const estadoEl = document.getElementById('ct_documento_estado');
             if (estadoEl) estadoEl.textContent = '';
         }
-        function apagarLocalContrato() {
+        async function apagarLocalContrato() {
             const localId = document.getElementById('ct_local').value;
             if (!localId || localId === '__novo__') { alert('Seleciona uma instalação existente para apagar.'); return; }
             const local = dados.locais?.find(l => l.id === localId);
-            if (!local) return;
-            const contratosLigados = (dados.contratos || []).filter(c => c.localId === localId && c.id !== contratoEditandoId).length;
-            const equipsLigados = (dados.equipamentos || []).filter(e => e.localId === localId).length;
-            let aviso = `Apagar o local "${local.nome}"?`;
-            if (contratosLigados || equipsLigados) aviso += `\n\n⚠️ Este local está associado a ${contratosLigados} outro(s) contrato(s) e ${equipsLigados} equipamento(s). Esses registos ficarão sem local associado.`;
-            if (!confirm(aviso)) return;
-            dados.locais = (dados.locais || []).filter(l => l.id !== localId);
-            (dados.equipamentos || []).forEach(e => { if (e.localId === localId) e.localId = null; });
-            (dados.contratos || []).forEach(c => { if (c.localId === localId) c.localId = null; });
-            guardarDados(dados);
+            if (!local || !await eliminarLocalCliente(localId, local.clienteId)) return;
             onClienteContratoChange();
             document.getElementById('ct_local').value = '';
             onLocalContratoChange();
-            alert('Local apagado.');
         }
         function onClienteObraChange() {
             const cliId = document.getElementById('ob_cliente')?.value || '';
@@ -29558,30 +29548,37 @@ window._relPrefill = function(msg){
             renderizarClientes();
             alert(isNovo ? '✅ Instalação criada.' : '✅ Instalação atualizada.');
         }
-        function eliminarLocalCliente(localId, clienteId) {
-            if (usuarioLogado?.role !== 'admin' && usuarioLogado?.role !== 'subadmin') { alert('Sem permissão.'); return; }
-            const local = (dados.locais || []).find(l => l.id === localId);
-            if (!local) return;
-            const nContratos = (dados.contratos || []).filter(c => c.localId === localId).length;
-            const nEquip = (dados.equipamentos || []).filter(e => e.localId === localId).length;
-            const nObras = (dados.obras || []).filter(o => o.localId === localId).length;
-            const nOS = (dados.servicos || []).filter(s => s.localId === localId).length;
-            let aviso = `Eliminar a instalação "${local.nome}"?`;
-            if (nContratos || nEquip || nObras || nOS) {
-                aviso += `\n\n⚠️ Está associada a: ${nContratos} contrato(s), ${nEquip} equipamento(s), ${nObras} obra(s) e ${nOS} OS. Esses registos ficam sem instalação associada (não são apagados), mas passam a mostrar-se em "Sede".`;
+        async function eliminarLocalCliente(localId, clienteId) {
+            if (usuarioLogado?.role !== 'admin' && usuarioLogado?.role !== 'subadmin') { alert('Sem permissão.'); return false; }
+            const adminId = adminDoUtilizador()?.id;
+            const local = (dados.locais || []).find(l => l.id === localId && l.clienteId === clienteId && l.adminId === adminId);
+            if (!local || eliminarLocalCliente.emCurso?.has(localId)) return false;
+            const colecoes = ['contratos', 'equipamentos', 'obras', 'servicos', 'relatoriosEspecialidade', 'assistencias', 'folhasObra'];
+            const total = colecoes.reduce((n, col) => n + (dados[col] || []).filter(r => r.localId === localId && r.adminId === adminId).length, 0);
+            const aviso = `Apagar a instalação "${local.nome}"?\n\n` + (total
+                ? 'Os registos associados serão mantidos no cliente e passarão a aparecer na Sede.\n\n'
+                : '') + 'Escreva APAGAR para confirmar:';
+            if (prompt(aviso, '') !== 'APAGAR') return false;
+            eliminarLocalCliente.emCurso ||= new Set();
+            eliminarLocalCliente.emCurso.add(localId);
+            dados.locais = (dados.locais || []).filter(l => l !== local);
+            colecoes.forEach(col => (dados[col] || []).forEach(r => {
+                if (r.localId === localId && r.adminId === adminId) r.localId = null;
+            }));
+            try {
+                await guardarDados(dados);
+                alert('Instalação apagada.');
+            } catch (e) {
+                alert('A eliminação ficou pendente de sincronização. Verifique a ligação e tente sincronizar novamente.');
+            } finally {
+                eliminarLocalCliente.emCurso.delete(localId);
+                renderizarTudo();
+                const overlay = document.getElementById('wsClienteOverlay');
+                if (overlay?.classList.contains('open') && overlay.dataset.clienteAtual === clienteId) await _wsClienteAba(clienteId, 'locais');
+                const contId = 'acordeao-conteudo-' + clienteId, cont = document.getElementById(contId);
+                if (cont) cont.innerHTML = _gerarHTMLIntervencoesPorLocal(clienteId, false, _dataCorteMeses(3), contId);
             }
-            if (!confirm(aviso)) return;
-            dados.locais = (dados.locais || []).filter(l => l.id !== localId);
-            (dados.contratos || []).forEach(c => { if (c.localId === localId) c.localId = null; });
-            (dados.equipamentos || []).forEach(e => { if (e.localId === localId) e.localId = null; });
-            (dados.obras || []).forEach(o => { if (o.localId === localId) o.localId = null; });
-            (dados.servicos || []).forEach(s => { if (s.localId === localId) s.localId = null; });
-            guardarDados(dados);
-            renderizarTudo();
-            const contId = 'acordeao-conteudo-' + clienteId;
-            const cont = document.getElementById(contId);
-            if (cont) cont.innerHTML = _gerarHTMLIntervencoesPorLocal(clienteId, false, _dataCorteMeses(3), contId);
-            alert('Instalação eliminada.');
+            return true;
         }
         async function _toggleAcordeaoCliente(clienteId) {
             const linha = document.getElementById('acordeao-cliente-' + clienteId);

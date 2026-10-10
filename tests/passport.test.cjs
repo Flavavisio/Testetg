@@ -53,3 +53,20 @@ test('workspace renders one installations entry and preserves new/edit actions i
  w.document.querySelector('[data-pp-action="edit-address"]:not([data-pp-id])').click();assert.deepEqual(w.edited,['cliente','c']);
  w.document.querySelector('[data-pp-site="l"]').click();await flush();assert(w.document.body.textContent.includes('Piso 0'));
 }finally{w.close()}});
+test('deletion requires exact typed APAGAR, checks ownership and retains associated history',async()=>{const w=setup();try{
+ w.admin.id='a';w.renderizarTudo=()=>{};w._wsClienteAba=async()=>{};
+ w.eval(main.match(/        async function eliminarLocalCliente\([^]*?\n        \}/)[0]);
+ const before=JSON.stringify(w.dados);let prompts=0;w.prompt=()=>{prompts++;return 'APAGAR'};
+ assert.equal(await w.eliminarLocalCliente('foreign','other'),false);assert.equal(prompts,0);
+ w.usuarioLogado={id:'f',adminId:'a',role:'funcionario'};assert.equal(await w.eliminarLocalCliente('l','c'),false);assert.equal(prompts,0);w.usuarioLogado={id:'a',role:'admin'};
+ for(const answer of [null,'','apagar','APAGA',' APAGAR ']){w.prompt=()=>answer;assert.equal(await w.eliminarLocalCliente('l','c'),false);assert.equal(JSON.stringify(w.dados),before);assert.equal(w.saveCalls,0);}
+ w.dados.relatoriosEspecialidade=[{id:'report',adminId:'a',clienteId:'c',localId:'l',texto:'Histórico original'}];
+ w.prompt=message=>{assert(message.includes('APAGAR'));assert(message.includes('Armazém'));return 'APAGAR'};
+ assert.equal(await w.eliminarLocalCliente('l','c'),true);assert(!w.dados.locais.some(l=>l.id==='l'));assert(w.dados.locais.some(l=>l.id==='foreign'));assert.equal(w.dados.servicos.length,1);assert.equal(w.dados.servicos[0].localId,null);assert.equal(w.dados.servicos[0].descricao,'Avaria');assert.deepEqual(plain(w.dados.servicos[0].checklist),{A:true});assert.equal(w.dados.relatoriosEspecialidade[0].texto,'Histórico original');assert.equal(w.dados.relatoriosEspecialidade[0].localId,null);assert.equal(w.saveCalls,1);
+}finally{w.close()}});
+test('delete controls exist in Express and premium lists, without offering to delete the Sede',async()=>{const w=setup();try{
+ w.adminAtual=()=>w.admin;w.escapeHtmlSimples=v=>String(v??'');w.eval(main.match(/        function _wsLocaisHtml\([^]*?\n        \}/)[0]);
+ w.admin.packAtual='express';assert(w._wsLocaisHtml('c').includes("eliminarLocalCliente('l','c')"));assert(!w._wsLocaisHtml('c').includes("eliminarLocalCliente('sede'"));
+ w.admin.packAtual='expert';await w.TGPassport.show('c');const buttons=w.document.querySelectorAll('[data-pp-action="delete-site"]');assert.equal(buttons.length,1);assert.equal(buttons[0].dataset.ppId,'l');
+ w.eliminarLocalCliente=async(id,cid)=>{w.deleted=[id,cid]};buttons[0].click();await flush();assert.deepEqual(w.deleted,['l','c']);
+}finally{w.close()}});

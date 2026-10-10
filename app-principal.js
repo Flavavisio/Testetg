@@ -6365,14 +6365,15 @@
             }
             const folhas = (dados.folhasObra || []).filter(f => f.servicoId === osId).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
             if (aba === 'relatorios') {
-                const tiposDaOS = (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t));
+                const tiposDaOS = window.TGEquipmentReports?.requirements(os) || (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t)).map(tipo=>({tipo,equipamentoId:null}));
                 const relatoriosDaOS = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId);
                 const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação' };
                 if (!tiposDaOS.length) {
                     cont.innerHTML = '<p class="help-text">Esta OS não tem tipos de trabalho com relatório de especialidade associados.</p>';
                 } else {
-                    cont.innerHTML = tiposDaOS.map(tipo => {
-                        const rels = relatoriosDaOS.filter(r => r.tipo === tipo).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+                    cont.innerHTML = tiposDaOS.map(req => {
+                        const tipo=req.tipo;
+                        const rels = relatoriosDaOS.filter(r => r.tipo === tipo && (r.campos?.equipamentoId || null)===(req.equipamentoId || null)).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
                         const feito = rels.find(r => !r.rascunho);
                         const rascunho = rels.find(r => r.rascunho);
                         let estadoHtml, acaoHtml;
@@ -6381,14 +6382,14 @@
                             acaoHtml = `<button type="button" class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="_verRelatorioEspecialidadeSnapshot('${feito.id}')">Ver</button>`;
                         } else if (rascunho) {
                             estadoHtml = `<span style="color:#d97706;font-weight:700;"><i class="fas fa-pen"></i> Rascunho — por assinar</span>`;
-                            acaoHtml = `<button type="button" class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo())"><i class="fas fa-pen"></i> Continuar</button>`;
+                            acaoHtml = `<button type="button" class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}')"><i class="fas fa-pen"></i> Continuar</button>`;
                         } else {
                             estadoHtml = `<span style="color:#94a3b8;">Ainda não foi iniciado</span>`;
-                            acaoHtml = `<button type="button" class="btn btn-sm btn-outline" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo())"><i class="fas fa-plus"></i> Iniciar</button>`;
+                            acaoHtml = `<button type="button" class="btn btn-sm btn-outline" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}')"><i class="fas fa-plus"></i> Iniciar</button>`;
                         }
                         return `<div style="border:1px solid #e6eaf2;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                             <div>
-                                <div style="font-weight:700;">${tipo} — ${nomes[tipo] || tipo}</div>
+                                <div style="font-weight:700;">${tipo} — ${nomes[tipo] || tipo}${req.equipamentoId ? ' · '+escapeHtmlSimples(req.equipamentoNome || req.equipamentoId) : ''}</div>
                                 <div style="font-size:.82rem;margin-top:2px;">${estadoHtml}</div>
                             </div>
                             ${acaoHtml}
@@ -9912,7 +9913,7 @@
         }
         function _ctEquipamentosDisponiveis() {
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id, clienteId = document.getElementById('ct_cliente').value;
-            const locaisIds = [...document.querySelectorAll('.ct-local-chk:checked')].map(c => c.value);
+            const locaisIds = [document.getElementById('ct_local').value];
             return (dados.equipamentos || []).filter(e => {
                 if (e.adminId !== adminId || e.apagadoSuperAdmin || (e.clienteId && e.clienteId !== clienteId)) return false;
                 if (!e.localId) return e.clienteId === clienteId && locaisIds.includes('');
@@ -9929,19 +9930,18 @@
             return _contratoInstalacoes(c).map(l => `<option value="${escapeHtmlSimples(l.id)}" ${l.id === (c.localId || '') ? 'selected' : ''}>${escapeHtmlSimples(l.nome)}</option>`).join('');
         }
         function _ctRenderCobertura(ids = ['']) {
-            const cont = document.getElementById('ct_cobertura');
-            if (!cont) return;
+            const cont = document.getElementById('ct_cobertura'); if (!cont) return;
             const clienteId = document.getElementById('ct_cliente').value;
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
+            const localId = document.getElementById('ct_local').value || ids[0] || '';
             const locais = [{ id: '', nome: 'Sede' }, ...(dados.locais || []).filter(l => l.adminId === adminId && l.clienteId === clienteId)];
-            cont.innerHTML = locais.map(l => `<label style="display:flex;align-items:center;gap:8px;margin:5px 0;"><input type="checkbox" class="ct-local-chk" value="${escapeHtmlSimples(l.id)}" ${ids.includes(l.id) ? 'checked' : ''} onchange="_ctCoberturaChange()" style="width:auto;" />${escapeHtmlSimples(l.nome)}</label>`).join('');
+            cont.innerHTML = locais.map(l => `<label style="display:flex;align-items:center;gap:8px;margin:5px 0;"><input type="radio" name="ct_instalacao" class="ct-local-chk" value="${escapeHtmlSimples(l.id)}" ${l.id === localId ? 'checked' : ''} onchange="_ctCoberturaChange()" style="width:auto;" />${escapeHtmlSimples(l.nome)}</label>`).join('');
         }
         function _ctCoberturaChange(principalChanged = false) {
-            const select = document.getElementById('ct_local'), principal = select.value;
-            const checked = [...document.querySelectorAll('.ct-local-chk:checked')];
-            if (principalChanged && checked.length === 1 && checked[0].value === select.dataset.principalAnterior) checked[0].checked = false;
-            select.dataset.principalAnterior = principal;
-            document.querySelectorAll('.ct-local-chk').forEach(chk => { if (chk.value === principal) chk.checked = true; });
+            const select = document.getElementById('ct_local');
+            if (!principalChanged) { const chosen=document.querySelector('.ct-local-chk:checked'); if(chosen)select.value=chosen.value; }
+            document.querySelectorAll('.ct-local-chk').forEach(chk => chk.checked=chk.value===select.value);
+            select.dataset.principalAnterior=select.value;
             if (document.getElementById('ct_equip_add')) _atualizarSelectEquipDisponivel();
             window.TGContractMaintenance?.refreshPlan();
         }
@@ -9988,13 +9988,13 @@
                     <div class="ff-secao ff-tint-id">
                         <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Instalação e Equipamento</div>
                         <div class="ff-secao-body">
-                            <div class="form-group ff-span2"><label>Instalação principal *</label>
+                            <div class="form-group ff-span2"><label>Instalação *</label>
                                 <div style="display:flex;gap:8px;align-items:center;">
                                     <select id="ct_local" onchange="onLocalContratoChange()" style="flex:1;"></select>
                                     <button type="button" class="btn btn-sm btn-danger" title="Apagar esta instalação" onclick="apagarLocalContrato()"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
-                            <div class="form-group ff-span2"><label>Instalações abrangidas</label><div id="ct_cobertura"></div><div class="help-text">Seleciona uma ou várias instalações deste cliente. A principal fica sempre incluída. Uma nova instalação só fica abrangida depois de guardar o contrato.</div></div>
+                            <div class="form-group ff-span2"><label>Instalação do contrato</label><div id="ct_cobertura"></div><div class="help-text">Cada contrato pertence a uma única instalação e reúne os equipamentos dessa instalação.</div></div>
                             <div id="ct_novo_local" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
                                 <div class="form-group" style="margin-bottom:8px;"><label>Nome da nova instalação *</label><input type="text" id="ct_local_nome" placeholder="Ex: Loja Centro" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Morada</label><input type="text" id="ct_local_morada" placeholder="Rua/Avenida" autocomplete="off" /></div>
@@ -10005,16 +10005,17 @@
                                 <div class="form-group" style="margin-bottom:0;"><label><i class="fas fa-map-pin" style="color:#dc2626;"></i> Pin do Google Maps (opcional) <a href="https://www.google.com/maps" target="_blank" rel="noopener" style="font-weight:400;font-size:.78rem;color:#2563eb;text-decoration:none;margin-left:8px;"><i class="fas fa-up-right-from-square"></i> Abrir Google Maps</a></label><input type="text" id="ct_local_pin_mapa" placeholder="Cola aqui o link ou as coordenadas copiadas do Google Maps" autocomplete="off" oninput="_clienteAtualizarLinkPin('ct_local_pin_mapa','ct_local_pin_mapa_link')" /><div id="ct_local_pin_mapa_link" style="margin-top:6px;font-size:.82rem;"></div></div>
                             </div>
                             <div class="form-group ff-span2">
-                                <label>Equipamentos / Sistemas abrangidos *</label><button type="button" class="btn btn-sm btn-outline" onclick="_ctAdicionarTodosEquipamentos()">Adicionar todos das instalações selecionadas</button>
+                                <label>Equipamentos / Sistemas abrangidos *</label><button type="button" class="btn btn-sm btn-outline" onclick="_ctAdicionarTodosEquipamentos()">Adicionar todos da instalação</button>
                                 <div id="ct_equip_lista" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
                                 <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                                     <div style="flex:1;min-width:200px;"><select id="ct_equip_add" onchange="onEquipAddContratoChange()"></select></div>
                                     <button type="button" class="btn btn-sm btn-primary" onclick="adicionarEquipContrato()">➕ Adicionar</button>
                                 </div>
-                                <div class="help-text">Escolhe equipamentos das instalações abrangidas, ou adiciona todos. Novos equipamentos não entram automaticamente no contrato; podes incluí-los ao editar. Criar equipamento utiliza a instalação principal.</div>
+                                <div class="help-text">Escolhe os equipamentos desta instalação. Cada equipamento define o seu relatório de especialidade ou Sem relatório.</div>
                             </div>
                             <div id="ct_novo_equip" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
                                 <div class="form-group" style="margin-bottom:8px;"><label>Tipo *</label><select id="ct_equip_tipo" onchange="onTipoContratoChange(this)">${tipoOpts}</select><div id="ct_equip_tipo_gerir" style="margin-top:6px;"></div></div>
+                                <div class="form-group" style="margin-bottom:8px;"><label>Relatório de especialidade *</label><select id="ct_equip_relatorio">${window.TGEquipmentReports?.options() || '<option value="">Sem relatório</option>'}</select></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Marca</label><input type="text" id="ct_equip_marca" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Nº de série</label><input type="text" id="ct_equip_serie" /></div>
                                 <div class="form-group" style="margin-bottom:8px;"><label>Data de instalação/venda</label><input type="date" id="ct_equip_data_instalacao" /></div>
@@ -10041,7 +10042,7 @@
                     </div>
 
                     <div class="ff-secao ff-tint-doc">
-                        <div class="ff-secao-head"><i class="fas fa-tags"></i> Especialidades cobertas pelo contrato</div>
+                        <div class="ff-secao-head"><i class="fas fa-tags"></i> Tipos de trabalho anteriores</div>
                         <div class="ff-secao-body">
                             <div class="form-group ff-span2">
                                 <div id="ct_tipos_trabalho_cont" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
@@ -10297,6 +10298,7 @@
                     const label = eq ? `${EQUIP_TIPOS[eq.tipo] || eq.tipo}${eq.marca ? ' - ' + eq.marca : ''}` : 'Equipamento';
                     return `<span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;padding:5px 10px;border-radius:16px;font-size:.82rem;font-weight:600;">
                         ${escapeHtmlSimples(label)} · ${escapeHtmlSimples((dados.locais || []).find(l => l.id === eq?.localId)?.nome || (eq?.localId === "__novo__" ? "Nova instalação" : "Sede"))}
+                        ${eq ? window.TGEquipmentReports?.equipmentField(eq) || '' : ''}
                         <button type="button" onclick="event.stopPropagation();imprimirEtiquetaQrEquip('${id}')" title="Imprimir etiqueta QR" style="background:none;border:none;color:#3730a3;cursor:pointer;"><i class="fas fa-qrcode"></i></button>
                         <button type="button" onclick="removerEquipContrato('${id}')" style="background:none;border:none;color:#3730a3;cursor:pointer;font-weight:700;">×</button>
                     </span>`;
@@ -10421,10 +10423,13 @@
             if (val === '__novo__') {
                 const tipo = document.getElementById('ct_equip_tipo').value;
                 if (!tipo) { alert('Escolha o tipo do novo equipamento.'); return; }
+                let relatorio;
+                try { relatorio=window.TGEquipmentReports?.validate(document.getElementById('ct_equip_relatorio')?.value); } catch(e) { alert(e.message); return; }
                 equipId = gerarId();
                 dados.equipamentos = dados.equipamentos || [];
                 dados.equipamentos.push({
                     id: equipId, adminId, clienteId, localId, tipo,
+                    fichaTecnica: {relatorioEspecialidade: relatorio ?? ''},
                     marca: document.getElementById('ct_equip_marca').value.trim(),
                     numeroSerie: document.getElementById('ct_equip_serie').value.trim(),
                     observacoes: document.getElementById('ct_equip_obs').value.trim(),
@@ -10432,6 +10437,7 @@
                     garantiaAte: document.getElementById('ct_equip_garantia')?.value || null,
                     dataCriacao: Date.now()
                 });
+                if(document.getElementById('ct_equip_relatorio'))document.getElementById('ct_equip_relatorio').selectedIndex=0;
                 document.getElementById('ct_equip_marca').value = '';
                 document.getElementById('ct_equip_serie').value = '';
                 document.getElementById('ct_equip_obs').value = '';
@@ -10634,15 +10640,19 @@
             if (contratoEditandoId && !(dados.contratos || []).some(c => c.id === contratoEditandoId && c.adminId === adminId)) { alert('Contrato inválido.'); return; }
             if (!(dados.clientes || []).some(c => c.id === clienteId && c.adminId === adminId)) { alert('Cliente inválido.'); return; }
             let localId = document.getElementById('ct_local').value;
-            let locaisIds = [...document.querySelectorAll('.ct-local-chk:checked')].map(chk => chk.value);
+            let locaisIds = localId === '__novo__' ? [] : [localId || ''];
             if (localId !== '__novo__') locaisIds.push(localId || '');
             locaisIds = [...new Set(locaisIds)];
             if (locaisIds.some(id => id && !(dados.locais || []).some(l => l.id === id && l.adminId === adminId && l.clienteId === clienteId))) { alert('Escolhe apenas instalações deste cliente.'); return; }
+            const duplicado=(dados.contratos || []).find(c=>c.adminId===adminId && c.clienteId===clienteId && c.id!==contratoEditandoId && _contratoAbrangeLocal(c,localId) && (!c.validadeContrato || c.validadeContrato>=getDataHoje()));
+            const original=(dados.contratos || []).find(c=>c.id===contratoEditandoId);
+            if(localId!=='__novo__' && duplicado && (!original || original.clienteId!==clienteId || (original.localId || '')!==(localId || ''))){alert('Já existe um contrato ativo nesta instalação: '+(duplicado.numero || duplicado.id)+'. Edita esse contrato para incluir os equipamentos.');return;}
             if (!_ctEquipamentosAtuais.length) { alert('Adiciona pelo menos um equipamento/sistema ao contrato — usa o botão "Adicionar" ou "Criar e adicionar este equipamento".'); return; }
             const equipamentosIds = [..._ctEquipamentosAtuais];
             if (equipamentosIds.some(id => { const e = (dados.equipamentos || []).find(x => x.id === id && x.adminId === adminId); const l = e?.localId && e.localId !== '__novo__' ? (dados.locais || []).find(x => x.id === e.localId && x.adminId === adminId) : null; return !e || (e.clienteId && e.clienteId !== clienteId) || (l && l.clienteId !== clienteId); })) { alert('Os equipamentos devem pertencer a este cliente.'); return; }
             const coberturaIds = [...locaisIds, ...(localId === '__novo__' ? ['__novo__'] : [])];
-            if (equipamentosIds.some(id => { const e = dados.equipamentos.find(x => x.id === id); return !coberturaIds.includes(e.localId || (e.clienteId ? '' : (localId || ''))); })) { alert('Há equipamentos fora das instalações abrangidas. Inclui essas instalações ou remove os equipamentos do contrato.'); return; }
+            if (equipamentosIds.some(id => { const e = dados.equipamentos.find(x => x.id === id); return !coberturaIds.includes(e.localId || (e.clienteId ? '' : (localId || ''))); })) { alert('Cada contrato pertence a uma instalação. Remove os equipamentos de outras instalações deste contrato.'); return; }
+            try { for(const id of equipamentosIds)window.TGEquipmentReports?.validate(dados.equipamentos.find(e=>e.id===id)?.fichaTecnica?.relatorioEspecialidade); } catch(e) {alert(e.message);return;}
             const equipamentoId = equipamentosIds[0];
             const tipo = dados.equipamentos?.find(e => e.id === equipamentoId)?.tipo;
             let periodicidade = document.getElementById('ct_period').value;
@@ -27247,7 +27257,8 @@ async function salvarAdmin(e) {
                     const osv = dados.servicos?.find(s => s.id === obj.servicoId);
                     if (osv?.contratoId) {
                         const cont = dados.contratos?.find(c => c.id === osv.contratoId);
-                        if (cont && (!window.TGContractMaintenance || window.TGContractMaintenance.completedTasks(osv))) {
+                        if(cont && window.TGContractMaintenance){obj.contratoId=cont.id;window.TGContractMaintenance.registerMaintenance(osv,obj);}
+                        else if (cont) {
                             obj.contratoId = cont.id;
                             const proximaData = window.TGContractMaintenance?.recordNext(cont,obj.data || getDataHoje(),osv.planoManutencao?.sistemasIds || []) || avancarPeriodicidade(obj.data || getDataHoje(), cont.periodicidade);
                             dados.registosManutencao = dados.registosManutencao || [];
@@ -29746,6 +29757,7 @@ window._relPrefill = function(msg){
         function _tiposEspecialidadePendentes(osId) {
             const os = dados.servicos?.find(s => s.id === osId);
             if (!os) return [];
+            if(window.TGEquipmentReports)return window.TGEquipmentReports.pending(os).map(r=>r.tipo);
             const feitos = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId && !r.rascunho).map(r => r.tipo);
             return (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t) && !feitos.includes(t));
         }
@@ -29779,12 +29791,19 @@ window._relPrefill = function(msg){
         }
 
         function abrirFilaRelatoriosEspecialidade(osId, tiposPendentes, onConcluir) {
+            const os=dados.servicos?.find(s=>s.id===osId);
+            if(window.TGEquipmentReports && os){
+                const pending=window.TGEquipmentReports.pending(os);
+                if(!pending.length){onConcluir();return;}
+                const req=pending[0];
+                _abrirModalRelatorioEspecialidade(osId,req.tipo,()=>{
+                    if(window.TGEquipmentReports.pending(os).some(r=>r.tipo===req.tipo && r.equipamentoId===req.equipamentoId)){alert('O relatório ficou em rascunho. Conclui e assina antes de terminar a OS.');return;}
+                    abrirFilaRelatoriosEspecialidade(osId,[],onConcluir);
+                },req.equipamentoId);
+                return;
+            }
             if (!tiposPendentes.length) { onConcluir(); return; }
-            const tipo = tiposPendentes[0];
-            const resto = tiposPendentes.slice(1);
-            _abrirModalRelatorioEspecialidade(osId, tipo, () => {
-                abrirFilaRelatoriosEspecialidade(osId, resto, onConcluir);
-            });
+            _abrirModalRelatorioEspecialidade(osId, tiposPendentes[0], () => abrirFilaRelatoriosEspecialidade(osId,tiposPendentes.slice(1),onConcluir));
         }
 
         let _relEspecOnMessageAtual = null;
@@ -29795,8 +29814,13 @@ window._relPrefill = function(msg){
             if (_relEspecOnMessageAtual) { window.removeEventListener('message', _relEspecOnMessageAtual); _relEspecOnMessageAtual = null; }
         }
 
-        async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado) {
+        async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null) {
             const os = dados.servicos?.find(s => s.id === osId);
+            if(!os)return;
+            const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId);
+            equipamentoId=requisito?.equipamentoId || null;
+            if(Array.isArray(os.planoManutencao?.relatoriosEquipamentos) && !requisito){alert('Este relatório não está associado a um equipamento desta OS.');return;}
+            const mesmoEquipamento=r=>r.adminId===os.adminId && (r.campos?.equipamentoId || null)===equipamentoId;
             const souAdmin0 = usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin';
             // O encarregado responsável pelo funcionário atribuído ao relatório também pode preenchê-lo/assiná-lo.
             const _encarregadoAtual = usuarioLogado?.role === 'encarregado' ? dados.encarregados?.find(e => e.id === usuarioLogado.id) : null;
@@ -29839,7 +29863,7 @@ window._relPrefill = function(msg){
             overlay.innerHTML = `
                 <div class="modal" style="max-width:1100px;width:96vw;height:92vh;display:flex;flex-direction:column;padding:0;">
                     <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid #e2e8f0;">
-                        <h3 style="margin:0;"><i class="fas fa-file-signature"></i> Relatório ${def ? def.nome : (tipoCustomDef ? tipoCustomDef.nome : tipo)} (${tipo})</h3>
+                        <h3 style="margin:0;"><i class="fas fa-file-signature"></i> Relatório ${def ? def.nome : (tipoCustomDef ? tipoCustomDef.nome : tipo)} (${tipo})${equipamentoId ? ' · '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId) : ''}</h3>
                         <div style="display:flex;align-items:center;gap:14px;">
                             <span style="font-size:.78rem;color:#6b6a63;">Preenche o relatório e assina no final da folha para concluir.</span>
                             <button type="button" onclick="_fecharModalRelatorioEspecialidade()" title="Fechar" style="background:none;border:none;font-size:1.4rem;line-height:1;color:#6b6a63;cursor:pointer;padding:0 4px;">&times;</button>
@@ -29861,7 +29885,7 @@ window._relPrefill = function(msg){
 
             // Se já existir um rascunho guardado para esta OS+tipo, reabre exatamente onde ficou
             // (em vez do modelo em branco).
-            const rascunhoExistente = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && r.rascunho);
+            const rascunhoExistente = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
             let usouRascunho = false;
             let estadoRexRestaurar = null;
             if (rascunhoExistente) {
@@ -29892,7 +29916,7 @@ window._relPrefill = function(msg){
                 // a OS antiga ainda estar carregada em memória — é a forma correta a partir de agora).
                 let relatorioAnteriorConcluido = os.clienteId
                     ? (dados.relatoriosEspecialidade || [])
-                        .filter(r => r.clienteId === os.clienteId && r.tipo === tipo && !r.rascunho && r.id !== rascunhoExistente?.id && r.localId === localAtualRel)
+                        .filter(r => r.clienteId === os.clienteId && r.tipo === tipo && mesmoEquipamento(r) && !r.rascunho && r.id !== rascunhoExistente?.id && r.localId === localAtualRel)
                         .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0))[0]
                     : null;
                 // 2ª tentativa (só relatórios antigos, de antes desta correção, sem localId
@@ -29900,12 +29924,12 @@ window._relPrefill = function(msg){
                 // carregada em memória.
                 if (!relatorioAnteriorConcluido && os.clienteId) {
                     relatorioAnteriorConcluido = (dados.relatoriosEspecialidade || [])
-                        .filter(r => r.clienteId === os.clienteId && r.tipo === tipo && !r.rascunho && r.id !== rascunhoExistente?.id && (r.localId === undefined || r.localId === null))
+                        .filter(r => r.clienteId === os.clienteId && r.tipo === tipo && mesmoEquipamento(r) && !r.rascunho && r.id !== rascunhoExistente?.id && (r.localId === undefined || r.localId === null))
                         .filter(r => { const osDoR = dados.servicos?.find(s => s.id === r.servicoId); return (osDoR?.localId || null) === localAtualRel; })
                         .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0))[0];
                 }
                 console.log('[relatório anterior] cliente=', os.clienteId, 'tipo=', tipo, 'localAtual=', localAtualRel, '— candidatos disponíveis:',
-                    (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === os.clienteId && r.tipo === tipo && !r.rascunho).map(r => ({ id: r.id, numero: r.numeroDocumento, localId: r.localId, servicoId: r.servicoId })));
+                    (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === os.clienteId && r.tipo === tipo && mesmoEquipamento(r) && !r.rascunho).map(r => ({ id: r.id, numero: r.numeroDocumento, localId: r.localId, servicoId: r.servicoId })));
                 console.log('[relatório anterior] encontrado?', relatorioAnteriorConcluido ? relatorioAnteriorConcluido.numeroDocumento : 'NENHUM');
                 if (relatorioAnteriorConcluido) {
                     let htmlAnterior = relatorioAnteriorConcluido.campos?.htmlSnapshot || '';
@@ -29991,6 +30015,7 @@ window._relPrefill = function(msg){
             const contratoOS = os.contratoId ? dados.contratos?.find(ct => ct.id === os.contratoId) : null;
             const initMsg = {
                 type: 'init',
+                equipamentoId, equipamentoNome:requisito?.equipamentoNome || '',
                 numero: numDoc,
                 data: hoje,
                 cliente: cliente?.nome || '',
@@ -30099,12 +30124,17 @@ window._relPrefill = function(msg){
             }, 150);
 
             async function onMessage(ev) {
-                const msg = ev.data || {};
+                if(ev.source!==iframe.contentWindow)return;
+                const msg = {...(ev.data || {})};
+                if(equipamentoId && msg.html && !msg.html.includes('data-tg-equipment-report')){
+                    const heading='<div data-tg-equipment-report="'+escapeHtmlSimples(equipamentoId)+'" style="padding:12px;border-bottom:1px solid #ccc;font-weight:bold">Equipamento: '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId)+'</div>';
+                    msg.html=msg.html.replace(/(<body[^>]*>)/i,'$1'+heading);
+                }
                 if (msg.type === 'relatorioEspecialidadeRascunho') {
-                    const pastaRasc = _tenantId() + '/' + osId + '_' + tipo + '_rascunho';
+                    const pastaRasc = _tenantId() + '/' + osId + '_' + tipo + (equipamentoId ? '_' + encodeURIComponent(equipamentoId) : '') + '_rascunho';
                     const htmlOkRasc = msg.html ? await _uploadTextoStorage(pastaRasc + '.html', msg.html, 'text/html') : false;
                     dados.relatoriosEspecialidade = dados.relatoriosEspecialidade || [];
-                    const idxRasc = dados.relatoriosEspecialidade.findIndex(r => r.servicoId === osId && r.tipo === tipo && r.rascunho);
+                    const idxRasc = dados.relatoriosEspecialidade.findIndex(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
                     const registoRasc = {
                         id: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].id : gerarId(),
                         adminId: _tenantId(),
@@ -30119,6 +30149,8 @@ window._relPrefill = function(msg){
                         criadoEm: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].criadoEm : Date.now(),
                         atualizadoEm: Date.now()
                     };
+                    registoRasc.localId=os.localId || null;
+                    registoRasc.campos={...registoRasc.campos,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
                     if (idxRasc !== -1) dados.relatoriosEspecialidade[idxRasc] = registoRasc;
                     else dados.relatoriosEspecialidade.push(registoRasc);
                     guardarDados(dados);
@@ -30170,9 +30202,11 @@ window._relPrefill = function(msg){
                     tecnicoId: usuarioLogado?.id || null,
                     criadoEm: Date.now()
                 };
+                novoRel.campos={...novoRel.campos,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
                 dados.relatoriosEspecialidade = dados.relatoriosEspecialidade || [];
-                dados.relatoriosEspecialidade = dados.relatoriosEspecialidade.filter(r => !(r.servicoId === osId && r.tipo === tipo && r.rascunho));
+                dados.relatoriosEspecialidade = dados.relatoriosEspecialidade.filter(r => !(r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho));
                 dados.relatoriosEspecialidade.push(novoRel);
+                window.TGContractMaintenance?.registerMaintenance(os,(dados.folhasObra || []).find(f=>f.servicoId===osId && f.adminId===os.adminId));
                 guardarDados(dados);
                 overlay.classList.remove('open');
                 onGuardado();
@@ -30303,7 +30337,7 @@ window._relPrefill = function(msg){
             const especialidades = os.tiposTrabalho.filter(t => TIPOS_ESPECIALIDADE.includes(t));
             if (!especialidades.length) return '';
             const feitos = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId && !r.rascunho).map(r => r.tipo);
-            const todasFeitas = especialidades.every(t => feitos.includes(t));
+            const todasFeitas = window.TGEquipmentReports ? !window.TGEquipmentReports.pending(os).length : especialidades.every(t => feitos.includes(t));
             const lista = especialidades.map(t => nomes[t] || t).join(', ');
             return todasFeitas ? (' * ' + lista + ' efetuada' + (especialidades.length > 1 ? 's' : '')) : (' * ' + lista + ' (em curso)');
         }

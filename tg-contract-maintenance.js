@@ -18,7 +18,7 @@
     let draft = {}, editing = null, historySerial = 0;
     const plans = c => Array.isArray(c?.gestaoManutencao?.plano) ? c.gestaoManutencao.plano.filter(p=>p && p.ativo!==false) : [];
     function draftContract() {
-        return {adminId:usuarioLogado?.adminId || usuarioLogado?.id,clienteId:read('ct_cliente'),localId:read('ct_local'),locaisIds:[...document.querySelectorAll('.ct-local-chk:checked')].map(c=>c.value),equipamentosIds:[..._ctEquipamentosAtuais]};
+        return {adminId:usuarioLogado?.adminId || usuarioLogado?.id,clienteId:read('ct_cliente'),localId:read('ct_local'),locaisIds:[read('ct_local')],equipamentosIds:[..._ctEquipamentosAtuais]};
     }
     function capturePlan() {
         const rows=[...document.querySelectorAll('[data-ct-system]')]; if (!rows.length) return draft.plano || [];
@@ -45,6 +45,8 @@
     function mount(c) {
         editing=c || null;draft=JSON.parse(JSON.stringify(obj(c?.gestaoManutencao)));
         const root=document.querySelector('#modalContratoCampos .ff-wrap'); if (!root) return;
+        root.querySelector('#ct_tipos_trabalho_cont')?.closest('.ff-secao')?.remove();
+        if(_contratoLocalIds(c || {}).length>1)root.querySelector('#ct_cobertura')?.insertAdjacentHTML('afterend','<p class="help-text">Este contrato antigo abrangia várias instalações. Para guardar, escolhe uma instalação e mantém apenas os equipamentos dessa instalação. O histórico anterior é preservado.</p>');
         const srv=obj(draft.servicos),com=obj(draft.comercial);
         root.insertAdjacentHTML('beforeend',section('ct_plano_extra','Plano de manutenção por sistema','<div class="form-group ff-span2 help-text">Define a frequência e as tarefas de cada sistema. A agenda considera cada instalação e as intervenções realizadas.</div><div id="ct_plano_sistemas" class="form-group ff-span2"></div>'));
         refreshPlan();
@@ -143,12 +145,23 @@
         return plans(c).filter(p=>ids.includes(p.id)).map(p=>avancarPeriodicidade(data,p.periodicidade)).filter(Boolean).sort()[0] || avancarPeriodicidade(data,c.periodicidade);
     }
     function snapshot(os,c,ids) {
+        window.TGEquipmentReports?.snapshot(os,equipmentForOS(c,os.localId,ids));
         if(!plans(c).length)return;
         const available=schedule(c).filter(s=>s.localId===(os.localId || '') && ids.includes(s.plan.id)).map(s=>s.plan);
         if(!available.length)throw Error('Sem sistemas abrangidos nesta instalação.');
         const types=new Set(available.map(p=>p.tipo));
-        os.planoManutencao={sistemasIds:available.map(p=>p.id),equipamentosIds:_contratoEquipamentos(c,os.localId).filter(e=>types.has(e.tipo)).map(e=>e.id),tarefas:available.flatMap(p=>(p.tarefas || []).map(t=>({id:'contrato-'+p.id+'-'+t.id,texto:(EQUIP_TIPOS[p.tipo] || p.tipo)+' — '+t.texto,sistemaId:p.id})))};
+        os.planoManutencao={...os.planoManutencao,sistemasIds:available.map(p=>p.id),equipamentosIds:_contratoEquipamentos(c,os.localId).filter(e=>types.has(e.tipo)).map(e=>e.id),tarefas:available.flatMap(p=>(p.tarefas || []).map(t=>({id:'contrato-'+p.id+'-'+t.id,texto:(EQUIP_TIPOS[p.tipo] || p.tipo)+' — '+t.texto,sistemaId:p.id})))};
         os.observacoes=[os.observacoes,'Sistemas: '+available.map(p=>EQUIP_TIPOS[p.tipo] || p.tipo).join(', ')].filter(Boolean).join('\n');
+    }
+    function registerMaintenance(os,sheet) {
+        if(!os || !sheet || os.adminId!==sheet.adminId || sheet.servicoId!==os.id || !completedTasks(os) || window.TGEquipmentReports?.pending(os).length)return false;
+        const c=(dados.contratos || []).find(c=>c.id===os.contratoId && c.adminId===os.adminId && c.clienteId===os.clienteId);
+        if(!c || (dados.registosManutencao || []).some(r=>r.adminId===os.adminId && r.servicoId===os.id))return false;
+        const date=sheet.data || getDataHoje(),ids=os.planoManutencao?.sistemasIds || [];
+        (dados.registosManutencao ||= []).push({id:gerarId(),adminId:c.adminId,clienteId:c.clienteId,contratoId:c.id,localId:os.localId || null,equipamentoId:c.equipamentoId,servicoId:os.id,...(os.planoManutencao?.sistemasIds?{sistemasIds:ids}:{}),dataRealizacao:date,tecnicoId:sheet.funcionarioId || c.tecnicoId || null,observacoes:'Manutenção concluída via OS '+(os.numeroRegisto || '')+'.',proximaData:recordNext(c,date,ids),dataCriacao:Date.now()});
+        sheet.contratoId=c.id;c.proximaManutencao=calcularProximaManutencao(c);
+        if(typeof _notificarFuncionario==='function')_notificarFuncionario(c.clienteId,'✅ Manutenção realizada','A manutenção do contrato '+(c.numero || '')+' foi concluída com sucesso.',c.adminId);
+        return true;
     }
     function checklist(os,admin) {return [...(admin?.obrasChecklistItens || []).filter(i=>i.ativo!==false),...(os?.planoManutencao?.tarefas || [])];}
     function registoPicker(c) {
@@ -251,9 +264,16 @@
         }).join('')+(rows.length?'':'<p class="help-text">Não há manutenções a vencer ou em atraso no período de aviso.</p>')+'</div></section>';
     }
     function renderMaintenance() {
-        for(const [anchor,id] of [['dashboardCentralConteudo','tg_maintenance_dashboard'],['agendaConteudo','tg_maintenance_agenda'],['homeAgendaWrap','tg_maintenance_home']]) {
-            const target=document.getElementById(anchor);if(!target)continue;
-            let root=document.getElementById(id);if(!root){root=document.createElement('div');root.id=id;target.before(root);}root.innerHTML=maintenanceHTML();
+        for(const id of ['tg_maintenance_dashboard','tg_maintenance_agenda','tg_maintenance_home'])document.getElementById(id)?.remove();
+        for(const id of ['alertasPendencias','homeAlertas']){
+            const target=document.getElementById(id);if(!target)continue;
+            target.querySelectorAll('[data-maint-alert-host]').forEach(el=>el.remove());
+            const html=maintenanceRows().length?maintenanceHTML():'';
+            if(!html)continue;
+            let card=target.querySelector('.alertas-card');
+            if(!card){target.innerHTML='<div class="alertas-card"><div class="alertas-h">Alertas e Pendências</div><div class="alertas-corpo"></div></div>';card=target.firstElementChild;}
+            const host=document.createElement('div');host.dataset.maintAlertHost='';host.innerHTML=html;(card.querySelector('.alertas-corpo') || card).append(host);
+            if(id==='alertasPendencias')target.style.display='block';
         }
         const workspace=document.getElementById('wsClienteOverlay');
         if(workspace?.classList.contains('open')) {
@@ -295,6 +315,6 @@
     });
     document.addEventListener('tg:interface-updated',renderMaintenance);
 
-    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registoPicker,completedTasks,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
+    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
     renderMaintenance();
 })();

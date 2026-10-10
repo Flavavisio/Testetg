@@ -13,7 +13,7 @@ function setup(){
  w.saveCalls=0;w.guardarDados=async()=>{w.saveCalls++;if(w.failSave)throw Error('Servidor indisponível');};let seq=0;w.gerarId=()=>`new-${++seq}`;
  w._wsSairPara=id=>w.left=id;w.abrirVerOS=id=>w.opened=id;w._wsClienteAba=async(id,tab)=>{w._wsAbaAtual=tab;if(tab==='locais')await w.TGPassport.show(id)};w._wsMarcarOS=id=>w.marked=id;w._osPedirFoto=id=>w.photoOS=id;
  w.eval('const PACKS={express:{},expert:{},pro:{},supreme:{}};'+['packDoAdmin','moduloPassaporteAtivo'].map(name=>main.match(new RegExp('        function '+name+'\\([^]*?\\n        \\}'))[0]).join('\n'));
- w.eval(['_contratoLocalIds','_contratoAbrangeLocal'].map(name=>main.match(new RegExp('        function '+name+'\\([^]*?\\n        \\}'))[0]).join('\n'));w.eval(moduleSource);return w;
+ w.eval(['_contratoLocalIds','_contratoAbrangeLocal','_contratoEquipamentos'].map(name=>main.match(new RegExp('        function '+name+'\\([^]*?\\n        \\}'))[0]).join('\n'));w.eval(moduleSource);return w;
 }
 const plain=v=>JSON.parse(JSON.stringify(v));const flush=()=>new Promise(r=>setTimeout(r,15));
 test('equipment attribution excludes unowned headquarters, other tenants and other customers',()=>{const w=setup();try{const s=w.TGPassport.scope('c','l');assert.deepEqual(Array.from(w.TGPassport.equipment(s),e=>e.id),['e','shared']);assert.equal(w.TGPassport.scope('other','foreign'),null);assert.equal(w.TGPassport.scope('c','foreign'),null);assert.equal(w.TGPassport.equipment(w.TGPassport.scope('c')).length,0);w.contracts=false;assert.equal(w.TGPassport.equipment(s).length,0);w.dados.equipamentos.push({id:'direct',adminId:'a',clienteId:'c',localId:'l'});assert.deepEqual(Array.from(w.TGPassport.equipment(s),e=>e.id),['direct']);}finally{w.close()}});

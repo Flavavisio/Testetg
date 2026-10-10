@@ -27,7 +27,7 @@
     function equipment(s) {
         const allowed=typeof moduloContratosAtivo==='function' && moduloContratosAtivo(adminDoUtilizador());
         const contracts=allowed ? (dados.contratos || []).filter(c=>c.adminId===s.tenant && c.clienteId===s.customerId && _contratoAbrangeLocal(c,s.localId)) : [];
-        const ids=new Set(contracts.filter(c=>(c.localId || '')===s.localId).flatMap(c=>[c.equipamentoId,...(c.equipamentosIds || [])].filter(Boolean)));
+        const ids=new Set(contracts.flatMap(c=>_contratoEquipamentos(c,s.localId).map(e=>e.id)));
         return (dados.equipamentos || []).filter(e=>e.adminId===s.tenant && !e.apagadoSuperAdmin && (
             (e.clienteId===s.customerId && (e.localId || '')===s.localId) ||
             (allowed && e.localId && e.localId===s.localId && (!e.clienteId || e.clienteId===s.customerId)) ||

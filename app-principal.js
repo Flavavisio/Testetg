@@ -302,8 +302,8 @@
             },
             servicos: {
                 tabela: 'servicos',
-                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [], ...(r.passaporte_intervencao != null ? { passaporteIntervencao: r.passaporte_intervencao } : {}) }),
-                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [], ...(o.passaporteIntervencao !== undefined ? { passaporte_intervencao: o.passaporteIntervencao } : {}) })
+                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, ...(r.plano_manutencao != null ? { planoManutencao: r.plano_manutencao } : {}), checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [], ...(r.passaporte_intervencao != null ? { passaporteIntervencao: r.passaporte_intervencao } : {}) }),
+                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, ...(o.planoManutencao !== undefined ? { plano_manutencao: o.planoManutencao } : {}), checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [], ...(o.passaporteIntervencao !== undefined ? { passaporte_intervencao: o.passaporteIntervencao } : {}) })
             },
             assistencias: {
                 tabela: 'assistencias',
@@ -377,8 +377,8 @@
             },
             contratos: {
                 tabela: 'contratos',
-                from: r => ({ id: r.id, numero: r.numero, adminId: r.admin_id, clienteId: r.cliente_id, localId: r.local_id, ...(Array.isArray(r.locais_ids) ? { locaisIds: r.locais_ids } : {}), equipamentoId: r.equipamento_id, equipamentosIds: Array.isArray(r.equipamentos_ids) ? r.equipamentos_ids : [], tipo: r.tipo, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], periodicidade: r.periodicidade, tipoIntervencao: r.tipo_intervencao, tecnicoId: r.tecnico_id, dataInicio: r.data_inicio, valor: r.valor, marca: r.marca, numeroSerie: r.numero_serie, proximaManutencao: r.proxima_manutencao, ultimaOSGeradaData: r.ultima_os_gerada_data || null, ultimaOSGeradaId: r.ultima_os_gerada_id || null, vigilanciaAtiva: r.vigilancia_ativa === true, valorMensalVigilancia: r.valor_mensal_vigilancia != null ? Number(r.valor_mensal_vigilancia) : null, ultimoMesFaturadoVigilancia: r.ultimo_mes_faturado_vigilancia || null, faturasVigilancia: Array.isArray(r.faturas_vigilancia) ? r.faturas_vigilancia : [], validadeContrato: r.validade_contrato || null, documentoUrl: r.documento_url || null, documentoNome: r.documento_nome || null, dataCriacao: isoToMs(r.data_criacao) }),
-                to:   o => ({ id: o.id, numero: o.numero, admin_id: o.adminId, cliente_id: o.clienteId, local_id: o.localId || null, ...(Array.isArray(o.locaisIds) ? { locais_ids: o.locaisIds } : {}), equipamento_id: o.equipamentoId || null, equipamentos_ids: o.equipamentosIds || [], tipo: o.tipo, tipos_trabalho: o.tiposTrabalho || [], periodicidade: o.periodicidade || null, tipo_intervencao: o.tipoIntervencao || null, tecnico_id: o.tecnicoId || null, data_inicio: nn(o.dataInicio), valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), marca: o.marca || null, numero_serie: o.numeroSerie || null, proxima_manutencao: nn(o.proximaManutencao), ultima_os_gerada_data: o.ultimaOSGeradaData || null, ultima_os_gerada_id: o.ultimaOSGeradaId || null, vigilancia_ativa: o.vigilanciaAtiva === true, valor_mensal_vigilancia: o.valorMensalVigilancia ?? null, ultimo_mes_faturado_vigilancia: o.ultimoMesFaturadoVigilancia || null, faturas_vigilancia: o.faturasVigilancia || [], validade_contrato: o.validadeContrato || null, documento_url: o.documentoUrl || null, documento_nome: o.documentoNome || null, data_criacao: msToISO(o.dataCriacao) })
+                from: r => ({ id: r.id, numero: r.numero, adminId: r.admin_id, clienteId: r.cliente_id, localId: r.local_id, ...(r.gestao_manutencao != null ? { gestaoManutencao: r.gestao_manutencao } : {}), ...(Array.isArray(r.locais_ids) ? { locaisIds: r.locais_ids } : {}), equipamentoId: r.equipamento_id, equipamentosIds: Array.isArray(r.equipamentos_ids) ? r.equipamentos_ids : [], tipo: r.tipo, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], periodicidade: r.periodicidade, tipoIntervencao: r.tipo_intervencao, tecnicoId: r.tecnico_id, dataInicio: r.data_inicio, valor: r.valor, marca: r.marca, numeroSerie: r.numero_serie, proximaManutencao: r.proxima_manutencao, ultimaOSGeradaData: r.ultima_os_gerada_data || null, ultimaOSGeradaId: r.ultima_os_gerada_id || null, vigilanciaAtiva: r.vigilancia_ativa === true, valorMensalVigilancia: r.valor_mensal_vigilancia != null ? Number(r.valor_mensal_vigilancia) : null, ultimoMesFaturadoVigilancia: r.ultimo_mes_faturado_vigilancia || null, faturasVigilancia: Array.isArray(r.faturas_vigilancia) ? r.faturas_vigilancia : [], validadeContrato: r.validade_contrato || null, documentoUrl: r.documento_url || null, documentoNome: r.documento_nome || null, dataCriacao: isoToMs(r.data_criacao) }),
+                to:   o => ({ id: o.id, numero: o.numero, admin_id: o.adminId, cliente_id: o.clienteId, local_id: o.localId || null, ...(o.gestaoManutencao !== undefined ? { gestao_manutencao: o.gestaoManutencao } : {}), ...(Array.isArray(o.locaisIds) ? { locais_ids: o.locaisIds } : {}), equipamento_id: o.equipamentoId || null, equipamentos_ids: o.equipamentosIds || [], tipo: o.tipo, tipos_trabalho: o.tiposTrabalho || [], periodicidade: o.periodicidade || null, tipo_intervencao: o.tipoIntervencao || null, tecnico_id: o.tecnicoId || null, data_inicio: nn(o.dataInicio), valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), marca: o.marca || null, numero_serie: o.numeroSerie || null, proxima_manutencao: nn(o.proximaManutencao), ultima_os_gerada_data: o.ultimaOSGeradaData || null, ultima_os_gerada_id: o.ultimaOSGeradaId || null, vigilancia_ativa: o.vigilanciaAtiva === true, valor_mensal_vigilancia: o.valorMensalVigilancia ?? null, ultimo_mes_faturado_vigilancia: o.ultimoMesFaturadoVigilancia || null, faturas_vigilancia: o.faturasVigilancia || [], validade_contrato: o.validadeContrato || null, documento_url: o.documentoUrl || null, documento_nome: o.documentoNome || null, data_criacao: msToISO(o.dataCriacao) })
             },
             locais: {
                 tabela: 'locais',
@@ -392,8 +392,8 @@
             },
             registosManutencao: {
                 tabela: 'registos_manutencao',
-                from: r => ({ id: r.id, adminId: r.admin_id, contratoId: r.contrato_id, equipamentoId: r.equipamento_id, servicoId: r.servico_id || null, ...(r.local_id !== undefined ? { localId: r.local_id } : {}), dataRealizacao: r.data_realizacao, tecnicoId: r.tecnico_id, observacoes: r.observacoes, proximaData: r.proxima_data, dataCriacao: isoToMs(r.data_criacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, contrato_id: o.contratoId, equipamento_id: o.equipamentoId || null, servico_id: o.servicoId || null, ...(o.localId !== undefined ? { local_id: o.localId || null } : {}), data_realizacao: nn(o.dataRealizacao), tecnico_id: o.tecnicoId || null, observacoes: o.observacoes || null, proxima_data: nn(o.proximaData), data_criacao: msToISO(o.dataCriacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, contratoId: r.contrato_id, equipamentoId: r.equipamento_id, servicoId: r.servico_id || null, ...(r.local_id !== undefined ? { localId: r.local_id } : {}), ...(Array.isArray(r.sistemas_ids) ? { sistemasIds: r.sistemas_ids } : {}), dataRealizacao: r.data_realizacao, tecnicoId: r.tecnico_id, observacoes: r.observacoes, proximaData: r.proxima_data, dataCriacao: isoToMs(r.data_criacao) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, contrato_id: o.contratoId, equipamento_id: o.equipamentoId || null, servico_id: o.servicoId || null, ...(o.localId !== undefined ? { local_id: o.localId || null } : {}), ...(Array.isArray(o.sistemasIds) ? { sistemas_ids: o.sistemasIds } : {}), data_realizacao: nn(o.dataRealizacao), tecnico_id: o.tecnicoId || null, observacoes: o.observacoes || null, proxima_data: nn(o.proximaData), data_criacao: msToISO(o.dataCriacao) })
             },
             veiculos: {
                 tabela: 'veiculos',
@@ -6329,7 +6329,7 @@
             if (aba === 'checklist') {
                 const adminChk = dados.administradores?.find(a => a.id === os.adminId);
                 const itensEntradaChk = (adminChk?.checklistEntradaItens || []).filter(it => it.ativo !== false);
-                const itensSaidaChk = (adminChk?.obrasChecklistItens || []).filter(it => it.ativo !== false);
+                const itensSaidaChk = window.TGContractMaintenance ? window.TGContractMaintenance.checklist(os,adminChk) : (adminChk?.obrasChecklistItens || []).filter(it => it.ativo !== false);
                 // Só consulta — quem marca os pontos é sempre o técnico (ao dar entrada/saída,
                 // no telemóvel ou no Modo Quiosque), nunca aqui.
                 const podeEditarChk = false;
@@ -7991,6 +7991,7 @@
             return regs.sort((a, b) => (a.dataRealizacao < b.dataRealizacao ? 1 : -1))[0];
         }
         function calcularProximaManutencao(contrato) {
+            if (window.TGContractMaintenance?.plans(contrato).length) return window.TGContractMaintenance.nextDate(contrato);
             try {
                 const ult = ultimoRegistoContrato(contrato.id);
                 const base = ult ? ult.dataRealizacao : contrato.dataInicio;
@@ -9436,6 +9437,8 @@
             });
             if (r === 'admin' && moduloContratosAtivo(adminAtual())) {
                 (dados.contratos || []).filter(c => c.adminId === _tenantId()).forEach(c => {
+                    const renovacao=window.TGContractMaintenance?.alerts(c,getDataHoje());
+                    if (renovacao) eventos.push({data:renovacao.data,tipo:'Renovação de contrato',icone:'fa-file-signature',item:c.numero || 'Contrato',estado:estadoDataFrota(renovacao.data),abrir:`abrirModalContrato('${c.id}')`});
                     const prox = calcularProximaManutencao(c);
                     if (prox) {
                         const cliente = dados.clientes?.find(cl => cl.id === c.clienteId);
@@ -9604,7 +9607,7 @@
                 const linhaCor = est.chave === 'vencido' ? 'linha-fixa-vermelho' : est.chave === 'a_vencer' ? 'linha-fixa-amarelo' : '';
                 return `<tr class="${linhaCor}">
                             <td><input type="checkbox" class="chk-contrato" value="${c.id}" ${_contratosSelecionados.includes(c.id) ? 'checked' : ''} onchange="toggleSelecaoContrato('${c.id}', this.checked)" /></td>
-                            <td><strong>${c.numero || '-'}</strong></td>
+                            <td><strong>${c.numero || '-'}</strong>${window.TGContractMaintenance?.alerts(c,getDataHoje()) ? '<div class="help-text" style="color:#b45309">'+(c.validadeContrato < getDataHoje() ? 'Contrato expirado' : 'Rever renovação até '+escapeHtmlSimples(c.validadeContrato))+'</div>' : ''}</td>
                             <td>${cli ? obterNomeCliente(cli.id) : 'Removido'}</td>
                             <td>${escapeHtmlSimples(_contratoInstalacoesLabel(c))}</td>
                             <td>${escapeHtmlSimples([...new Set(_contratoInstalacoes(c).map(l => l.cidade).filter(Boolean))].join(', ') || '-')}</td>
@@ -9689,7 +9692,10 @@
                 const diaOffset = diasIntervalo > 1 ? Math.floor(i * diasIntervalo / visitas.length) : 0;
                 const dataOSDate = new Date(dataIni + 'T00:00:00'); dataOSDate.setDate(dataOSDate.getDate() + diaOffset);
                 const dataStr = dataOSDate.toISOString().slice(0, 10);
-                const equipStr = _equipStrContrato(c);
+                const sistemasIds=window.TGContractMaintenance?.due(c,local.id,dataStr) || [];
+                if (window.TGContractMaintenance?.plans(c).length && !sistemasIds.length) continue;
+                const equipamentosOS = window.TGContractMaintenance?.equipmentForOS(c,local.id,sistemasIds) || _contratoEquipamentos(c, local.id);
+                const equipStr = equipamentosOS.map(e => (EQUIP_TIPOS[e.tipo] || e.tipo) + (e.marca ? " — " + e.marca : "")).join(", ") || "Sem equipamentos abrangidos nesta instalação";
                 const novaOS = {
                     id: gerarId(),
                     numeroRegisto: await gerarNumeroRegistoServidor(),
@@ -9710,6 +9716,7 @@
                     origem: 'contrato',
                     adminId: adminId
                 };
+                window.TGContractMaintenance?.snapshot(novaOS,c,sistemasIds);
                 dados.servicos.push(novaOS);
                 c.ultimaOSGeradaData = dataStr;
                 c.ultimaOSGeradaId = novaOS.id;
@@ -9768,6 +9775,7 @@
                     <div class="form-group"><label>Hora *</label><input type="time" id="os_hora" value="${new Date().toTimeString().slice(0,5)}" /></div>
                     <div class="form-group"><label>Notas</label><textarea id="os_notas" rows="2" placeholder="Instruções adicionais (opcional)"></textarea></div>
                 `;
+            window.TGContractMaintenance?.osPicker(c);
             document.getElementById('modalGerarOSOverlay').classList.add('open');
         }
         function _gerarOSAtualizarResponsavel() {
@@ -9792,7 +9800,11 @@
             const idsSelecionados = [...document.querySelectorAll('.os-gerar-func-chk:checked')].map(c => c.value);
             if (!idsSelecionados.length) { alert('Selecione pelo menos uma pessoa.'); return; }
             const encId = idsSelecionados[0];
+            const localId = document.getElementById('os_gerar_local').value;
+            let sistemasIds=[];
+            try { sistemasIds=window.TGContractMaintenance?.selectedOS(c,localId) || []; } catch(e) { alert(e.message); return; }
             const data = document.getElementById('os_data').value;
+            if (!data) { alert('Indica a data da intervenção.'); return; }
             const hora = document.getElementById('os_hora').value;
             const notas = document.getElementById('os_notas').value.trim();
 
@@ -9811,10 +9823,10 @@
                     if (!confirm(`⚠️ Sobreposição detetada: já existe uma OS marcada para este responsável no mesmo dia/hora (${conflito.descricao || conflito.hora}).\n\nQuer criar esta OS mesmo assim?`)) return;
                 }
             }
-            const localId = document.getElementById('os_gerar_local').value;
             const local = _contratoInstalacoes(c).find(l => l.id === localId);
             if (c.adminId !== adminId || !local) { alert('Instalação inválida para este contrato.'); return; }
-            const equipStr = _equipStrContrato(c);
+            const equipamentosOS = window.TGContractMaintenance?.equipmentForOS(c,localId,sistemasIds) || _contratoEquipamentos(c, localId);
+                const equipStr = equipamentosOS.map(e => (EQUIP_TIPOS[e.tipo] || e.tipo) + (e.marca ? " — " + e.marca : "")).join(", ") || "Sem equipamentos abrangidos nesta instalação";
             const descricao = `Manutenção — Contrato ${c.numero}${local ? ' / ' + local.nome : ''}. Equipamento: ${equipStr}.${notas ? ' ' + notas : ''}`;
             dados.servicos = dados.servicos || [];
             const novaOS = {
@@ -9839,6 +9851,7 @@
                 origem: 'contrato',
                 adminId: adminId
             };
+            try { window.TGContractMaintenance?.snapshot(novaOS,c,sistemasIds); } catch(e) { alert(e.message); return; }
             dados.servicos.push(novaOS);
             c.ultimaOSGeradaData = data;
             c.ultimaOSGeradaId = novaOS.id;
@@ -9864,6 +9877,30 @@
         function _contratoInstalacoesLabel(c) {
             return _contratoInstalacoes(c).map(l => l.nome).join(', ') || 'Instalação indisponível';
         }
+        function _contratoEquipamentos(c, localId) {
+            const ids = c.equipamentosIds?.length ? c.equipamentosIds : [c.equipamentoId].filter(Boolean);
+            return ids.map(id => (dados.equipamentos || []).find(e => e.id === id && e.adminId === c.adminId && !e.apagadoSuperAdmin)).filter(e => {
+                if (!e || (e.clienteId && e.clienteId !== c.clienteId)) return false;
+                const lid = e.localId || (e.clienteId ? '' : (c.localId || ''));
+                const l = lid ? (dados.locais || []).find(x => x.id === lid && x.adminId === c.adminId && x.clienteId === c.clienteId) : null;
+                return (!lid || !!l) && _contratoAbrangeLocal(c, lid) && (localId === undefined || lid === (localId || ''));
+            });
+        }
+        function _ctEquipamentosDisponiveis() {
+            const adminId = usuarioLogado?.adminId || usuarioLogado?.id, clienteId = document.getElementById('ct_cliente').value;
+            const locaisIds = [...document.querySelectorAll('.ct-local-chk:checked')].map(c => c.value);
+            return (dados.equipamentos || []).filter(e => {
+                if (e.adminId !== adminId || e.apagadoSuperAdmin || (e.clienteId && e.clienteId !== clienteId)) return false;
+                if (!e.localId) return e.clienteId === clienteId && locaisIds.includes('');
+                return locaisIds.includes(e.localId) && (dados.locais || []).some(l => l.id === e.localId && l.adminId === adminId && l.clienteId === clienteId);
+            });
+        }
+        function _ctAdicionarTodosEquipamentos() {
+            _ctEquipamentosAtuais = [...new Set([..._ctEquipamentosAtuais, ..._ctEquipamentosDisponiveis().map(e => e.id)])];
+            _renderListaEquipContrato();
+            _atualizarSelectEquipDisponivel();
+        }
+
         function _contratoOpcoesInstalacao(c) {
             return _contratoInstalacoes(c).map(l => `<option value="${escapeHtmlSimples(l.id)}" ${l.id === (c.localId || '') ? 'selected' : ''}>${escapeHtmlSimples(l.nome)}</option>`).join('');
         }
@@ -9881,6 +9918,8 @@
             if (principalChanged && checked.length === 1 && checked[0].value === select.dataset.principalAnterior) checked[0].checked = false;
             select.dataset.principalAnterior = principal;
             document.querySelectorAll('.ct-local-chk').forEach(chk => { if (chk.value === principal) chk.checked = true; });
+            if (document.getElementById('ct_equip_add')) _atualizarSelectEquipDisponivel();
+            window.TGContractMaintenance?.refreshPlan();
         }
 
         let contratoEditandoId = null;
@@ -9897,7 +9936,8 @@
             const admin = adminAtual();
             if (!moduloContratosAtivo(admin)) { alert('Módulo de Contratos de Manutenção não está ativo.'); return; }
             contratoEditandoId = id;
-            const c = id ? dados.contratos?.find(x => x.id === id) : null;
+            const c = id ? dados.contratos?.find(x => x.id === id && x.adminId === (usuarioLogado?.adminId || usuarioLogado?.id)) : null;
+            if (id && !c) { alert('Contrato indisponível.'); return; }
             document.getElementById('modalContratoTitulo').innerHTML = '<i class="fas fa-file-signature"></i> ' + (id ? 'Editar Contrato' : 'Novo Contrato');
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
             const clientes = (dados.clientes || []).filter(cl => cl.adminId === adminId);
@@ -9941,13 +9981,13 @@
                                 <div class="form-group" style="margin-bottom:0;"><label><i class="fas fa-map-pin" style="color:#dc2626;"></i> Pin do Google Maps (opcional) <a href="https://www.google.com/maps" target="_blank" rel="noopener" style="font-weight:400;font-size:.78rem;color:#2563eb;text-decoration:none;margin-left:8px;"><i class="fas fa-up-right-from-square"></i> Abrir Google Maps</a></label><input type="text" id="ct_local_pin_mapa" placeholder="Cola aqui o link ou as coordenadas copiadas do Google Maps" autocomplete="off" oninput="_clienteAtualizarLinkPin('ct_local_pin_mapa','ct_local_pin_mapa_link')" /><div id="ct_local_pin_mapa_link" style="margin-top:6px;font-size:.82rem;"></div></div>
                             </div>
                             <div class="form-group ff-span2">
-                                <label>Equipamentos / Sistemas *</label>
+                                <label>Equipamentos / Sistemas abrangidos *</label><button type="button" class="btn btn-sm btn-outline" onclick="_ctAdicionarTodosEquipamentos()">Adicionar todos das instalações selecionadas</button>
                                 <div id="ct_equip_lista" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
                                 <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
                                     <div style="flex:1;min-width:200px;"><select id="ct_equip_add" onchange="onEquipAddContratoChange()"></select></div>
                                     <button type="button" class="btn btn-sm btn-primary" onclick="adicionarEquipContrato()">➕ Adicionar</button>
                                 </div>
-                                <div class="help-text">Podes adicionar vários equipamentos/sistemas ao mesmo contrato — e voltar a editar este contrato mais tarde para acrescentar mais.</div>
+                                <div class="help-text">Escolhe equipamentos das instalações abrangidas, ou adiciona todos. Novos equipamentos não entram automaticamente no contrato; podes incluí-los ao editar. Criar equipamento utiliza a instalação principal.</div>
                             </div>
                             <div id="ct_novo_equip" class="ff-span2" style="display:none; padding:10px; background:#f8fafc; border-radius:8px;">
                                 <div class="form-group" style="margin-bottom:8px;"><label>Tipo *</label><select id="ct_equip_tipo" onchange="onTipoContratoChange(this)">${tipoOpts}</select><div id="ct_equip_tipo_gerir" style="margin-top:6px;"></div></div>
@@ -10042,8 +10082,9 @@
             } else {
                 _renderListaEquipContrato();
             }
+            window.TGContractMaintenance?.mount(c);
             document.getElementById('modalContratoOverlay').classList.add('open');
-            if (!id && adminAtual()?.contratoModoWizard) setTimeout(_ctWizardAtivar, 30);
+            if (!window.TGContractMaintenance && !id && adminAtual()?.contratoModoWizard) setTimeout(_ctWizardAtivar, 30);
         }
 
         // Documento anexo do contrato (apólice, condições assinadas, etc.) — só PDF, até 2 MB,
@@ -10136,6 +10177,8 @@
         function onClienteContratoChange() {
             const cliId = document.getElementById('ct_cliente').value;
             const localSel = document.getElementById('ct_local');
+            if (localSel.dataset.cliente && localSel.dataset.cliente !== cliId) { _ctEquipamentosAtuais = []; _renderListaEquipContrato(); }
+            localSel.dataset.cliente = cliId;
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
             const cli = dados.clientes?.find(c => c.id === cliId);
             const locais = (dados.locais || []).filter(l => l.adminId === adminId && l.clienteId === cliId);
@@ -10168,14 +10211,13 @@
         }
 
         function _atualizarSelectEquipDisponivel() {
-            const localId = document.getElementById('ct_local').value;
             const equipSel = document.getElementById('ct_equip_add');
-            const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
-            let equipOpts = '';
-            if (localId && localId !== '__novo__') {
-                const equips = (dados.equipamentos || []).filter(eq => eq.adminId === adminId && eq.localId === localId && !_ctEquipamentosAtuais.includes(eq.id));
-                equipOpts = equips.map(eq => `<option value="${eq.id}">${EQUIP_TIPOS[eq.tipo] || eq.tipo}${eq.marca ? ' - ' + eq.marca : ''}</option>`).join('');
-            }
+            if (!equipSel) return;
+            const equips = _ctEquipamentosDisponiveis().filter(e => !_ctEquipamentosAtuais.includes(e.id));
+            const equipOpts = equips.map(eq => {
+                const local = (dados.locais || []).find(l => l.id === eq.localId);
+                return `<option value="${escapeHtmlSimples(eq.id)}">${escapeHtmlSimples((EQUIP_TIPOS[eq.tipo] || eq.tipo) + (eq.marca ? ' — ' + eq.marca : '') + ' · ' + (local?.nome || 'Sede'))}</option>`;
+            }).join('');
             equipSel.innerHTML = '<option value="">Selecione um já existente…</option>' + equipOpts + '<option value="__novo__">➕ Criar novo equipamento</option>';
             onEquipAddContratoChange();
         }
@@ -10230,13 +10272,14 @@
                     const eq = dados.equipamentos?.find(e => e.id === id);
                     const label = eq ? `${EQUIP_TIPOS[eq.tipo] || eq.tipo}${eq.marca ? ' - ' + eq.marca : ''}` : 'Equipamento';
                     return `<span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:#3730a3;padding:5px 10px;border-radius:16px;font-size:.82rem;font-weight:600;">
-                        ${label}
+                        ${escapeHtmlSimples(label)} · ${escapeHtmlSimples((dados.locais || []).find(l => l.id === eq?.localId)?.nome || (eq?.localId === "__novo__" ? "Nova instalação" : "Sede"))}
                         <button type="button" onclick="event.stopPropagation();imprimirEtiquetaQrEquip('${id}')" title="Imprimir etiqueta QR" style="background:none;border:none;color:#3730a3;cursor:pointer;"><i class="fas fa-qrcode"></i></button>
                         <button type="button" onclick="removerEquipContrato('${id}')" style="background:none;border:none;color:#3730a3;cursor:pointer;font-weight:700;">×</button>
                     </span>`;
                 }).join('');
             }
             aplicarRegrasContrato();
+            window.TGContractMaintenance?.refreshPlan();
         }
 
         function removerEquipContrato(id) {
@@ -10357,7 +10400,7 @@
                 equipId = gerarId();
                 dados.equipamentos = dados.equipamentos || [];
                 dados.equipamentos.push({
-                    id: equipId, adminId, localId, tipo,
+                    id: equipId, adminId, clienteId, localId, tipo,
                     marca: document.getElementById('ct_equip_marca').value.trim(),
                     numeroSerie: document.getElementById('ct_equip_serie').value.trim(),
                     observacoes: document.getElementById('ct_equip_obs').value.trim(),
@@ -10371,6 +10414,7 @@
                 if (document.getElementById('ct_equip_data_instalacao')) document.getElementById('ct_equip_data_instalacao').value = '';
                 if (document.getElementById('ct_equip_garantia')) document.getElementById('ct_equip_garantia').value = '';
             } else if (val) {
+                if (!_ctEquipamentosDisponiveis().some(e => e.id === val)) { alert("Escolhe um equipamento das instalações abrangidas."); return; }
                 equipId = val;
             } else {
                 alert('Escolhe um equipamento existente ou cria um novo.');
@@ -10573,6 +10617,8 @@
             if (!_ctEquipamentosAtuais.length) { alert('Adiciona pelo menos um equipamento/sistema ao contrato — usa o botão "Adicionar" ou "Criar e adicionar este equipamento".'); return; }
             const equipamentosIds = [..._ctEquipamentosAtuais];
             if (equipamentosIds.some(id => { const e = (dados.equipamentos || []).find(x => x.id === id && x.adminId === adminId); const l = e?.localId && e.localId !== '__novo__' ? (dados.locais || []).find(x => x.id === e.localId && x.adminId === adminId) : null; return !e || (e.clienteId && e.clienteId !== clienteId) || (l && l.clienteId !== clienteId); })) { alert('Os equipamentos devem pertencer a este cliente.'); return; }
+            const coberturaIds = [...locaisIds, ...(localId === '__novo__' ? ['__novo__'] : [])];
+            if (equipamentosIds.some(id => { const e = dados.equipamentos.find(x => x.id === id); return !coberturaIds.includes(e.localId || (e.clienteId ? '' : (localId || ''))); })) { alert('Há equipamentos fora das instalações abrangidas. Inclui essas instalações ou remove os equipamentos do contrato.'); return; }
             const equipamentoId = equipamentosIds[0];
             const tipo = dados.equipamentos?.find(e => e.id === equipamentoId)?.tipo;
             let periodicidade = document.getElementById('ct_period').value;
@@ -10583,6 +10629,8 @@
             const valor = document.getElementById('ct_valor').value;
             if (!dataInicio) { alert('Indique a data de início.'); return; }
             if (valor === '') { alert('Indique o valor.'); return; }
+            let gestaoManutencao;
+            try { gestaoManutencao = window.TGContractMaintenance?.collect(); } catch(e) { alert(e.message); return; }
             if (localId === '__novo__') {
                 const nome = document.getElementById('ct_local_nome').value.trim();
                 if (!nome) { alert('Indique o nome da nova instalação.'); return; }
@@ -10612,11 +10660,11 @@
             if (contratoEditandoId) {
                 const c = dados.contratos.find(x => x.id === contratoEditandoId);
                 if (c) {
-                    Object.assign(c, { clienteId, localId, locaisIds, equipamentoId, equipamentosIds, tipo, tiposTrabalho, periodicidade, tipoIntervencao, tecnicoId, dataInicio, valor, vigilanciaAtiva, valorMensalVigilancia, validadeContrato, documentoUrl, documentoNome });
+                    Object.assign(c, { ...(gestaoManutencao ? { gestaoManutencao } : {}), clienteId, localId, locaisIds, equipamentoId, equipamentosIds, tipo, tiposTrabalho, periodicidade, tipoIntervencao, tecnicoId, dataInicio, valor, vigilanciaAtiva, valorMensalVigilancia, validadeContrato, documentoUrl, documentoNome });
                     c.proximaManutencao = calcularProximaManutencao(c);
                 }
             } else {
-                const novo = { id: gerarId(), numero: gerarNumeroContrato(clienteId), adminId, clienteId, localId, locaisIds, equipamentoId, equipamentosIds, tipo, tiposTrabalho, periodicidade, tipoIntervencao, tecnicoId, dataInicio, valor, vigilanciaAtiva, valorMensalVigilancia, validadeContrato, documentoUrl, documentoNome, dataCriacao: Date.now() };
+                const novo = { id: gerarId(), numero: gerarNumeroContrato(clienteId), ...(gestaoManutencao ? { gestaoManutencao } : {}), adminId, clienteId, localId, locaisIds, equipamentoId, equipamentosIds, tipo, tiposTrabalho, periodicidade, tipoIntervencao, tecnicoId, dataInicio, valor, vigilanciaAtiva, valorMensalVigilancia, validadeContrato, documentoUrl, documentoNome, dataCriacao: Date.now() };
                 novo.proximaManutencao = calcularProximaManutencao(novo);
                 dados.contratos.push(novo);
             }
@@ -10710,6 +10758,7 @@
                     <div class="form-group"><label>Técnico responsável</label><select id="rg_tecnico"><option value="">—</option>${tecOpts}</select></div>
                     <div class="form-group"><label>Observações</label><textarea id="rg_obs" rows="3"></textarea></div>
                 `;
+            window.TGContractMaintenance?.registoPicker(c);
             document.getElementById('modalRegistoOverlay').classList.add('open');
         }
 
@@ -10726,15 +10775,17 @@
             if (c.adminId !== adminId || !local) { alert('Instalação inválida para este contrato.'); return; }
             const dataRealizacao = document.getElementById('rg_data').value;
             if (!dataRealizacao) { alert('Indique a data de realização.'); return; }
-            const proximaData = avancarPeriodicidade(dataRealizacao, c.periodicidade);
+            let sistemasIds=[];
+            try { sistemasIds=window.TGContractMaintenance?.selectedOS(c,localId,'ct_rg_planos') || []; } catch(e) { alert(e.message); return; }
+            const proximaData = window.TGContractMaintenance?.recordNext(c,dataRealizacao,sistemasIds) || avancarPeriodicidade(dataRealizacao, c.periodicidade);
             const tecnicoId = document.getElementById('rg_tecnico').value || null;
             const observacoes = document.getElementById('rg_obs').value.trim();
             dados.registosManutencao = dados.registosManutencao || [];
             dados.registosManutencao.push({
-                id: gerarId(), adminId, localId: localId || null, contratoId: c.id, equipamentoId: c.equipamentoId,
+                id: gerarId(), adminId, ...(window.TGContractMaintenance?.plans(c).length ? { sistemasIds } : {}), localId: localId || null, contratoId: c.id, equipamentoId: c.equipamentoId,
                 dataRealizacao, tecnicoId, observacoes, proximaData, dataCriacao: Date.now()
             });
-            c.proximaManutencao = proximaData;
+            c.proximaManutencao = calcularProximaManutencao(c);
             if (c.clienteId) _notificarFuncionario(c.clienteId, '✅ Manutenção realizada', 'A manutenção do contrato ' + (c.numero || '') + ' foi concluída com sucesso.', adminId);
             // Gera automaticamente uma folha de obra desta manutenção
             const cli = dados.clientes?.find(x => x.id === c.clienteId);
@@ -10762,6 +10813,7 @@
         }
 
         function abrirHistoricoContrato(contratoId) {
+            if (window.TGContractMaintenance) { document.getElementById('modalHistoricoOverlay').classList.add('open'); window.TGContractMaintenance.history(contratoId); return; }
             const c = dados.contratos?.find(x => x.id === contratoId);
             if (!c) return;
             const cli = dados.clientes?.find(x => x.id === c.clienteId);
@@ -15882,7 +15934,8 @@
         let _checklistSaidaCallbackPendente = null, _checklistSaidaRespostas = {}, _checklistSaidaAlvoPendente = null;
         function _checklistSaidaVerificar(adminId, callback, alvo) {
             const admin = dados.administradores?.find(a => a.id === adminId);
-            const itens = (admin?.obrasChecklistItens || []).filter(it => it.ativo !== false);
+            const os = alvo?.tipo === 'servico' ? (dados.servicos || []).find(s => s.id === alvo.id && s.adminId === adminId) : null;
+            const itens = window.TGContractMaintenance ? window.TGContractMaintenance.checklist(os,admin) : (admin?.obrasChecklistItens || []).filter(it => it.ativo !== false);
             if (!itens.length) { callback(); return; }
             _checklistSaidaCallbackPendente = callback;
             _checklistSaidaAlvoPendente = alvo || null;
@@ -26940,7 +26993,7 @@ async function salvarAdmin(e) {
                 const _sStatusNovo = document.getElementById('s_status')?.value;
                 if (_sStatusNovo === 'concluído' && (!isEdit || item?.status !== 'concluído')) {
                     const _sAdminChk = dados.administradores?.find(a => a.id === (usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId));
-                    const _sItensChk = (_sAdminChk?.obrasChecklistItens || []).filter(it => it.ativo !== false);
+                    const _sItensChk = window.TGContractMaintenance ? window.TGContractMaintenance.checklist(item,_sAdminChk) : (_sAdminChk?.obrasChecklistItens || []).filter(it => it.ativo !== false);
                     const _sConclChk = item?.checklist || {};
                     const _sPorMarcarChk = _sItensChk.filter(it => !_sConclChk[it.id]);
                     if (_sPorMarcarChk.length) {
@@ -27166,22 +27219,22 @@ async function salvarAdmin(e) {
                 _folhaConsumoPendente.push(..._foMatExtra.map(x => ({ artigoId: x.artigoId, consumido: x.qtd })));
                 _foMatExtra = [];
                 // Se a folha vem de uma OS ligada a um contrato, regista a manutenção automaticamente
-                if (!isEdit && obj.servicoId) {
+                if (obj.servicoId && !(dados.registosManutencao || []).some(r => r.servicoId === obj.servicoId && r.adminId === obj.adminId)) {
                     const osv = dados.servicos?.find(s => s.id === obj.servicoId);
                     if (osv?.contratoId) {
                         const cont = dados.contratos?.find(c => c.id === osv.contratoId);
-                        if (cont) {
+                        if (cont && (!window.TGContractMaintenance || window.TGContractMaintenance.completedTasks(osv))) {
                             obj.contratoId = cont.id;
-                            const proximaData = avancarPeriodicidade(obj.data || getDataHoje(), cont.periodicidade);
+                            const proximaData = window.TGContractMaintenance?.recordNext(cont,obj.data || getDataHoje(),osv.planoManutencao?.sistemasIds || []) || avancarPeriodicidade(obj.data || getDataHoje(), cont.periodicidade);
                             dados.registosManutencao = dados.registosManutencao || [];
                             dados.registosManutencao.push({
-                                id: gerarId(), adminId: cont.adminId, contratoId: cont.id, equipamentoId: cont.equipamentoId, servicoId: obj.servicoId,
+                                id: gerarId(), adminId: cont.adminId, localId: osv.localId || null, ...(osv.planoManutencao?.sistemasIds ? { sistemasIds: osv.planoManutencao.sistemasIds } : {}), contratoId: cont.id, equipamentoId: cont.equipamentoId, servicoId: obj.servicoId,
                                 dataRealizacao: obj.data || getDataHoje(),
                                 tecnicoId: obj.funcionarioId || cont.tecnicoId || null,
                                 observacoes: 'Manutenção concluída via OS ' + (osv.numeroRegisto || '') + '.',
                                 proximaData, dataCriacao: Date.now()
                             });
-                            cont.proximaManutencao = proximaData;
+                            cont.proximaManutencao = calcularProximaManutencao(cont);
                             if (cont.clienteId) _notificarFuncionario(cont.clienteId, '✅ Manutenção realizada', 'A manutenção do contrato ' + (cont.numero || '') + ' foi concluída com sucesso.', cont.adminId);
                         }
                     }

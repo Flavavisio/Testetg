@@ -8,7 +8,7 @@ function setup(){
  w.dados={clientes:[{id:'c',adminId:'a',nome:'Cliente',morada:'Sede rua',cidade:'Lisboa'}],locais:[{id:'l',adminId:'a',clienteId:'c',nome:'Loja',morada:'Rua Loja',cidade:'Porto'},{id:'b',adminId:'a',clienteId:'c',nome:'Armazém',morada:'Rua Armazém',cidade:'Braga'},{id:'foreign',adminId:'a',clienteId:'other',nome:'Outro cliente'},{id:'tenant',adminId:'z',clienteId:'c',nome:'Outra empresa'}],equipamentos:[{id:'e',adminId:'a',clienteId:'c',localId:'l',tipo:'cctv'}],contratos:[],servicos:[],funcionarios:[{id:'f',adminId:'a',role:'funcionario',nome:'Técnico'}]};
  w.usuarioLogado={id:'a',role:'admin'};w.alerts=[];w.alert=x=>w.alerts.push(x);w.confirm=()=>true;w.escapeHtmlSimples=v=>String(v??'').replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
  let ids=0;w.gerarId=()=>`new-${++ids}`;w.gerarNumeroContrato=()=> 'CT-1';w.calcularProximaManutencao=()=> '2027-10-10';w._algumEquipExigePresencialAnual=()=>false;w._ctTiposTrabalhoSelecionados=()=>[];w.saves=0;w.guardarDados=async()=>{w.saves++;if(w.failSave)throw Error('offline')};w.fecharModalContrato=()=>w.closed=true;w.renderizarTudo=()=>{};w.abrirSecao=()=>{};w._atualizarSelectEquipDisponivel=()=>{};
- w.eval("let contratoEditandoId=null, _ctEquipamentosAtuais=['e'], gerarOSContratoId=null;"+['_contratoLocalIds','_contratoAbrangeLocal','_contratoInstalacoes','_contratoInstalacoesLabel','_contratoOpcoesInstalacao','_ctRenderCobertura','_ctCoberturaChange','onClienteContratoChange','onLocalContratoChange','salvarContrato','abrirGerarOSContrato','confirmarGerarOS','_moradaCompletaLocal'].map(fn).join('\n'));
+ w.eval("let contratoEditandoId=null, _ctEquipamentosAtuais=['e'], gerarOSContratoId=null;"+['_contratoLocalIds','_contratoAbrangeLocal','_contratoInstalacoes','_contratoInstalacoesLabel','_contratoOpcoesInstalacao','_contratoEquipamentos','_ctRenderCobertura','_ctCoberturaChange','onClienteContratoChange','onLocalContratoChange','salvarContrato','abrirGerarOSContrato','confirmarGerarOS','_moradaCompletaLocal'].map(fn).join('\n'));
  w._ctRenderCobertura(['l']);w.document.getElementById('ct_local').value='l';
  return w;
 }
@@ -32,12 +32,12 @@ test('contract saves several sites and rejects foreign coverage or equipment',as
  injected.remove();w.dados.equipamentos[0].clienteId='other';await w.salvarContrato();assert.equal(w.saves,1);
 }finally{w.close()}});
 test('new site is not created on invalid form; synchronization retries reuse the contract and site',async()=>{const w=setup();try{
- w.document.getElementById('ct_local').value='__novo__';w._ctRenderCobertura([]);w.document.getElementById('ct_inicio').value='';await w.salvarContrato();assert.equal(w.dados.locais.length,4);
+ w.document.getElementById('ct_local').value='__novo__';w.dados.equipamentos[0].localId='__novo__';w._ctRenderCobertura([]);w.document.getElementById('ct_inicio').value='';await w.salvarContrato();assert.equal(w.dados.locais.length,4);
  w.document.getElementById('ct_inicio').value='2026-10-10';w.failSave=true;await w.salvarContrato();assert.equal(w.dados.locais.length,5);assert.equal(w.dados.contratos.length,1);assert.equal(w.closed,undefined);const site=w.dados.locais[4].id;assert.deepEqual(plain(w.dados.contratos[0].locaisIds),[site]);
  w.failSave=false;await w.salvarContrato();assert.equal(w.dados.locais.length,5);assert.equal(w.dados.contratos.length,1);assert.equal(w.closed,true);
 }finally{w.close()}});
 test('OS is created for the selected covered site with its address; foreign site is refused',async()=>{const w=setup();try{
- const c={id:'ct',numero:'CT-1',adminId:'a',clienteId:'c',localId:'l',locaisIds:['l','b',''],equipamentosIds:['e']};w.dados.contratos.push(c);w._equipStrContrato=()=> 'CCTV';w._horaMin=v=>Number(v.split(':')[0])*60+Number(v.split(':')[1]);w.gerarNumeroRegistoServidor=async()=> 'OS-1';w.fecharGerarOS=()=>{};
+ const c={id:'ct',numero:'CT-1',adminId:'a',clienteId:'c',localId:'l',locaisIds:['l','b',''],equipamentosIds:['e']};w.dados.contratos.push(c);w.EQUIP_TIPOS={cctv:'CCTV'};w._equipStrContrato=()=> 'CCTV';w._horaMin=v=>Number(v.split(':')[0])*60+Number(v.split(':')[1]);w.gerarNumeroRegistoServidor=async()=> 'OS-1';w.fecharGerarOS=()=>{};
  w.abrirGerarOSContrato('ct');assert.equal(w.document.querySelectorAll('#os_gerar_local option').length,3);w.document.querySelector('.os-gerar-func-chk').checked=true;w.document.getElementById('os_gerar_local').value='b';await w.confirmarGerarOS();assert.equal(w.dados.servicos[0].localId,'b');assert.equal(w.dados.servicos[0].morada,'Rua Armazém');assert.equal(w.dados.servicos[0].cidade,'Braga');assert.equal(c.localId,'l');
  w.document.getElementById('os_gerar_local').value='';await w.confirmarGerarOS();assert.equal(w.dados.servicos[1].localId,null);assert.equal(w.dados.servicos[1].morada,'Sede rua');
  w.document.getElementById('os_gerar_local').add(new w.Option('Outro','foreign'));w.document.getElementById('os_gerar_local').value='foreign';await w.confirmarGerarOS();assert.equal(w.dados.servicos.length,2);
@@ -48,12 +48,12 @@ test('deleting one covered site retains other sites and deleting the last moves 
 test('mass generation creates one OS per covered installation without mixing tenants',async()=>{const w=setup();try{
  w.dados.contratos=[{id:'ct',numero:'CT-1',adminId:'a',clienteId:'c',localId:'l',locaisIds:['l','b']},{id:'foreign-ct',adminId:'z',clienteId:'c',localId:'tenant'}];
  w.document.body.insertAdjacentHTML('beforeend','<select id="massa_tecnico"><option value="f">Técnico</option></select><input id="massa_data_inicio" value="2026-10-10"><input id="massa_data_fim" value="2026-10-10"><input id="massa_hora" value="09:00"><div id="modalGerarOSMassaOverlay"></div>');
- w._equipStrContrato=()=> 'CCTV';w.gerarNumeroRegistoServidor=async()=> 'OS';w.eval("let _contratosSelecionados=['ct','foreign-ct'];"+fn('gerarOSEmMassaConfirmar'));
+ w.EQUIP_TIPOS={cctv:'CCTV'};w._equipStrContrato=()=> 'CCTV';w.gerarNumeroRegistoServidor=async()=> 'OS';w.eval("let _contratosSelecionados=['ct','foreign-ct'];"+fn('gerarOSEmMassaConfirmar'));
  await w.gerarOSEmMassaConfirmar();assert.deepEqual(plain(w.dados.servicos.map(os=>[os.localId,os.morada,os.adminId])),[['l','Rua Loja','a'],['b','Rua Armazém','a']]);
 }finally{w.close()}});
 test('manual maintenance and its original work sheet retain the chosen installation',()=>{const w=setup();try{
  w.dados.contratos=[{id:'ct',numero:'CT-1',adminId:'a',clienteId:'c',localId:'l',locaisIds:['l','b']}];
  w.document.body.insertAdjacentHTML('beforeend','<select id="rg_local"><option value="b">Armazém</option></select><input id="rg_data" value="2026-10-10"><select id="rg_tecnico"><option value="f">Técnico</option></select><textarea id="rg_obs">Manutenção real</textarea>');
- w.avancarPeriodicidade=()=> '2027-10-10';w._notificarFuncionario=()=>{};w._equipStrContrato=()=> 'CCTV';w.fecharModalRegisto=()=>{};w.eval("let registoContratoId='ct';"+fn('salvarRegisto'));
+ w.avancarPeriodicidade=()=> '2027-10-10';w._notificarFuncionario=()=>{};w.EQUIP_TIPOS={cctv:'CCTV'};w._equipStrContrato=()=> 'CCTV';w.fecharModalRegisto=()=>{};w.eval("let registoContratoId='ct';"+fn('salvarRegisto'));
  w.salvarRegisto();assert.equal(w.dados.registosManutencao[0].localId,'b');assert.equal(w.dados.folhasObra[0].localId,'b');assert(w.dados.folhasObra[0].descricao.includes('Armazém'));
 }finally{w.close()}});

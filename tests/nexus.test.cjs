@@ -7,6 +7,43 @@ vm.runInContext(fn('obterLayout')+'\n'+fn('_ehPerfilMobile'),context);
 assert.equal(vm.runInContext('obterLayout()',context),'aurora');assert.equal(vm.runInContext('_ehPerfilMobile()',context),false);
 vm.runInContext("dados.administradores[0].layout='foco'",context);assert.equal(vm.runInContext('obterLayout()',context),'cards');assert.equal(vm.runInContext('_ehPerfilMobile()',context),true);
 vm.runInContext("usuarioLogado={id:'s',role:'superadmin'}",context);assert.equal(vm.runInContext('obterLayout()',context),'aurora');
+// First access uses Nexus on desktop and mobile; saved company choices still win.
+for (const width of [390, 1440]) {
+    context.window.innerWidth=width;
+    for (const role of ['admin', 'encarregado', 'subadmin']) {
+        context.usuarioLogado={id:role==='admin'?'a':'staff',adminId:'a',role};
+        context.dados.administradores[0].layout=null;
+        assert.equal(vm.runInContext('obterLayout()',context),'aurora');
+        context.dados.administradores[0].layout='sidebar';
+        assert.equal(vm.runInContext('obterLayout()',context),width<=900?'cards':'sidebar');
+    }
+    context.usuarioLogado={id:'employee',adminId:'a',role:'funcionario'};
+    context.dados.administradores[0].layout=null;
+    assert.equal(vm.runInContext('obterLayout()',context),'cards');
+    context.usuarioLogado={id:'s',role:'superadmin'};
+    context.obterConfig=()=>({layout:null});
+    assert.equal(vm.runInContext('obterLayout()',context),'aurora');
+    context.obterConfig=()=>({layout:'foco'});
+    assert.equal(vm.runInContext('obterLayout()',context),width<=900?'cards':'foco');
+}
+// Both entry points persist Nexus when the first-run setup is continued or skipped.
+for (const file of ['index.html', 'login.html']) {
+    const setup=new JSDOM(fs.readFileSync(file,'utf8'),{url:'https://totalgest.test/',runScripts:'outside-only'});
+    const x=setup.window, admin={id:'a',layout:null};
+    x.adminAtual=()=>admin; x.dados={administradores:[admin]};
+    x.guardarDados=()=>{}; x.renderizarTudo=()=>{}; x._tourJaVisto=()=>true;
+    x.eval("let _onbLayout='aurora', _onbLogo=null;\n" + ['abrirOnboarding','onbEscolherLayout','_numeroJaUsado','onbConcluir'].map(fn).join('\n'));
+    for (const skip of [false,true]) {
+        admin.layout=null; x.abrirOnboarding();
+        assert(x.document.getElementById('onbOptNexus').classList.contains('sel'));
+        assert(!x.document.getElementById('onbOptSidebar').classList.contains('sel'));
+        x.onbConcluir(skip); assert.equal(admin.layout,'aurora');
+    }
+    x.abrirOnboarding(); x.onbEscolherLayout('cards'); x.onbConcluir(false);
+    assert.equal(admin.layout,'cards');
+    x.abrirOnboarding(); assert(x.document.getElementById('onbOptCards').classList.contains('sel'));
+    setup.window.close();
+}
 const dom=new JSDOM('<body class="com-sidebar"><aside id="tgSidebar"><div class="tg-side-brand"></div><nav id="tgSidebarNav"></nav></aside><div id="tgHome"><div class="tgm-panel tgm-panel--dia"><h2 class="tgm-title">O Meu Dia</h2><div>Hoje</div></div></div><div id="cardsGrid"></div></body>',{url:'https://totalgest.test/',runScripts:'outside-only'}),w=dom.window;
 w.usuarioLogado={id:'a',role:'admin'};w.obterLayout=()=> 'aurora';let licensed=true;w._licencaValidaTenant=()=>licensed;w._fecharSidebarMobile=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true;};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'));};

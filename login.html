@@ -2242,7 +2242,7 @@
     <!-- EmailJS para envio de emails de pagamento -->
     <script src="emailjs-config.js"></script>
 
-    <script src="app-principal.js?v=equipment-schedule-1"></script>
+    <script src="app-principal.js?v=nexus-default-1"></script>
     <script src="tg-equipment-reports.js?v=1.1.1"></script>
     <script src="tg-contract-maintenance.js?v=1.4.0"></script>
     <link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
@@ -2385,9 +2385,14 @@
       <div class="modal-body">
         <p style="color:#5a6781;margin-bottom:16px;">Aplica-se a toda a equipa. Pode mudar quando quiser no seu perfil.</p>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <div class="onb-opt sel" id="onbOptSidebar" onclick="onbEscolherLayout('sidebar')">
+          <div class="onb-opt sel" id="onbOptNexus" onclick="onbEscolherLayout('aurora')">
             <div class="onb-mock onb-mock-sidebar"><div class="m-side"></div><div class="m-main"><div class="m-bar"></div><div class="m-row"></div><div class="m-row"></div></div></div>
-            <div class="onb-opt-tit">Barra lateral <span class="badge">Recomendado</span></div>
+            <div class="onb-opt-tit">Total Gest Nexus <span class="badge">Recomendado</span></div>
+            <div class="onb-opt-sub">Painel compacto, atalhos e pesquisa rápida de módulos.</div>
+          </div>
+          <div class="onb-opt" id="onbOptSidebar" onclick="onbEscolherLayout('sidebar')">
+            <div class="onb-mock onb-mock-sidebar"><div class="m-side"></div><div class="m-main"><div class="m-bar"></div><div class="m-row"></div><div class="m-row"></div></div></div>
+            <div class="onb-opt-tit">Barra lateral</div>
             <div class="onb-opt-sub">Navegação fixa à esquerda e painel inicial com agenda.</div>
           </div>
           <div class="onb-opt" id="onbOptCards" onclick="onbEscolherLayout('cards')">

@@ -1,6 +1,6 @@
 # Total Gest Nexus
 
-Nexus replaces the Aurora appearance, retaining the saved `aurora` value so existing company preferences continue working. Choose **Total Gest Nexus (compacto, pesquisa rápida)** in the existing layout selector. Other layouts and the customer portal retain their behavior. The landing page and login branding are unchanged.
+Nexus replaces the Aurora appearance, retaining the saved `aurora` value so existing company preferences continue working. Accounts without a saved layout start in Nexus, including the welcome wizard and newly created demo accounts. Saved company and superadmin choices are preserved. Employees retain their operational home. Choose **Total Gest Nexus (compacto, pesquisa rápida)** in the existing layout selector. Other layouts and the customer portal retain their behavior. The landing page and login branding are unchanged.
 
 The adaptive workspace uses a dark sidebar, a light working surface (or the existing dark theme), compact module indicators, six configurable shortcuts, a searchable module picker (Ctrl/Cmd+K), adjustable density and collapsible daily panels. Current operational alerts, agenda, team and work panels remain the sources of information. Favorites remain accessible in a disclosure. No generated AI or external AI subscription is involved.
 

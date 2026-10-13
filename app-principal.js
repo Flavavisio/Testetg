@@ -8031,7 +8031,7 @@
             if (!usuarioLogado) return window.innerWidth <= 900 ? 'cards' : 'sidebar';
             const aid = usuarioLogado.role === 'admin' ? usuarioLogado.id : usuarioLogado.adminId;
             const a = (dados.administradores || []).find(x => x.id === aid);
-            const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'sidebar') : (a?.layout || 'sidebar');
+            const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'aurora') : (a?.layout || 'aurora');
             // Foco and Nexus retain the employee's operational home and bottom navigation.
             if (usuarioLogado.role === 'funcionario' && ['foco', 'aurora'].includes(escolhido)) return 'cards';
             // Nexus keeps its adaptive shell on phones; existing layouts retain their behavior.
@@ -22054,7 +22054,7 @@ async function salvarEncarregado(e) {
             const admin = {
                 id: adminId, nome: 'Admin Demo', email: DEMO_EMAIL, senha: DEMO_SENHA,
                 empresa: 'Demo Segurança, Lda.', licenca, ativo: true, mudarSenha: false,
-                layout: 'sidebar', tiposEquipamento: [], dataCriacao: now,
+                layout: 'aurora', tiposEquipamento: [], dataCriacao: now,
                 contratosPlano: 'anual', contratosExpiracao: now + 365 * 86400000,
                 frotaPlano: 'anual', frotaExpiracao: now + 365 * 86400000,
                 armazemPlano: 'anual', armazemExpiracao: now + 365 * 86400000,
@@ -32452,7 +32452,7 @@ window._relPrefill = function(msg){
             if (rR.ok) { try { localStorage.setItem(chave, '1'); } catch (e) {} console.log('Aviso de renovação enviado para', admin.email); }
         }
 
-        let _onbLayout = 'sidebar', _onbLogo = null;
+        let _onbLayout = 'aurora', _onbLogo = null;
         // ===== Tour Guiado =====
         const TOUR_SIDEBAR_DESCRICOES = {
             'Recursos Humanos': 'Aqui geres tudo sobre a equipa: registo de ponto, férias e faltas.',
@@ -32605,11 +32605,10 @@ window._relPrefill = function(msg){
             try { return usuarioLogado && localStorage.getItem('tg_tour_visto_' + usuarioLogado.id) === '1'; } catch (e) { return false; }
         }
         function abrirOnboarding() {
-            _onbLayout = 'sidebar'; _onbLogo = null;
+            _onbLayout = adminAtual()?.layout || 'aurora'; _onbLogo = null;
             const s1 = document.getElementById('onbStep1'), s2 = document.getElementById('onbStep2'), s3 = document.getElementById('onbStep3');
             if (s1) s1.style.display = ''; if (s2) s2.style.display = 'none'; if (s3) s3.style.display = 'none';
-            document.getElementById('onbOptSidebar')?.classList.add('sel');
-            document.getElementById('onbOptCards')?.classList.remove('sel');
+            onbEscolherLayout(_onbLayout);
             const img = document.getElementById('onbLogoPreview'); if (img) img.style.display = 'none';
             const li = document.getElementById('onbLogoInput'); if (li) li.value = '';
             document.getElementById('onb_tem_anepc').checked = false;
@@ -32631,6 +32630,7 @@ window._relPrefill = function(msg){
         }
         function onbEscolherLayout(l) {
             _onbLayout = l;
+            document.getElementById('onbOptNexus')?.classList.toggle('sel', l === 'aurora');
             document.getElementById('onbOptSidebar')?.classList.toggle('sel', l === 'sidebar');
             document.getElementById('onbOptCards')?.classList.toggle('sel', l === 'cards');
         }
@@ -34391,10 +34391,10 @@ window._relPrefill = function(msg){
                                 <div class="form-group ff-span2">
                                     <label>Layout</label>
                                     <select id="perf_layout">
-                                        <option value="sidebar" ${(obterConfig()?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
+                                        <option value="sidebar" ${obterConfig()?.layout === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${obterConfig()?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${obterConfig()?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${obterConfig()?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
+                                        <option value="aurora" ${(obterConfig()?.layout || 'aurora') === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>
@@ -34474,10 +34474,10 @@ window._relPrefill = function(msg){
                                 <div class="form-group ff-span2">
                                     <label>Layout</label>
                                     <select id="perf_layout">
-                                        <option value="sidebar" ${(admin?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
+                                        <option value="sidebar" ${admin?.layout === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${admin?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${admin?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
+                                        <option value="aurora" ${(admin?.layout || 'aurora') === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>
@@ -34524,10 +34524,10 @@ window._relPrefill = function(msg){
                                 <div class="form-group ff-span2">
                                     <label>Layout (aplica-se a toda a equipa)</label>
                                     <select id="perf_layout">
-                                        <option value="sidebar" ${(admin?.layout || 'sidebar') === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
+                                        <option value="sidebar" ${admin?.layout === 'sidebar' ? 'selected' : ''}>Barra lateral (moderno)</option>
                                         <option value="cards" ${admin?.layout === 'cards' ? 'selected' : ''}>Clássico (cards no topo)</option>
                                         <option value="foco" ${admin?.layout === 'foco' ? 'selected' : ''}>Total Gest Foco (grupos + painel lateral)</option>
-                                        <option value="aurora" ${admin?.layout === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
+                                        <option value="aurora" ${(admin?.layout || 'aurora') === 'aurora' ? 'selected' : ''}>Total Gest Nexus (compacto, pesquisa rápida)</option>
                                     </select>
                                 </div>
                             </div>

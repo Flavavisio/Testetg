@@ -333,7 +333,7 @@
         for(const row of schedule(c)){
             if(!row.data || !row.plan?.periodicidade)continue;
             let current=String(row.data).slice(0,10),iterations=0;
-            if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(current))continue;
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(current))continue;
             while(current<first && iterations++<500){
                 const next=avancarPeriodicidade(current,row.plan.periodicidade);
                 if(!next || next<=current)break;current=next;

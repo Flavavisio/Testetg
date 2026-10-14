@@ -83,6 +83,23 @@
             input('ct_aviso','Antecedência do aviso de renovação (dias)',com.avisoDias ?? 30,'number')+
             textarea('ct_com_notas','Condições de renovação e pagamento',com.notas)+
             '<p class="form-group ff-span2 help-text">As condições ficam registadas no contrato. A renovação e a emissão de faturas são confirmadas pelo administrador.</p>'));
+        // O responsável é selecionado por intervenção/OS. Os campos legados ficam no
+        // DOM, para preservar dados históricos e não alterar o contrato ao guardar.
+        for(const label of root.querySelectorAll('label')){
+            const text=(label.textContent || '').trim().toLocaleLowerCase('pt-PT');
+            if(/^técnico responsável\b/.test(text) || /^tecnico responsavel\b/.test(text)){
+                const field=label.closest('.form-group') || label;
+                field.hidden=true;field.style.display='none';
+            }
+        }
+        const validade=root.querySelector('#ct_validade');
+        if(validade){
+            const field=validade.closest('.form-group') || validade.closest('label');
+            if(field){field.hidden=true;field.style.display='none';}
+        }
+        for(const heading of root.querySelectorAll('.ff-secao-head')){
+            heading.textContent=heading.textContent.replace(/periodicidade e responsável/i,'Periodicidade de manutenção');
+        }
         // Existing fields stay in their original sections; tabs simply organize the complete form.
         const sections=[...root.querySelectorAll(':scope > .ff-secao')];
         sections.forEach(s=>s.dataset.contractTab=s.querySelector('#ct_local')?'cobertura':s.querySelector('#ct_period') || s.id==='ct_plano_extra'?'plano':'resumo');

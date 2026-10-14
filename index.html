@@ -1489,6 +1489,7 @@
         <div class="section-header">
             <h2><i class="fas fa-tools"></i> Ordens de Serviço</h2>
             <button class="btn btn-primary" id="btnNovaOS" onclick="abrirModal('servico', null)"><i class="fas fa-plus"></i> Novo serviço</button>
+            <button type="button" class="btn btn-outline" onclick="window.TGOSPlannerUI?.open()" title="Recomendações indicativas, sujeitas a confirmação"><i class="fas fa-calendar-check"></i> Sugerir técnico</button>
         </div>
         <div id="servicosFiltroKpi"></div>
         <div id="servicosAvisoEspecialidade"></div>
@@ -2574,7 +2575,9 @@
     <!-- EmailJS para envio de emails de pagamento -->
     <script src="emailjs-config.js"></script>
 
-    <script src="app-principal.js?v=nexus-default-1"></script>
+    <script src="tg-planner.js?v=1.0.2"></script>
+<script src="app-principal.js?v=nexus-default-1"></script>
+<script src="tg-os-planning-ui.js?v=1.0.0"></script>
     <link rel="stylesheet" href="tg-passport.css?v=1.0.0">
     <script src="tg-equipment-reports.js?v=1.1.1"></script>
     <script src="tg-contract-maintenance.js?v=1.4.0"></script>

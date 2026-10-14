@@ -26,3 +26,11 @@ test('assets agree on cache version and no production deployment scripts added',
  assert.match(sw,/tg-contract-maintenance\.js\?v=1\.7\.0/);
  assert.match(index,/ct-final-polish/);
 });
+
+test('completed equipment maintenance is not also shown as pending for identical date and location',()=>{
+ const reg=[{id:'r1',adminId:'a',contratoId:'1',servicoId:'os1',localId:'loc',sistemasIds:['p'],dataRealizacao:'2026-10-15'}];
+ const x=context(reg,[{data:'2026-10-15',plan:{id:'p',tipo:'cctv',periodicidade:'anual'},localId:'loc',localNome:'Sede'}]);
+ const rows=x.build(ct,2026);
+ assert.equal(rows.filter(r=>r.type==='feito').length,1);
+ assert.equal(rows.filter(r=>r.type==='previsto'||r.type==='atraso').length,0);
+});

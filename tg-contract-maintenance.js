@@ -340,12 +340,19 @@
             }
             while(current<=last && iterations++<500){
                 if(current>=first) {
-                    const alreadyDone=(dados.registosManutencao||[]).some(reg=>
-                        reg.adminId===c.adminId && reg.contratoId===c.id &&
-                        String(reg.dataRealizacao||'').slice(0,10)===current &&
-                        (!Array.isArray(reg.sistemasIds) || reg.sistemasIds.includes(row.plan.id) ||
-                         (row.plan.origemSistemaId && reg.sistemasIds.includes(row.plan.origemSistemaId))) &&
-                        (reg.localId||'')===(row.localId||''));
+                    // Match a confirmed visit in a narrow window to avoid a false overdue
+                    // warning when the technician attended a few days early or late.
+                    // Without system identity we cannot safely clear an equipment visit.
+                    const plannedDay=Date.parse(current+'T12:00:00Z');
+                    const alreadyDone=(dados.registosManutencao||[]).some(reg=>{
+                        if(reg.adminId!==c.adminId || reg.contratoId!==c.id)return false;
+                        if(!Array.isArray(reg.sistemasIds) || !reg.sistemasIds.length)return false;
+                        if(!reg.sistemasIds.includes(row.plan.id) &&
+                           !(row.plan.origemSistemaId && reg.sistemasIds.includes(row.plan.origemSistemaId)))return false;
+                        if(recordLocation(reg,c)!==(row.localId||''))return false;
+                        const actualDay=Date.parse(String(reg.dataRealizacao||'').slice(0,10)+'T12:00:00Z');
+                        return Number.isFinite(actualDay) && Math.abs(actualDay-plannedDay)<=14*86400000;
+                    });
                     if(!alreadyDone)events.push({date:current,type:current<getDataHoje()?'atraso':'previsto',
                     label:planLabel(row.plan)+' — '+(row.localNome||'Instalação'),osId:null,
                     key:'plan:'+c.id+':'+(row.localId||'')+':'+row.plan.id+':'+current});

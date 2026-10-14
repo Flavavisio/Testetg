@@ -3,7 +3,7 @@ const source=fs.readFileSync('tg-contract-maintenance.js','utf8');
 const start=source.indexOf('    function annualCalendar(c,'),end=source.indexOf('    function historyHTML(c,incomplete)',start);
 assert(start>0&&end>start);
 function context(records,plans,today='2026-10-14'){
- const c={dados:{registosManutencao:records},schedule:()=>plans,getDataHoje:()=>today,planLabel:p=>p.nome||p.tipo||'CCTV',esc:String,contractWarning:null,
+ const c={dados:{registosManutencao:records},schedule:()=>plans,getDataHoje:()=>today,recordLocation:(r)=>r.localId||'',planLabel:p=>p.nome||p.tipo||'CCTV',esc:String,contractWarning:null,
  avancarPeriodicidade:(v,p)=>{const d=new Date(v+'T12:00:00Z');const m={mensal:1,trimestral:3,semestral:6,anual:12}[p];if(!m)return null;d.setUTCMonth(d.getUTCMonth()+m);return d.toISOString().slice(0,10);}};
  vm.createContext(c);vm.runInContext(source.slice(start,end)+';globalThis.build=annualCalendar;globalThis.warn=contractWarning;',c);return c;
 }
@@ -33,4 +33,18 @@ test('completed equipment maintenance is not also shown as pending for identical
  const rows=x.build(ct,2026);
  assert.equal(rows.filter(r=>r.type==='feito').length,1);
  assert.equal(rows.filter(r=>r.type==='previsto'||r.type==='atraso').length,0);
+});
+
+test('visit completed five days after planned date clears only the matching equipment',()=>{
+ const records=[{id:'late',adminId:'a',contratoId:'1',localId:'loc',sistemasIds:['p'],dataRealizacao:'2026-10-20'}];
+ const plans=[{data:'2026-10-15',plan:{id:'p',tipo:'cctv',periodicidade:'anual'},localId:'loc'},
+ {data:'2026-10-15',plan:{id:'different',tipo:'alarme',periodicidade:'anual'},localId:'loc'}];
+ const rows=context(records,plans).build(ct,2026);
+ assert.equal(rows.filter(e=>e.type==='feito').length,1);
+ assert.equal(rows.filter(e=>e.type==='previsto').length,1);
+});
+test('visit without equipment identity does not silently clear planned work',()=>{
+ const records=[{id:'legacy',adminId:'a',contratoId:'1',localId:'loc',dataRealizacao:'2026-10-16'}];
+ const plans=[{data:'2026-10-15',plan:{id:'p',tipo:'cctv',periodicidade:'anual'},localId:'loc'}];
+ assert.equal(context(records,plans).build(ct,2026).length,2);
 });

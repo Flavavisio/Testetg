@@ -226,7 +226,7 @@
         const planned=n==null || n==='' ? null : (Number.isInteger(Number(n)) && Number(n)>=0 ? Number(n) : null);
         const records=(dados.registosManutencao || []).filter(r=>
             r.adminId===tenant && r.contratoId===c.id &&
-            /^\\d{4}-\\d{2}-\\d{2}/.test(String(r.dataRealizacao||'')) &&
+            /^\d{4}-\d{2}-\d{2}/.test(String(r.dataRealizacao||'')) &&
             String(r.dataRealizacao).slice(0,4)===yr
         );
         const unique=new Map();
@@ -371,27 +371,45 @@
         if(!ids.length){alert('Seleciona os sistemas que queres juntar na mesma OS.');return;}
         b.disabled=true;try{await openMaintenance(c,localId,ids);}catch(_){alert('Não foi possível abrir a manutenção. Tenta novamente.');}finally{if(b.isConnected)b.disabled=false;}
     });
-    // Portfolio annual scorecard: no writes or mutations, tenant- and license-scoped.
-    function renderAnnualPortfolio() {
-        const section=document.getElementById('secao-contratos');
-        if(!section || !usuarioLogado || !moduloContratosAtivo(adminAtual())) {
-            document.getElementById('ct-annual-portfolio')?.remove();return;
-        }
+    // Contract-specific visit counters. Never infer contract identity from table position.
+    function decorateContractRows() {
+        const table=document.querySelector('#secao-contratos .tabela-compacta-contratos');
+        if(!table || !usuarioLogado || !moduloContratosAtivo(adminAtual()))return;
         const tid=usuarioLogado.adminId || usuarioLogado.id;
-        const contratos=(dados.contratos || []).filter(c=>c.adminId===tid && !c.apagadoSuperAdmin);
-        let panel=document.getElementById('ct-annual-portfolio');
-        if(!panel){panel=document.createElement('div');panel.id='ct-annual-portfolio';panel.style.cssText='padding:14px 16px;border:1px solid #dce5f1;border-radius:12px;margin:12px 0;background:#f8fafc';const head=section.querySelector('.section-header');if(head)head.insertAdjacentElement('afterend',panel);else section.prepend(panel);}
-        const year=new Date().getFullYear();
-        const vals=contratos.map(c=>yearlyVisits(c,year));
-        const defined=vals.filter(v=>v.known);
-        const total=defined.reduce((n,v)=>n+v.planned,0),done=defined.reduce((n,v)=>n+v.completed,0);
-        const pending=defined.reduce((n,v)=>n+v.remaining,0);
-        const unknown=vals.length-defined.length;
-        panel.innerHTML='<strong>Visitas de manutenção — '+esc(year)+'</strong>'+
-        '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:14px">'+
-        '<span>Previstas: <b>'+esc(total)+'</b></span><span>Realizadas: <b>'+esc(done)+'</b></span>'+
-        '<span>Por realizar: <b>'+esc(pending)+'</b></span><span>Contratos sem meta definida: <b>'+esc(unknown)+'</b></span></div>'+
-        '<p class="help-text" style="margin:7px 0 0">Totais dos contratos com visitas anuais definidas. Só contam registos de manutenção confirmados. A ausência de registos antigos pode alterar a contagem.</p>';
+        const list=(dados.contratos||[]).filter(c=>c.adminId===tid && !c.apagadoSuperAdmin);
+        const lookup=new Map();
+        for(const c of list){const key=String(c.numero||'').trim();if(key){if(lookup.has(key))lookup.set(key,null);else lookup.set(key,c);}}
+        for(const row of table.tBodies[0]?.rows||[]){
+            const cells=[...row.cells],reference=cells[1]?.textContent?.trim();
+            if(!reference || cells.length<12)continue;
+            const contract=lookup.get(reference);
+            let cell=row.querySelector('[data-ct-year-cell]');
+            if(!cell){cell=document.createElement('td');cell.setAttribute('data-ct-year-cell','');row.insertBefore(cell,cells[9]);}
+            const v=contract?yearlyVisits(contract):null;
+            const value=v?(v.known?v.completed+' / '+v.planned:v.completed+' / —'):'—';
+            const sub=v?(v.known?(v.remaining?v.remaining+' em falta':v.excess?v.excess+' extra':'Concluído'):'Meta por definir'):'Confirmar contrato';
+            const signature=value+'|'+sub;
+            if(cell.dataset.value!==signature){
+                cell.dataset.value=signature;
+                cell.replaceChildren();
+                const strong=document.createElement('strong');strong.textContent=value;cell.appendChild(strong);
+                const small=document.createElement('small');small.textContent=sub;small.style.cssText='display:block;font-size:.72rem;color:#64748b';cell.appendChild(small);
+                if(v?.planned>0){const bar=document.createElement('div');bar.style.cssText='height:4px;margin-top:5px;background:#e5eaf2;border-radius:6px;overflow:hidden';const inner=document.createElement('div');inner.style.cssText='height:100%;background:#2563eb;width:'+Math.min(100,Math.round(v.completed/v.planned*100))+'%';bar.appendChild(inner);cell.appendChild(bar);}
+            }
+        }
+    }
+    let contractTableObserver;
+    function watchContractRows(){
+        const body=document.getElementById('tabelaContratos');
+        if(!body||contractTableObserver)return;
+        contractTableObserver=new MutationObserver(()=>{contractTableObserver.disconnect();try{decorateContractRows();}finally{contractTableObserver.observe(body,{childList:true,subtree:true});}});
+        contractTableObserver.observe(body,{childList:true,subtree:true});
+        decorateContractRows();
+    }
+    function renderAnnualPortfolio() {
+        document.getElementById('ct-annual-portfolio')?.remove();
+        watchContractRows();
+        decorateContractRows();
     }
     document.addEventListener('tg:interface-updated',()=>{renderMaintenance();renderAnnualPortfolio();});
 

@@ -339,9 +339,17 @@
                 if(!next || next<=current)break;current=next;
             }
             while(current<=last && iterations++<500){
-                if(current>=first)events.push({date:current,type:current<getDataHoje()?'atraso':'previsto',
+                if(current>=first) {
+                    const alreadyDone=(dados.registosManutencao||[]).some(reg=>
+                        reg.adminId===c.adminId && reg.contratoId===c.id &&
+                        String(reg.dataRealizacao||'').slice(0,10)===current &&
+                        (!Array.isArray(reg.sistemasIds) || reg.sistemasIds.includes(row.plan.id) ||
+                         (row.plan.origemSistemaId && reg.sistemasIds.includes(row.plan.origemSistemaId))) &&
+                        (reg.localId||'')===(row.localId||''));
+                    if(!alreadyDone)events.push({date:current,type:current<getDataHoje()?'atraso':'previsto',
                     label:planLabel(row.plan)+' — '+(row.localNome||'Instalação'),osId:null,
                     key:'plan:'+c.id+':'+(row.localId||'')+':'+row.plan.id+':'+current});
+                }
                 const next=avancarPeriodicidade(current,row.plan.periodicidade);
                 if(!next || next<=current)break;current=next;
             }

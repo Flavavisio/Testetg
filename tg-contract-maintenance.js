@@ -56,10 +56,57 @@
             return `<div data-ct-system="${esc(tipo)}" data-ct-equipment="${esc(e.id)}" data-ct-equipment-name="${esc(name)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(name)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Próxima manutenção<input type="date" data-next value="${esc((p.equipamentoId?p.proximaData:config.proximaData) || config.proximaData || p.proximaData || avancarPeriodicidade(read('ct_inicio') || getDataHoje(),(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual'))}"></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
         }).join('') || '<p class="help-text">Seleciona primeiro os equipamentos abrangidos.</p>';
     }
+    // Accessible customer picker outside the scrolling contract modal.
+    // The existing select stays authoritative for legacy validation and saving.
+    function openCustomerPicker(){
+        const select=document.getElementById('ct_cliente');
+        if(!select)return;
+        document.getElementById('ct-client-picker')?.remove();
+        const dlg=document.createElement('dialog');dlg.id='ct-client-picker';
+        dlg.setAttribute('aria-label','Selecionar cliente');
+        dlg.style.cssText='position:fixed;inset:0;margin:auto;width:min(94vw,600px);max-height:85vh;border:1px solid #d7e2ef;border-radius:16px;padding:18px;background:#fff;color:#162a45;box-shadow:0 28px 90px #0005;z-index:2147483647;';
+        const title=document.createElement('h3');title.textContent='Selecionar cliente';title.style.margin='0 0 14px';
+        const search=document.createElement('input');search.type='search';search.placeholder='Pesquisar por nome ou número de cliente…';search.setAttribute('aria-label','Pesquisar clientes');
+        search.style.cssText='width:100%;padding:12px;border:1px solid #b7c8dd;border-radius:9px;margin-bottom:10px';
+        const list=document.createElement('div');list.style.cssText='max-height:55vh;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px';
+        const footer=document.createElement('button');footer.type='button';footer.textContent='Fechar';footer.className='btn btn-outline';footer.style.marginTop='12px';
+        footer.onclick=()=>dlg.close();
+        dlg.append(title,search,list,footer);
+        const options=[...select.options].filter(o=>o.value && !o.disabled).map(o=>({value:o.value,label:o.textContent.trim()}));
+        function render(){
+            const query=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+            list.replaceChildren();
+            let count=0;
+            for(const o of options){
+                if(query&&!o.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query))continue;
+                count++;
+                const btn=document.createElement('button');btn.type='button';
+                btn.textContent=o.label;btn.style.cssText='display:block;width:100%;text-align:left;padding:12px;border:1px solid #e0e7ef;border-radius:8px;background:'+(o.value===select.value?'#e9f2ff':'#fff')+';color:#172842;cursor:pointer';
+                btn.onclick=()=>{if(!select.isConnected){dlg.close();return;}select.value=o.value;select.dispatchEvent(new Event('change',{bubbles:true}));dlg.close();};
+                list.appendChild(btn);
+            }
+            if(!count){const empty=document.createElement('p');empty.textContent='Nenhum cliente encontrado. Confirma os filtros e os clientes carregados na conta.';list.appendChild(empty);}
+        }
+        search.addEventListener('input',render);
+        dlg.addEventListener('close',()=>dlg.remove(),{once:true});
+        document.body.appendChild(dlg);
+        render();
+        dlg.showModal();search.focus();
+    }
+    function mountCustomerPicker(){
+        const select=document.getElementById('ct_cliente');
+        if(!select || document.getElementById('ct-client-open'))return;
+        const btn=document.createElement('button');btn.id='ct-client-open';btn.type='button';btn.className='btn btn-outline';
+        btn.textContent='Pesquisar / ver todos os clientes';
+        btn.style.cssText='display:block;margin:10px 0 3px;font-size:.85rem;max-width:100%';
+        btn.onclick=openCustomerPicker;
+        select.insertAdjacentElement('afterend',btn);
+    }
     function mount(c) {
         editing=c || null;draft=JSON.parse(JSON.stringify(obj(c?.gestaoManutencao)));
         draft.plano=(draft.plano || []).map(p=>{const e=(dados.equipamentos || []).find(e=>e.id===p.equipamentoId && e.adminId===c?.adminId);return e?.fichaTecnica?.manutencao?{...p,...e.fichaTecnica.manutencao}:p;});
         const root=document.querySelector('#modalContratoCampos .ff-wrap'); if (!root) return;
+        mountCustomerPicker();
         root.querySelector('#ct_tipos_trabalho_cont')?.closest('.ff-secao')?.remove();
         if(_contratoLocalIds(c || {}).length>1)root.querySelector('#ct_cobertura')?.insertAdjacentHTML('afterend','<p class="help-text">Este contrato antigo abrangia várias instalações. Para guardar, escolhe uma instalação e mantém apenas os equipamentos dessa instalação. O histórico anterior é preservado.</p>');
         const srv=obj(draft.servicos),com=obj(draft.comercial);

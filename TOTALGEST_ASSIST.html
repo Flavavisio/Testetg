@@ -238,6 +238,7 @@
 </style>
 <link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
 <script src="tg-module-embed.js?v=1.0.0"></script>
+<script src="tg-planner.js?v=1.0.1"></script>
 </head>
 <body>
 
@@ -870,6 +871,58 @@
         function clienteBuscaEsconder(inputId) {
             setTimeout(() => { const dd = document.getElementById(inputId + '_dd'); if (dd) dd.style.display = 'none'; }, 200);
         }
+        // Recomendações explicáveis: só preenchem os controlos existentes; guardar continua manual.
+        function _tgAssistSugestao(tipo) {
+            if (!window.TGPlanner || !usuarioLogado) return alert('Motor de planeamento indisponível.');
+            const tid = _tenantId();
+            const isOS = tipo === 'os';
+            const data = document.getElementById(isOS ? 'assistOsData' : 'assist_plan_data')?.value;
+            const hora = document.getElementById(isOS ? 'assistOsHora' : 'assist_plan_hora')?.value;
+            const duracao = Number(document.getElementById(isOS ? 'assistOsDuracao' : 'assist_plan_duracao')?.value);
+            if (!data || !hora || !Number.isFinite(duracao) || duracao < 15 || duracao > 720) return alert('Indica a data, hora e duração prevista (15 a 720 minutos).');
+            const inicio = new Date(data + 'T' + hora + ':00');
+            if (!Number.isFinite(inicio.getTime())) return alert('Data ou hora inválida.');
+            const fim = new Date(inicio.getTime() + duracao * 60000);
+            const pessoa = _pessoasParaAtribuir(tid);
+            const tecnicos = pessoa.filter(p => (dados.funcionarios || []).some(f => f.id === p.id && !f.suspenso && f.ativo !== false))
+                .map(p => {
+                    const f = dados.funcionarios.find(f => f.id === p.id);
+                    return { id:p.id, name:p.nome, tenantId:tid, active:true,
+                        skills:Array.isArray(f.competencias) ? f.competencias : [] };
+                });
+            const compromissos = (dados.servicos || []).filter(os => os.adminId === tid && os.data && os.hora)
+                .flatMap(os => {
+                    const d = new Date(os.data + 'T' + os.hora + ':00');
+                    if (!Number.isFinite(d.getTime())) return [];
+                    // Duração histórica desconhecida: intervalo conservador de 90 min, assinalado ao utilizador.
+                    const minutos = Number(os.duracaoMinutos || os.duracaoPrevista || 90);
+                    const ids = Array.isArray(os.funcionariosIds) && os.funcionariosIds.length ? os.funcionariosIds : [os.funcionarioId];
+                    return ids.filter(Boolean).map(tecnicoId => ({
+                        id:os.id,tenantId:tid,technicianId:tecnicoId,start:d.toISOString(),
+                        end:new Date(d.getTime() + (minutos > 0 && minutos <= 1440 ? minutos : 90) * 60000).toISOString(),
+                        status:os.status
+                    }));
+                });
+            // Sem registos de férias validados, não afirmar disponibilidade definitiva.
+            const lista = window.TGPlanner.recommend({tenantId:tid,technicians:tecnicos,appointments:compromissos,
+                job:{start:inicio.toISOString(),end:fim.toISOString()},limit:50});
+            const elegiveis = lista.filter(t=>t.eligible);
+            if (!elegiveis.length) return alert('Não foram encontrados técnicos sem sobreposição detetada. Confirma férias e disponibilidade manualmente.');
+            const resumo = elegiveis.slice(0,8).map((p,i)=>(i+1)+'. '+p.name).join('\n');
+            const escolhido = elegiveis[0];
+            if (!confirm('Sugestão: '+escolhido.name+'\n\nOutras opções sem conflito identificado:\n'+resumo+
+                '\n\nAtenção: esta é uma sugestão preliminar. As férias e as deslocações não estão totalmente validadas; alguns serviços antigos não têm duração. Confirma com o técnico.\n\nSelecionar '+escolhido.name+'?')) return;
+            if (isOS) {
+                const check = [...document.querySelectorAll('.assist-os-func-chk')].find(el=>el.value===escolhido.id);
+                if (!check) return alert('Técnico indisponível na lista deste serviço.');
+                check.checked = true;
+            } else {
+                const select = document.getElementById('assist_atribuido');
+                if (![...select.options].some(o=>o.value===escolhido.id)) return alert('Técnico indisponível na lista.');
+                select.value = escolhido.id;
+                select.dispatchEvent(new Event('change',{bubbles:true}));
+            }
+        }
         function abrirModalAssistencia(id) {
             const tid = _tenantId();
             const item = id ? dados.assistencias?.find(a => a.id === id) : null;
@@ -900,6 +953,11 @@
                 </div>
                 <div class="form-group"><label>Atribuído a</label>
                     <select id="assist_atribuido"><option value="">— Por atribuir —</option>${pessoas.map(p => `<option value="${p.id}" ${item?.atribuidoId === p.id ? 'selected' : ''}>${escapeHtmlSimples(p.nome)}</option>`).join('')}</select>
+                </div>
+                <div class="form-group"><label>Data e hora para recomendação (não altera o agendamento da assistência)</label>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap"><input type="date" id="assist_plan_data" style="flex:1;min-width:125px"><input type="time" id="assist_plan_hora" style="flex:1;min-width:95px"><input type="number" id="assist_plan_duracao" min="15" max="720" value="90" aria-label="Duração prevista em minutos" style="width:85px" title="Minutos"></div>
+                    <button type="button" class="btn btn-outline" onclick="_tgAssistSugestao('assist')" style="margin-top:8px">Sugerir técnico disponível</button>
+                    <small class="help-text">Sugestão sujeita a confirmação. Férias e deslocações ainda não são consideradas; nada é guardado automaticamente.</small>
                 </div>
                 ${item?.osGeradaId ? `<div class="help-text" style="color:var(--green);"><i class="fas fa-check-circle"></i> Já tem uma OS criada a partir desta assistência.</div>` : ''}
                 ${item ? _assistNotasHTML(item) : ''}
@@ -1058,6 +1116,8 @@
                 <div class="form-group"><label>Data</label><input type="date" id="assistOsData" value="${getDataHoje()}"></div>
                 <div class="form-group"><label>Hora</label><input type="time" id="assistOsHora" value="09:00"></div>
                 <div class="form-group"><label>Descrição</label><textarea id="assistOsDescricao" rows="3">${escapeHtmlSimples((a.assunto || '') + (a.descricao ? ' — ' + a.descricao : ''))}</textarea></div>
+                <div class="form-group"><label>Duração prevista (minutos)</label><input type="number" id="assistOsDuracao" min="15" max="720" value="90"></div>
+                <div class="form-group"><button type="button" class="btn btn-outline" onclick="_tgAssistSugestao('os')">Sugerir técnico para esta OS</button><small class="help-text">Apenas preenche a seleção, sem guardar nem notificar.</small></div>
                 <div class="form-group ff-span2"><label>Funcionários atribuídos</label>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
                         ${funcionariosTenant.map(f => `<label style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:.85rem;">

@@ -58,6 +58,7 @@
         if (!allowed(name)) { prepare(name); return false; }
         pending = { name, id: typeof id === 'string' ? id : '' };
         if (document.getElementById('wsClienteOverlay')?.classList.contains('open')) _wsClienteFechar();
+        if (!prepare(name)) return false;
         abrirSecao(name);
         return false;
     }

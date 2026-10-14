@@ -39,7 +39,7 @@
     }
     function visible(state) {
         const overlay=document.getElementById('wsClienteOverlay');
-        return current===state && state.sequence===sequence && identity()===state.scope.identity && !!scope(state.scope.id) && overlay?.classList.contains('open') && overlay.dataset.clienteAtual===state.scope.id && window._wsAbaAtual==='historico';
+        return current===state && state.sequence===sequence && identity()===state.scope.identity && !!scope(state.scope.id) && overlay?.classList.contains('open') && (!overlay.dataset.clienteAtual || overlay.dataset.clienteAtual===state.scope.id) && (document.getElementById('tgCustomerHistory')===state.node || document.getElementById('tgHistoryLoading')===state.node);
     }
     function render() {
         const state=current;if(!state||!visible(state))return;
@@ -64,7 +64,7 @@
         const s=scope(id), content=document.getElementById('wsClienteConteudo');if(!content)return;
         if(!s){content.innerHTML='<p class="help-text">Não tem acesso ao histórico deste cliente.</p>';current=null;return;}
         const state={scope:s,sequence:++sequence,services:[],events:[],limit:100};current=state;
-        content.innerHTML='<div class="tg-history-loading" role="status">A carregar o histórico do cliente…</div>';
+        content.innerHTML='<div id="tgHistoryLoading" class="tg-history-loading" role="status">A carregar o histórico do cliente…</div>';state.node=document.getElementById('tgHistoryLoading');
         let services=(dados.servicos||[]).filter(r=>r.adminId===s.tenant&&r.clienteId===id), incomplete=false;
         try {
             const query=supa.from('servicos').select('*').eq('admin_id',s.tenant).eq('cliente_id',id).order('data',{ascending:false}).order('id',{ascending:false});
@@ -77,7 +77,7 @@
         state.services=services;state.events=events(s,dados,services);
         const types=Object.keys(kinds).filter(k=>state.events.some(e=>e.kind===k));
         content.innerHTML=`<section id="tgCustomerHistory" class="tg-customer-history"><div class="tg-history-head"><div><span class="tg-history-eyebrow">FICHA DO CLIENTE</span><h2>Histórico</h2><p>Intervenções, pedidos e documentos reunidos por data.</p></div><span class="tg-history-total" data-history-count></span></div>${incomplete?'<p class="tg-history-warning" role="status">Não foi possível carregar as OS antigas. A mostrar os registos disponíveis. <button type="button" class="btn btn-outline" data-history-retry>Tentar novamente</button></p>':''}<div class="tg-history-filters"><label class="tg-history-search">Pesquisar<input type="search" data-history-search placeholder="Número, descrição ou estado…"></label><label>Tipo<select data-history-type><option value="">Todos os registos</option>${types.map(k=>`<option value="${k}">${kinds[k][0]}</option>`).join('')}</select></label><label>Desde<input type="date" data-history-from></label><label>Até<input type="date" data-history-to></label></div><div data-history-events></div><button type="button" class="btn btn-outline tg-history-more" data-history-more>Mostrar mais registos</button></section>`;
-        const root=document.getElementById('tgCustomerHistory');
+        const root=document.getElementById('tgCustomerHistory');state.node=root;
         root.addEventListener('input',()=>{state.limit=100;render();});root.addEventListener('change',()=>{state.limit=100;render();});
         root.addEventListener('click',e=>{
             if(e.target.closest('[data-history-more]')){state.limit+=100;render();}

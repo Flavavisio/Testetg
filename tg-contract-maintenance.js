@@ -508,6 +508,11 @@
         const list=(dados.contratos||[]).filter(c=>c.adminId===tid && !c.apagadoSuperAdmin);
         const lookup=new Map();
         for(const c of list){const key=String(c.numero||'').trim();if(key){if(lookup.has(key))lookup.set(key,null);else lookup.set(key,c);}}
+        const head=table.tHead?.rows?.[0];
+        if(head && !head.querySelector('[data-ct-year-head]')){
+            const th=document.createElement('th');th.textContent='Visitas '+new Date().getFullYear();th.dataset.ctYearHead='true';
+            head.insertBefore(th,head.cells[9]||null);
+        }
         for(const row of table.tBodies[0]?.rows||[]){
             const cells=[...row.cells],reference=cells[1]?.textContent?.trim();
             if(!reference || cells.length<12)continue;
@@ -543,7 +548,7 @@
         const tid=usuarioLogado.adminId||usuarioLogado.id;
         const all=(dados.contratos||[]).filter(c=>c.adminId===tid&&!c.apagadoSuperAdmin);
         let root=document.getElementById('ct-contract-alerts');
-        if(!root){root=document.createElement('div');root.id='ct-contract-alerts';root.className='ct-alert-strip';const table=section.querySelector('.table-wrapper');table?.parentNode.insertBefore(root,table);}
+        if(!root){root=document.createElement('div');root.id='ct-contract-alerts';root.className='ct-alert-strip';const toolbar=section.querySelector('#ct-contract-toolbar');if(toolbar)toolbar.appendChild(root);else {const table=section.querySelector('.table-wrapper');table?.parentNode.insertBefore(root,table);}}
         const late=[],soon=[];
         for(const c of all){const w=contractWarning(c);if(!w)continue;(w.type==='late'?late:soon).push(c);}
         root.textContent='';
@@ -554,7 +559,7 @@
     function setupContractSearch(){
         const section=document.getElementById('secao-contratos'),body=document.getElementById('tabelaContratos');if(!section||!body)return;
         let search=document.getElementById('ct-fast-search');
-        if(!search){search=document.createElement('input');search.id='ct-fast-search';search.type='search';search.placeholder='Pesquisar contrato, cliente ou instalação';search.setAttribute('aria-label','Pesquisar contratos');search.className='ct-fast-search';const table=section.querySelector('.table-wrapper');table?.parentNode.insertBefore(search,table);}
+        if(!search){search=document.createElement('input');search.id='ct-fast-search';search.type='search';search.placeholder='Pesquisar contrato, cliente ou instalação';search.setAttribute('aria-label','Pesquisar contratos');search.className='ct-fast-search';const toolbar=section.querySelector('#ct-contract-toolbar');(toolbar||section.querySelector('.table-wrapper')?.parentNode)?.insertBefore(search,toolbar?.firstChild||section.querySelector('.table-wrapper'));}
         function filter(){const query=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();for(const row of body.rows){const text=row.textContent.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();row.hidden=!!query&&!text.includes(query);}}
         if(!search.dataset.wired){search.addEventListener('input',filter);search.dataset.wired='true';}
         filter();

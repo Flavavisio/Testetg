@@ -129,6 +129,24 @@
 #secao-contratos .tabela-compacta-contratos tbody tr[hidden]{display:none!important}
 @media(max-width:650px){#secao-contratos .ct-alert-strip{display:block}#secao-contratos .ct-alert-strip>*{margin-right:4px}#secao-contratos .ct-fast-search{max-width:none}#secao-contratos .table-wrapper{overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}#secao-contratos .section-header>div{justify-content:flex-start}}
 </style>
+<style id="ct-layout-repair">
+#secao-contratos .ct-contract-toolbar{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:8px 0 12px;flex-wrap:wrap}
+#secao-contratos .ct-contract-toolbar .ct-fast-search{flex:1 1 290px;width:auto!important;max-width:390px!important;margin:0!important;min-height:38px}
+#secao-contratos .ct-contract-toolbar .ct-alert-strip{flex:1 1 400px;display:flex;align-items:center;justify-content:flex-end;gap:6px;background:#fffbeb!important;border:1px solid #f4e3b5!important;padding:9px 12px!important;margin:0!important;border-radius:9px;min-height:38px;box-sizing:border-box}
+#secao-contratos .ct-alert-strip small{display:none}
+#secao-contratos .tg-painel-claro{padding:12px!important}
+#secao-contratos .tg-painel-claro #ctrResumoCategorias{max-height:0!important;overflow:hidden!important}
+#secao-contratos .tg-painel-claro.ct-expanded #ctrResumoCategorias{max-height:480px!important;overflow-y:auto!important}
+#secao-contratos .table-wrapper{width:100%;overflow-x:auto!important}
+#secao-contratos .tabela-compacta-contratos{width:100%;min-width:1380px;border-collapse:collapse;table-layout:auto}
+#secao-contratos .tabela-compacta-contratos thead{display:table-header-group!important}
+#secao-contratos .tabela-compacta-contratos tbody{display:table-row-group!important}
+#secao-contratos .tabela-compacta-contratos tr{display:table-row}
+#secao-contratos .tabela-compacta-contratos th,#secao-contratos .tabela-compacta-contratos td{vertical-align:middle;text-align:left;padding:10px 8px;white-space:nowrap}
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell]{min-width:110px}
+#secao-contratos .tabela-compacta-contratos td:last-child{min-width:190px;white-space:normal}
+@media(max-width:900px){#secao-contratos .ct-contract-toolbar{align-items:stretch}#secao-contratos .ct-contract-toolbar .ct-fast-search{max-width:none!important}#secao-contratos .ct-contract-toolbar .ct-alert-strip{justify-content:flex-start}}
+</style>
 </head>
 <body>
 <div id="tg-landing">
@@ -1423,6 +1441,7 @@
             <select id="filtroTecnico" onchange="renderizarContratos()" style="flex:1; min-width:140px;"><option value="">Todos os técnicos</option></select>
             <select id="filtroCidade" onchange="renderizarContratos()" style="flex:1; min-width:140px;"><option value="">Todas as cidades</option></select>
         </div>
+        <div id="ct-contract-toolbar" class="ct-contract-toolbar"></div>
         <div id="contratosBarraSelecao" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 14px;margin-bottom:14px;">
             <strong id="contratosSelecionadosTxt" style="color:#3730a3;"></strong>
             <button class="btn btn-sm" style="background:#7c3aed;color:#fff;" onclick="abrirModalGerarOSMassa()"><i class="fas fa-clipboard-list"></i> Gerar OS em massa</button>
@@ -2615,7 +2634,7 @@
 <script src="tg-os-planning-ui.js?v=1.0.0"></script>
     <link rel="stylesheet" href="tg-passport.css?v=1.0.0">
     <script src="tg-equipment-reports.js?v=1.1.1"></script>
-    <script src="tg-contract-maintenance.js?v=1.7.3"></script>
+    <script src="tg-contract-maintenance.js?v=1.8.0"></script>
     <script src="tg-passport.js?v=1.2.1"></script>
     <link rel="stylesheet" href="tg-reports.css?v=1.0.0">
     <script src="tg-reports-engine.js?v=1.0.0"></script>

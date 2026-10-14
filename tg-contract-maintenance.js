@@ -320,18 +320,31 @@
     // Read-only annual calendar: completed events from confirmed maintenance logs;
     // future events from existing next-maintenance calculations (not fabricated yearly dates).
     function annualCalendar(c,year=new Date().getFullYear()) {
-        if(!c || !Number.isInteger(Number(year)))return [];
-        const y=String(year),events=[],seen=new Set();
+        if(!c || !Number.isInteger(Number(year)) || year<2000 || year>2200)return [];
+        const y=String(year),events=[],seen=new Set(),first=y+'-01-01',last=y+'-12-31';
         for(const row of (dados.registosManutencao||[])) {
             if(row.adminId!==c.adminId || row.contratoId!==c.id || !String(row.dataRealizacao||'').startsWith(y+'-'))continue;
             const key=row.servicoId?'os:'+row.servicoId:'reg:'+row.id;
             if(seen.has(key))continue;seen.add(key);
-            events.push({date:String(row.dataRealizacao).slice(0,10),type:'feito',label:'Manutenção realizada',osId:row.servicoId||null});
+            events.push({date:String(row.dataRealizacao).slice(0,10),type:'feito',label:'Manutenção realizada',osId:row.servicoId||null,key});
         }
+        // Project future occurrences only for equipment with an explicit, valid periodicity.
+        // These are indicative and NEVER create duplicate work orders.
         for(const row of schedule(c)){
-            if(!String(row.data||'').startsWith(y+'-'))continue;
-            const isLate=row.data<getDataHoje();
-            events.push({date:row.data,type:isLate?'atraso':'previsto',label:planLabel(row.plan)+' — '+(row.localNome||'Instalação'),osId:null});
+            if(!row.data || !row.plan?.periodicidade)continue;
+            let current=String(row.data).slice(0,10),iterations=0;
+            if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(current))continue;
+            while(current<first && iterations++<500){
+                const next=avancarPeriodicidade(current,row.plan.periodicidade);
+                if(!next || next<=current)break;current=next;
+            }
+            while(current<=last && iterations++<500){
+                if(current>=first)events.push({date:current,type:current<getDataHoje()?'atraso':'previsto',
+                    label:planLabel(row.plan)+' — '+(row.localNome||'Instalação'),osId:null,
+                    key:'plan:'+c.id+':'+(row.localId||'')+':'+row.plan.id+':'+current});
+                const next=avancarPeriodicidade(current,row.plan.periodicidade);
+                if(!next || next<=current)break;current=next;
+            }
         }
         return events.sort((a,b)=>a.date.localeCompare(b.date));
     }
@@ -339,7 +352,7 @@
         const events=annualCalendar(c,year);
         const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         return '<div class="ct-annual-calendar"><h4>Calendário de visitas — '+esc(year)+'</h4>'+
-        '<p class="help-text">Mostra visitas concluídas e as próximas manutenções calculadas. Não representa um calendário de todas as visitas futuras até estas serem agendadas.</p>'+
+        '<p class="help-text">Mostra as visitas concluídas e as ocorrências futuras previstas pela periodicidade de cada equipamento. Previsões não são agendamentos nem criam OS; confirma o planeamento antes de atribuir técnicos.</p>'+
         '<div class="ct-month-grid">'+months.map((name,i)=>{
             const rows=events.filter(e=>Number(e.date.slice(5,7))===i+1);
             return '<section class="ct-month"><strong>'+name+'</strong>'+

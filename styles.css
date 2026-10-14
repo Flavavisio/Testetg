@@ -1747,3 +1747,36 @@ body.tem-menu-inferior .alerta-chev { color: var(--tgm-text-mute); }
 
 
 /* Nexus is defined in tg-nexus.css; the saved layout key remains aurora. */
+
+/* Kiosk scroll fix: allow long employee and agenda lists on desktop and touch devices.
+   Flex children must not shrink to fit a fixed-height fullscreen overlay. */
+#tgQuiosqueOverlay.aberto {
+    box-sizing:border-box;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+    justify-content:flex-start !important;
+    align-items:center;
+    min-height:0;
+}
+#tgQuiosqueOverlay.aberto > .tgq-header,
+#tgQuiosqueOverlay.aberto > #tgqGrid,
+#tgQuiosqueOverlay.aberto > #tgqPainel,
+#tgQuiosqueOverlay.aberto > #tgQuiosqueSair {
+    flex-shrink:0 !important;
+}
+#tgQuiosqueOverlay.aberto #tgqGrid {
+    height:auto !important;
+    max-height:none !important;
+    min-height:min-content;
+    overflow:visible;
+    align-content:start;
+    padding-bottom:12px;
+}
+#tgQuiosqueOverlay.aberto #tgQuiosqueSair {padding-bottom:20px;}
+@media(max-width:600px){
+    #tgQuiosqueOverlay.aberto{padding:16px 12px 26px !important;}
+    #tgQuiosqueOverlay.aberto #tgqGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+}

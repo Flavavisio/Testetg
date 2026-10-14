@@ -317,6 +317,43 @@
             (v.excess>0?'<p class="help-text">Visitas adicionais: '+esc(v.excess)+'</p>':'')+
             '<p class="help-text">Contagem baseada nos registos de manutenção concluídos deste contrato. Não inclui OS sem manutenção confirmada; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
     }
+    // Read-only annual calendar: completed events from confirmed maintenance logs;
+    // future events from existing next-maintenance calculations (not fabricated yearly dates).
+    function annualCalendar(c,year=new Date().getFullYear()) {
+        if(!c || !Number.isInteger(Number(year)))return [];
+        const y=String(year),events=[],seen=new Set();
+        for(const row of (dados.registosManutencao||[])) {
+            if(row.adminId!==c.adminId || row.contratoId!==c.id || !String(row.dataRealizacao||'').startsWith(y+'-'))continue;
+            const key=row.servicoId?'os:'+row.servicoId:'reg:'+row.id;
+            if(seen.has(key))continue;seen.add(key);
+            events.push({date:String(row.dataRealizacao).slice(0,10),type:'feito',label:'Manutenção realizada',osId:row.servicoId||null});
+        }
+        for(const row of schedule(c)){
+            if(!String(row.data||'').startsWith(y+'-'))continue;
+            const isLate=row.data<getDataHoje();
+            events.push({date:row.data,type:isLate?'atraso':'previsto',label:planLabel(row.plan)+' — '+(row.localNome||'Instalação'),osId:null});
+        }
+        return events.sort((a,b)=>a.date.localeCompare(b.date));
+    }
+    function annualCalendarHTML(c,year=new Date().getFullYear()) {
+        const events=annualCalendar(c,year);
+        const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        return '<div class="ct-annual-calendar"><h4>Calendário de visitas — '+esc(year)+'</h4>'+
+        '<p class="help-text">Mostra visitas concluídas e as próximas manutenções calculadas. Não representa um calendário de todas as visitas futuras até estas serem agendadas.</p>'+
+        '<div class="ct-month-grid">'+months.map((name,i)=>{
+            const rows=events.filter(e=>Number(e.date.slice(5,7))===i+1);
+            return '<section class="ct-month"><strong>'+name+'</strong>'+
+                (rows.length?rows.map(e=>'<div class="ct-month-event ct-event-'+esc(e.type)+'"><span>'+esc(e.date.slice(8,10))+' — '+esc(e.label)+'</span>'+
+                    (e.osId?'<button class="btn btn-sm btn-outline" type="button" data-contract-os="'+esc(e.osId)+'">OS</button>':'')+'</div>').join(''):'<small>Sem visitas registadas ou previstas</small>')+'</section>';
+        }).join('')+'</div></div>';
+    }
+    function contractWarning(c,today=getDataHoje()){
+        if(!c)return null;
+        const dueDates=schedule(c).filter(x=>x.data && x.data<today).map(x=>x.data);
+        if(dueDates.length)return {type:'late',text:dueDates.length+' manutenção(ões) com data ultrapassada'};
+        const upcoming=schedule(c).filter(x=>x.data && x.data>=today && x.data<=new Date(new Date(today+'T12:00:00').getTime()+30*86400000).toISOString().slice(0,10));
+        return upcoming.length?{type:'soon',text:upcoming.length+' manutenção(ões) nos próximos 30 dias'}:null;
+    }
     function historyHTML(c,incomplete) {
         const orders=(dados.servicos || []).filter(os=>os.adminId===c.adminId && os.clienteId===c.clienteId && os.contratoId===c.id && !os.apagadoSuperAdmin).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
         const orderIds=new Set(orders.map(os=>os.id));
@@ -325,7 +362,7 @@
         const sheetButtons=list=>list.map(f=>`<div class="help-text">${esc(f.data)} · ${esc(f.descricao || 'Folha de obra')} <button type="button" class="btn btn-sm btn-outline" data-contract-sheet="${esc(f.id)}">Folha de obra</button> <button type="button" class="btn btn-sm btn-outline" data-contract-pdf="${esc(f.id)}">PDF</button></div>`).join('');
         const m=typeof _margemContrato==='function'?_margemContrato(c.id):null;
         const margem=m?.nFolhas?'<p class="help-text">Rentabilidade acumulada: valor '+esc(m.valorContrato.toFixed(2))+' € · custos '+esc(m.custoTotal.toFixed(2))+' € · margem '+esc(m.margem.toFixed(2))+' €</p>':'';
-        return yearlyVisitsHTML(c)+margem+(incomplete?'<p role="status">Não foi possível confirmar todo o histórico. <button type="button" class="btn btn-sm" data-contract-retry>Tentar novamente</button></p>':'')+
+        return yearlyVisitsHTML(c)+annualCalendarHTML(c)+margem+(incomplete?'<p role="status">Não foi possível confirmar todo o histórico. <button type="button" class="btn btn-sm" data-contract-retry>Tentar novamente</button></p>':'')+
             `<p class="help-text">${orders.length} OS · ${sheets.length} folhas de obra originais · ${regs.length} manutenções registadas</p>`+
             orders.map(os=>`<article style="padding:12px;border-bottom:1px solid #e2e8f0"><strong>OS ${esc(os.numeroRegisto || '—')}</strong> · ${esc(os.data)} · ${esc(os.status)} · ${esc((dados.locais || []).find(l=>l.id===os.localId)?.nome || 'Sede')}<p>${esc(os.descricao)}</p><button type="button" class="btn btn-sm btn-outline" data-contract-os="${esc(os.id)}">Ver OS</button>${sheetButtons(sheets.filter(f=>f.servicoId===os.id))}</article>`).join('')+
             (sheets.some(f=>!orderIds.has(f.servicoId))?'<h4>Folhas de manutenção</h4>'+sheetButtons(sheets.filter(f=>!orderIds.has(f.servicoId))):'')+
@@ -477,7 +514,7 @@
     }
     document.addEventListener('tg:interface-updated',()=>{renderMaintenance();renderAnnualPortfolio();});
 
-    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,yearlyVisits,yearlyVisitsHTML,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
+    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,yearlyVisits,yearlyVisitsHTML,annualCalendar,annualCalendarHTML,contractWarning,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
     renderMaintenance();
     renderAnnualPortfolio();
 })();

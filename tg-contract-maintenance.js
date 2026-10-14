@@ -296,7 +296,7 @@
         const unique=new Map();
         for(const r of records) {
             // Do not collapse separate manual visits on the same day.
-            const key=r.servicoId ? 'os:'+r.servicoId : 'reg:'+r.id;
+            const key=r.servicoId ? 'os:'+r.servicoId : (r.id ? 'reg:'+r.id : 'legacy:'+records.indexOf(r));
             if(!unique.has(key))unique.set(key,r);
         }
         const completed=unique.size;
@@ -324,7 +324,7 @@
         const y=String(year),events=[],seen=new Set(),first=y+'-01-01',last=y+'-12-31';
         for(const row of (dados.registosManutencao||[])) {
             if(row.adminId!==c.adminId || row.contratoId!==c.id || !String(row.dataRealizacao||'').startsWith(y+'-'))continue;
-            const key=row.servicoId?'os:'+row.servicoId:'reg:'+row.id;
+            const key=row.servicoId?'os:'+row.servicoId:(row.id?'reg:'+row.id:'legacy:'+((dados.registosManutencao||[]).indexOf(row)));
             if(seen.has(key))continue;seen.add(key);
             events.push({date:String(row.dataRealizacao).slice(0,10),type:'feito',label:'Manutenção realizada',osId:row.servicoId||null,key});
         }

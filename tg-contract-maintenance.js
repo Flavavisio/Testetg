@@ -489,12 +489,14 @@
             const v=contract?yearlyVisits(contract):null;
             const value=v?(v.known?v.completed+' / '+v.planned:v.completed+' / —'):'—';
             const sub=v?(v.known?(v.remaining?v.remaining+' em falta':v.excess?v.excess+' extra':'Concluído'):'Meta por definir'):'Confirmar contrato';
-            const signature=value+'|'+sub;
+            const warning=contract?contractWarning(contract):null;
+            const signature=value+'|'+sub+'|'+(warning?.text||'');
             if(cell.dataset.value!==signature){
                 cell.dataset.value=signature;
                 cell.replaceChildren();
                 const strong=document.createElement('strong');strong.textContent=value;cell.appendChild(strong);
                 const small=document.createElement('small');small.textContent=sub;small.style.cssText='display:block;font-size:.72rem;color:#64748b';cell.appendChild(small);
+                if(warning){const note=document.createElement('small');note.textContent=warning.text;note.style.cssText='display:block;font-size:.7rem;color:'+(warning.type==='late'?'#b91c1c':'#a16207');cell.appendChild(note);}
                 if(v?.planned>0){const bar=document.createElement('div');bar.style.cssText='height:4px;margin-top:5px;background:#e5eaf2;border-radius:6px;overflow:hidden';const inner=document.createElement('div');inner.style.cssText='height:100%;background:#2563eb;width:'+Math.min(100,Math.round(v.completed/v.planned*100))+'%';bar.appendChild(inner);cell.appendChild(bar);}
             }
         }

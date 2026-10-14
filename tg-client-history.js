@@ -99,6 +99,23 @@
             if(entry.action==='contrato')abrirModalContrato(entry.id);
         });render();
     }
+    // Fallback for legacy customer tab navigation: on some layouts the tab changes
+    // visually without calling TGClientHistory.show. Bind only the History tab.
+    document.addEventListener('click',event=>{
+        const button=event.target.closest('button,[role="tab"]');if(!button)return;
+        const overlay=button.closest('#wsClienteOverlay');if(!overlay)return;
+        const tabText=(button.textContent||'').trim().toLocaleLowerCase('pt-PT');
+        const tab=button.dataset.aba || button.dataset.tab || button.dataset.wsTab || '';
+        if(tab!=='historico' && tabText!=='histórico')return;
+        setTimeout(()=>{
+            if(!overlay.classList.contains('open'))return;
+            const id=overlay.dataset.clienteAtual;
+            if(!id || !scope(id))return;
+            // Do not re-fetch if the current history view is already active.
+            if(document.getElementById('tgCustomerHistory') || document.getElementById('tgHistoryLoading'))return;
+            show(id);
+        },0);
+    });
     document.addEventListener('tg:interface-updated',()=>{
         if(current && (identity()!==current.scope.identity || !scope(current.scope.id))){document.getElementById('tgCustomerHistory')?.remove();current=null;++sequence;}
         else if(current)render();

@@ -371,8 +371,31 @@
         if(!ids.length){alert('Seleciona os sistemas que queres juntar na mesma OS.');return;}
         b.disabled=true;try{await openMaintenance(c,localId,ids);}catch(_){alert('Não foi possível abrir a manutenção. Tenta novamente.');}finally{if(b.isConnected)b.disabled=false;}
     });
-    document.addEventListener('tg:interface-updated',renderMaintenance);
+    // Portfolio annual scorecard: no writes or mutations, tenant- and license-scoped.
+    function renderAnnualPortfolio() {
+        const section=document.getElementById('secao-contratos');
+        if(!section || !usuarioLogado || !moduloContratosAtivo(adminAtual())) {
+            document.getElementById('ct-annual-portfolio')?.remove();return;
+        }
+        const tid=usuarioLogado.adminId || usuarioLogado.id;
+        const contratos=(dados.contratos || []).filter(c=>c.adminId===tid && !c.apagadoSuperAdmin);
+        let panel=document.getElementById('ct-annual-portfolio');
+        if(!panel){panel=document.createElement('div');panel.id='ct-annual-portfolio';panel.style.cssText='padding:14px 16px;border:1px solid #dce5f1;border-radius:12px;margin:12px 0;background:#f8fafc';const head=section.querySelector('.section-header');if(head)head.insertAdjacentElement('afterend',panel);else section.prepend(panel);}
+        const year=new Date().getFullYear();
+        const vals=contratos.map(c=>yearlyVisits(c,year));
+        const defined=vals.filter(v=>v.known);
+        const total=defined.reduce((n,v)=>n+v.planned,0),done=defined.reduce((n,v)=>n+v.completed,0);
+        const pending=defined.reduce((n,v)=>n+v.remaining,0);
+        const unknown=vals.length-defined.length;
+        panel.innerHTML='<strong>Visitas de manutenção — '+esc(year)+'</strong>'+
+        '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:14px">'+
+        '<span>Previstas: <b>'+esc(total)+'</b></span><span>Realizadas: <b>'+esc(done)+'</b></span>'+
+        '<span>Por realizar: <b>'+esc(pending)+'</b></span><span>Contratos sem meta definida: <b>'+esc(unknown)+'</b></span></div>'+
+        '<p class="help-text" style="margin:7px 0 0">Totais dos contratos com visitas anuais definidas. Só contam registos de manutenção confirmados. A ausência de registos antigos pode alterar a contagem.</p>';
+    }
+    document.addEventListener('tg:interface-updated',()=>{renderMaintenance();renderAnnualPortfolio();});
 
     window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,yearlyVisits,yearlyVisitsHTML,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
     renderMaintenance();
+    renderAnnualPortfolio();
 })();

@@ -110,6 +110,18 @@
 #secao-contratos .tabela-compacta-contratos td {vertical-align:middle}
 @media(max-width:700px){#secao-contratos .section-header>div .btn{font-size:.76rem;padding:8px}#secao-contratos .tg-status-box{min-width:95px}}
 </style>
+<style id="tg-contracts-calendar-v2">
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell]{min-width:125px}
+#secao-contratos .section-header>div{row-gap:8px}
+.ct-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.ct-month{border:1px solid #dce5f0;border-radius:10px;padding:12px;min-width:0;background:#fff}
+.ct-month>strong{display:block;margin-bottom:8px;color:#173758}
+.ct-month>small{font-size:.77rem;color:#64748b}
+.ct-month-event{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px;font-size:.78rem;padding:7px 5px;border-top:1px solid #edf1f6}
+.ct-event-feito{color:#167449}.ct-event-atraso{color:#b91c1c}.ct-event-previsto{color:#255ca9}
+@media(max-width:800px){.ct-month-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#modalContratoOverlay .modal{padding:18px 14px;max-width:100%}#ct_contract_tabs{position:sticky;top:0;background:#fff;z-index:3;padding:8px 0;overflow-x:auto;flex-wrap:nowrap!important}#ct_contract_tabs .btn{flex-shrink:0}}
+@media(max-width:530px){.ct-month-grid{grid-template-columns:1fr}#secao-contratos .section-header{align-items:start}#secao-contratos .section-header>div{width:100%}#secao-contratos select{min-width:130px!important}#modalContratoOverlay .ff-secao-body{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <div id="tg-landing">
@@ -2596,7 +2608,7 @@
 <script src="tg-os-planning-ui.js?v=1.0.0"></script>
     <link rel="stylesheet" href="tg-passport.css?v=1.0.0">
     <script src="tg-equipment-reports.js?v=1.1.1"></script>
-    <script src="tg-contract-maintenance.js?v=1.5.1"></script>
+    <script src="tg-contract-maintenance.js?v=1.6.0"></script>
     <script src="tg-passport.js?v=1.2.1"></script>
     <link rel="stylesheet" href="tg-reports.css?v=1.0.0">
     <script src="tg-reports-engine.js?v=1.0.0"></script>

@@ -217,6 +217,42 @@
         }
         return incomplete;
     }
+    // Yearly contract visits: a maintenance register linked to one OS counts as one visit,
+    // even when several equipment/system plans were completed at that visit.
+    function yearlyVisits(c,year=new Date().getFullYear()) {
+        if(!c || !Number.isInteger(Number(year)) || Number(year)<2000 || Number(year)>2200)return null;
+        const tenant=c.adminId,yr=String(year);
+        const n=c.gestaoManutencao?.servicos?.visitasAno;
+        const planned=n==null || n==='' ? null : (Number.isInteger(Number(n)) && Number(n)>=0 ? Number(n) : null);
+        const records=(dados.registosManutencao || []).filter(r=>
+            r.adminId===tenant && r.contratoId===c.id &&
+            /^\\d{4}-\\d{2}-\\d{2}/.test(String(r.dataRealizacao||'')) &&
+            String(r.dataRealizacao).slice(0,4)===yr
+        );
+        const unique=new Map();
+        for(const r of records) {
+            // Do not collapse separate manual visits on the same day.
+            const key=r.servicoId ? 'os:'+r.servicoId : 'reg:'+r.id;
+            if(!unique.has(key))unique.set(key,r);
+        }
+        const completed=unique.size;
+        return {year:Number(year),planned,completed,remaining:planned===null?null:Math.max(0,planned-completed),
+            excess:planned===null?null:Math.max(0,completed-planned),known:planned!==null,
+            records:[...unique.values()]};
+    }
+    function yearlyVisitsHTML(c,year=new Date().getFullYear()) {
+        const v=yearlyVisits(c,year);if(!v)return '';
+        const pct=v.planned>0?Math.min(100,Math.round(v.completed/v.planned*100)):0;
+        return '<section class="ct-year-visits" style="padding:14px;border:1px solid #dce5f1;border-radius:12px;margin:12px 0;background:#f8fafc">'+
+            '<strong>Visitas de manutenção — '+esc(v.year)+'</strong>'+
+            '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">'+
+            '<span>Previstas: <b>'+esc(v.planned===null?'Não definido':v.planned)+'</b></span>'+
+            '<span>Realizadas: <b>'+esc(v.completed)+'</b></span>'+
+            '<span>Por realizar: <b>'+esc(v.remaining===null?'—':v.remaining)+'</b></span></div>'+
+            (v.planned>0?'<div role="progressbar" aria-valuenow="'+esc(Math.min(v.completed,v.planned))+'" aria-valuemin="0" aria-valuemax="'+esc(v.planned)+'" style="height:7px;border-radius:6px;background:#dfe7f2;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#2860a6"></div></div>':'')+
+            (v.excess>0?'<p class="help-text">Visitas adicionais: '+esc(v.excess)+'</p>':'')+
+            '<p class="help-text">Contagem baseada nos registos de manutenção concluídos deste contrato. Não inclui OS sem manutenção confirmada; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
+    }
     function historyHTML(c,incomplete) {
         const orders=(dados.servicos || []).filter(os=>os.adminId===c.adminId && os.clienteId===c.clienteId && os.contratoId===c.id && !os.apagadoSuperAdmin).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
         const orderIds=new Set(orders.map(os=>os.id));
@@ -225,7 +261,7 @@
         const sheetButtons=list=>list.map(f=>`<div class="help-text">${esc(f.data)} · ${esc(f.descricao || 'Folha de obra')} <button type="button" class="btn btn-sm btn-outline" data-contract-sheet="${esc(f.id)}">Folha de obra</button> <button type="button" class="btn btn-sm btn-outline" data-contract-pdf="${esc(f.id)}">PDF</button></div>`).join('');
         const m=typeof _margemContrato==='function'?_margemContrato(c.id):null;
         const margem=m?.nFolhas?'<p class="help-text">Rentabilidade acumulada: valor '+esc(m.valorContrato.toFixed(2))+' € · custos '+esc(m.custoTotal.toFixed(2))+' € · margem '+esc(m.margem.toFixed(2))+' €</p>':'';
-        return margem+(incomplete?'<p role="status">Não foi possível confirmar todo o histórico. <button type="button" class="btn btn-sm" data-contract-retry>Tentar novamente</button></p>':'')+
+        return yearlyVisitsHTML(c)+margem+(incomplete?'<p role="status">Não foi possível confirmar todo o histórico. <button type="button" class="btn btn-sm" data-contract-retry>Tentar novamente</button></p>':'')+
             `<p class="help-text">${orders.length} OS · ${sheets.length} folhas de obra originais · ${regs.length} manutenções registadas</p>`+
             orders.map(os=>`<article style="padding:12px;border-bottom:1px solid #e2e8f0"><strong>OS ${esc(os.numeroRegisto || '—')}</strong> · ${esc(os.data)} · ${esc(os.status)} · ${esc((dados.locais || []).find(l=>l.id===os.localId)?.nome || 'Sede')}<p>${esc(os.descricao)}</p><button type="button" class="btn btn-sm btn-outline" data-contract-os="${esc(os.id)}">Ver OS</button>${sheetButtons(sheets.filter(f=>f.servicoId===os.id))}</article>`).join('')+
             (sheets.some(f=>!orderIds.has(f.servicoId))?'<h4>Folhas de manutenção</h4>'+sheetButtons(sheets.filter(f=>!orderIds.has(f.servicoId))):'')+
@@ -337,6 +373,6 @@
     });
     document.addEventListener('tg:interface-updated',renderMaintenance);
 
-    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
+    window.TGContractMaintenance={mount,collect,refreshPlan,plans,schedule,nextDate,due,osPicker,selectedOS,equipmentForOS,recordNext,snapshot,checklist,registerMaintenance,registoPicker,completedTasks,yearlyVisits,yearlyVisitsHTML,history,historyHTML,loadHistory,alerts,maintenanceRows,maintenanceHTML,renderMaintenance,pendingOS,availability};
     renderMaintenance();
 })();

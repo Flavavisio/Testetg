@@ -522,10 +522,34 @@
         contractTableObserver.observe(body,{childList:true,subtree:true});
         decorateContractRows();
     }
+    function renderContractAlerts() {
+        const section=document.getElementById('secao-contratos');
+        if(!section || !usuarioLogado || !moduloContratosAtivo(adminAtual())){document.getElementById('ct-contract-alerts')?.remove();return;}
+        const tid=usuarioLogado.adminId||usuarioLogado.id;
+        const all=(dados.contratos||[]).filter(c=>c.adminId===tid&&!c.apagadoSuperAdmin);
+        let root=document.getElementById('ct-contract-alerts');
+        if(!root){root=document.createElement('div');root.id='ct-contract-alerts';root.className='ct-alert-strip';const table=section.querySelector('.table-wrapper');table?.parentNode.insertBefore(root,table);}
+        const late=[],soon=[];
+        for(const c of all){const w=contractWarning(c);if(!w)continue;(w.type==='late'?late:soon).push(c);}
+        root.textContent='';
+        const title=document.createElement('strong');title.textContent='Avisos de manutenção';root.appendChild(title);
+        const text=document.createElement('span');text.textContent='  '+late.length+' contrato(s) com manutenção atrasada · '+soon.length+' com manutenção nos próximos 30 dias';root.appendChild(text);
+        const caption=document.createElement('small');caption.textContent=' Alertas internos, calculados quando os dados são atualizados. Não são notificações push.';root.appendChild(caption);
+    }
+    function setupContractSearch(){
+        const section=document.getElementById('secao-contratos'),body=document.getElementById('tabelaContratos');if(!section||!body)return;
+        let search=document.getElementById('ct-fast-search');
+        if(!search){search=document.createElement('input');search.id='ct-fast-search';search.type='search';search.placeholder='Pesquisar contrato, cliente ou instalação';search.setAttribute('aria-label','Pesquisar contratos');search.className='ct-fast-search';const table=section.querySelector('.table-wrapper');table?.parentNode.insertBefore(search,table);}
+        function filter(){const query=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();for(const row of body.rows){const text=row.textContent.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();row.hidden=!!query&&!text.includes(query);}}
+        if(!search.dataset.wired){search.addEventListener('input',filter);search.dataset.wired='true';}
+        filter();
+    }
     function renderAnnualPortfolio() {
         document.getElementById('ct-annual-portfolio')?.remove();
         watchContractRows();
         decorateContractRows();
+        setupContractSearch();
+        renderContractAlerts();
     }
     document.addEventListener('tg:interface-updated',()=>{renderMaintenance();renderAnnualPortfolio();});
 

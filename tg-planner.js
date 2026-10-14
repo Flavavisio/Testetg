@@ -16,7 +16,7 @@ function recommend({technicians=[],appointments=[],absences=[],job={},tenantId,n
   const tid=id(t.id);
   const skills=(t.skills||t.competencias||[]).map(x=>String(x).toLowerCase().trim());
   const missing=required.filter(x=>!skills.includes(x));
-  const conflicts=appointments.filter(a=>scoped(a)&&id(a.technicianId??a.tecnicoId??a.tecnico_id)===tid&&id(a.id)!==id(job.id)&&!['cancelado','cancelled'].includes(String(a.status||'').toLowerCase())&&date(a.start)&&date(a.end)&&overlap(begin,end,date(a.start),date(a.end)));
+  const conflicts=appointments.filter(a=>scoped(a)&&id(a.technicianId??a.tecnicoId??a.tecnico_id)===tid&&(!job.id||id(a.id)!==id(job.id))&&!['cancelado','cancelled'].includes(String(a.status||'').toLowerCase())&&date(a.start)&&date(a.end)&&overlap(begin,end,date(a.start),date(a.end)));
   const away=absences.filter(a=>scoped(a)&&id(a.technicianId??a.employeeId??a.colaboradorId)===tid&&date(a.start)&&date(a.end)&&overlap(begin,end,date(a.start),date(a.end)));
   const reasons=[...(missing.length?['Competências em falta: '+missing.join(', ')]:[]),...(conflicts.length?['Serviços sobrepostos: '+conflicts.length]:[]),...(away.length?['Ausência/férias no período']:[])];
   const free=reasons.length===0;

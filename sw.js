@@ -1,6 +1,6 @@
 // Service Worker — Total Gest PWA
-const CACHE = 'totalgest-v47-nexus-default';
-const ASSETS = ['./tg-equipment-reports.js?v=1.1.1', './tg-contract-maintenance.js?v=1.4.0', './tg-passport.js?v=1.2.1', './tg-passport.css?v=1.0.0', './tg-client-history.js?v=1.0.0', './tg-client-history.css?v=1.0.0', './tg-integrated-modules.js?v=1.0.0', './tg-module-embed.js?v=1.0.0', './tg-integrated-modules.css?v=1.1.0', './app-principal.js?v=nexus-default-1', './tg-nexus.css?v=1.1.1', './tg-nexus.js?v=1.1.0', './tg-reports.css?v=1.0.0', './tg-reports-engine.js?v=1.0.0', './tg-reports-ui.js?v=1.0.0', './responsive-device.css?v=2', './login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'totalgest-v48-planning-offline-safe';
+const ASSETS = ['./tg-planner.js', './tg-offline.js', './tg-equipment-reports.js?v=1.1.1', './tg-contract-maintenance.js?v=1.4.0', './tg-passport.js?v=1.2.1', './tg-passport.css?v=1.0.0', './tg-client-history.js?v=1.0.0', './tg-client-history.css?v=1.0.0', './tg-integrated-modules.js?v=1.0.0', './tg-module-embed.js?v=1.0.0', './tg-integrated-modules.css?v=1.1.0', './app-principal.js?v=nexus-default-1', './tg-nexus.css?v=1.1.1', './tg-nexus.js?v=1.1.0', './tg-reports.css?v=1.0.0', './tg-reports-engine.js?v=1.0.0', './tg-reports-ui.js?v=1.0.0', './responsive-device.css?v=2', './login.html', './access.css', './app-entry.js', './pwa-service-worker.js', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS).catch(() => {})));
@@ -34,28 +34,19 @@ self.addEventListener('message', e => {
   }
 });
 
+// Only static shell files are eligible for caching. Never cache data/API responses.
+const staticPaths = new Set(ASSETS.map(p => new URL(p, self.registration.scope).pathname));
 self.addEventListener('fetch', e => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-
-  e.respondWith(
-    fetch(req).then(res => {
-      try {
-        if (new URL(req.url).origin === location.origin && res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
-        }
-      } catch (err) {}
-      return res;
-    }).catch(() => {
-      // só usa o fallback de navegação (index.html) para pedidos de navegação (o utilizador a abrir/mudar de página).
-      // Para tudo o resto (imagens, scripts, chamadas à API) tenta a cache desse recurso específico; se não houver, falha normalmente.
-      if (req.mode === 'navigate') {
-        return caches.match(req).then(hit => hit || caches.match(new URL(req.url).pathname.endsWith('/login.html') ? './login.html' : './index.html'));
-      }
-      return caches.match(req);
-    })
-  );
+  const req=e.request;
+  if(req.method!=='GET')return;
+  const u=new URL(req.url);
+  if(u.origin!==self.location.origin || !staticPaths.has(u.pathname) || u.searchParams.has('access_token') || u.searchParams.has('token') || req.headers.has('authorization'))return;
+  e.respondWith(fetch(req).then(res=>{
+    if(res.ok && res.type==='basic' && !res.headers.has('set-cookie') && !/private|no-store/i.test(res.headers.get('cache-control')||'')){
+      const copy=res.clone();e.waitUntil(caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{}));
+    }
+    return res;
+  }).catch(()=>caches.match(req).then(hit=>hit||Response.error())));
 });
 
 // ===== Notificações push =====

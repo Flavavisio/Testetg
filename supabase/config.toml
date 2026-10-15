@@ -1,0 +1,8 @@
+project_id = "Testetg"
+
+# JWT is validated against Supabase Auth inside billing-checkout.
+# Stripe authenticates its endpoint with a signature over the raw body.
+[functions.billing-checkout]
+verify_jwt = false
+[functions.billing-webhook]
+verify_jwt = false

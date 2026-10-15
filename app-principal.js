@@ -4677,19 +4677,19 @@
                                 ${blocoInstrucoesPagamentoGrupo(_pendentesTodos)}
                             </div>`;
                         })()}
-                        ${(!isDemo && (!modAtivo || !frotaAtivo || !armazemAtivo || !crmAtivo)) ? `
+                        ${(!PACKS_APENAS && !isDemo && (!modAtivo || !frotaAtivo || !armazemAtivo || !crmAtivo)) ? `
                         <div style="margin-top:16px;text-align:left;">
                             <button class="btn btn-sm" style="background:#0f766e;color:#fff;" onclick="_ativAddonsAbrir()"><i class="fas fa-puzzle-piece"></i> Ativar Add-ons</button>
                         </div>
                         ` : ''}
-                        ${portalBloco}
-                        ${notificacoesBloco}
-                        ${modBloco}
-                        ${frotaBloco}
-                        ${armazemBloco}
-                        ${crmBloco}
-                        ${assistBloco}
-                        ${rondasBloco}
+                        ${PACKS_APENAS ? '' : portalBloco}
+                        ${PACKS_APENAS ? '' : notificacoesBloco}
+                        ${PACKS_APENAS ? '' : modBloco}
+                        ${PACKS_APENAS ? '' : frotaBloco}
+                        ${PACKS_APENAS ? '' : armazemBloco}
+                        ${PACKS_APENAS ? '' : crmBloco}
+                        ${PACKS_APENAS ? '' : assistBloco}
+                        ${PACKS_APENAS ? '' : rondasBloco}
                         ${''/* erpBloco escondido de momento, ver pedido do utilizador */}
                         ${_referenciaBlocoHTML(admin)}
                         <div style="margin-top:20px; padding:14px 16px; background:#eff6ff; border-radius:10px; border:1px solid #bfdbfe;">
@@ -4709,6 +4709,7 @@
                         })()}
                     </div>
                 `;
+            window.TGBilling?.mount(container);
         }
 
         // ===== Férias: feriados nacionais PT + cálculo de dias úteis =====
@@ -8062,6 +8063,16 @@
         //  anterior mais o seu. A base (OS, folhas de obra, clientes, contratos, relatórios
         //  personalizados, calendário de equipa) está em todos e não precisa de flag.
         // =====================================================================
+        // Novas compras e renovações são exclusivamente pelos quatro packs.
+        // Os campos antigos mantêm-se para ler contratos/histórico já existentes.
+        const PACKS_APENAS = true;
+        function _abrirCompraPack() {
+            if (!usuarioLogado || !['admin', 'subadmin'].includes(usuarioLogado.role)) {
+                alert('Apenas administradores podem escolher um pack.');
+                return;
+            }
+            _abrirRenovacaoPack();
+        }
         const PACKS = {
             express: {
                 nome: 'Express',
@@ -8256,6 +8267,7 @@
             'assistencias', // Assist — sem CRM (por agora; fica prevista uma licença só de Express+Assist mais tarde)
         ];
         function solicitarRondas(plano) {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual();
             if (!admin) return;
             if (!confirm('Pedir ao Super Admin a ativação do módulo de Rondas (Vigilância) — grátis por agora?')) return;
@@ -8670,6 +8682,7 @@
             abrirSecao(secao);
         }
         function solicitarArmazem(plano) {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual();
             if (!admin) return;
             const preco = plano === 'anual' ? PRECO_ARMAZEM_ANUAL : PRECO_ARMAZEM_MENSAL;
@@ -8705,6 +8718,7 @@
             abrirSecao('frota');
         }
         function solicitarFrota(plano) {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual();
             if (!admin) return;
             const preco = plano === 'anual' ? PRECO_FROTA_ANUAL : PRECO_FROTA_MENSAL;
@@ -8730,6 +8744,7 @@
             enviarEmailPagamento(admin, 'Frota — ' + (plano === 'anual' ? 'Anual' : 'Mensal'), preco, _idPedidoFrota, 'compra_addon');
         }
         function solicitarCrm(plano) {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual();
             if (!admin) return;
             const preco = plano === 'anual' ? PRECO_CRM_ANUAL : PRECO_CRM_MENSAL;
@@ -9487,6 +9502,7 @@
         }
 
         function solicitarContratos(plano) {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual();
             if (!admin) return;
             const preco = plano === 'anual' ? PRECO_CONTRATOS_ANUAL : PRECO_CONTRATOS_MENSAL;
@@ -24187,7 +24203,7 @@ async function salvarAdmin(e) {
             }
             // Contas com pack (modelo novo) usam o modal de renovação próprio de packs, não o
             // wizard de add-ons à peça (que continua a servir as contas antigas).
-            if (packDoAdmin(adminAtual())) { _abrirRenovacaoPack(); return; }
+            if (PACKS_APENAS || packDoAdmin(adminAtual())) { _abrirCompraPack(); return; }
             renovacaoTipo = tipo;
             const overlay = document.getElementById('modalRenovacaoOverlay');
             const titulo = tipo === 'renovacao' ? 'Pedir Renovação / Alteração ao seu Plano' : 'Alterar Plano';
@@ -24600,6 +24616,7 @@ async function salvarAdmin(e) {
             return mapa.filter(m => !m.ativo);
         }
         function _ativAddonsAbrir() {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             const admin = adminAtual(); if (!admin) return;
             _ativAddonsPeriodo = 'mensal';
             _ativAddonsEscolhidos = [];
@@ -24667,6 +24684,7 @@ async function salvarAdmin(e) {
             `;
         }
         function _ativAddonsSubmeter() {
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             if (!_ativAddonsEscolhidos.length) { alert('Escolhe pelo menos um add-on para ativar.'); return; }
             const admin = adminAtual(); if (!admin) return;
             const inativos = _ativModulosInativos(admin);
@@ -24704,6 +24722,7 @@ async function salvarAdmin(e) {
         }
         function salvarRenovacao(e) {
             e.preventDefault();
+            if (PACKS_APENAS) { _abrirCompraPack(); return; }
             if (!usuarioLogado || usuarioLogado.role !== 'admin' && usuarioLogado.role !== 'subadmin') {
                 alert('Apenas administradores podem fazer pedidos.');
                 return;

@@ -144,3 +144,8 @@ body.tg-nexus #btnSino{width:44px;height:44px;flex:none;background:var(--nx-bg);
 body.tg-nexus #btnSino:hover{background:var(--nx-tint);color:var(--nx-accent)}
 body.tg-nexus #btnSino .fa-bell{color:inherit;font-size:1.15rem}
 body.tg-nexus #sinoBadge{background:#ef4444;color:#fff;box-shadow:0 0 0 2px var(--nx-surface);pointer-events:none}
+/* Operational tables keep dates and action controls readable. */
+body.tg-nexus :is(#secao-contratos,#secao-servicos,#secao-artigos) .table-wrapper table{min-width:1120px}
+body.tg-nexus :is(#secao-contratos,#secao-servicos,#secao-artigos) td:last-child{min-width:180px;vertical-align:middle}
+body.tg-nexus :is(#secao-contratos,#secao-servicos,#secao-artigos) td:last-child .btn{display:inline-flex;align-items:center;justify-content:center;margin:3px;min-width:34px;min-height:34px}
+body.tg-nexus #secao-contratos td:nth-child(8),body.tg-nexus #secao-contratos td:nth-child(9){white-space:nowrap}

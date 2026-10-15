@@ -5,7 +5,7 @@
   const base = new URL('.', document.currentScript.src);
   const asset = name => new URL('assets/' + name, base).href;
   const css = document.createElement('link');
-  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=4.0.0-teco', base).href;
+  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=4.1.0-dock', base).href;
   document.head.append(css);
   const root = document.createElement('aside');
   root.id = 'tg-assistente'; root.hidden = true;
@@ -146,7 +146,14 @@
     if (value) { hint.hidden=true; quickLinks(); animate('wave'); input.focus({preventScroll:true}); log.scrollTop = log.scrollHeight; }
     else if (!root.hidden) toggle.focus({preventScroll:true});
   }
+  function syncDock() {
+    if (typeof document === 'undefined' || !document.body) return;
+    const docked = !!document.querySelector('.section-container.active');
+    if (root.classList.contains('tg-docked') !== docked) root.classList.toggle('tg-docked', docked);
+    if (document.body.classList.contains('tg-assistant-docked') !== docked) document.body.classList.toggle('tg-assistant-docked', docked);
+  }
   function sync() {
+    syncDock();
     const u = user();
     const key = u ? [u.id, u.adminId, u.tenant_id, u.role].join(':') : '';
     const kiosk = typeof _quiosqueDeveEstarAtivo === 'function' && _quiosqueDeveEstarAtivo();
@@ -212,6 +219,7 @@
 
   root.addEventListener('keydown', e => { if (e.key === 'Escape' && opened) { e.stopPropagation(); setOpen(false); } });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if(opened)log.scrollTop=log.scrollHeight; }).observe(log);
+  if (typeof MutationObserver === 'function') new MutationObserver(syncDock).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
   window.TGAssistente = Object.freeze({sync});
   // A app notifica alterações da sessão/renderização. Atualização local a cada minuto, sem pedidos de rede nem histórico persistido.
   document.addEventListener('tg:interface-updated', sync);

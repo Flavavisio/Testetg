@@ -4629,7 +4629,7 @@
                     <div class="report-card" style="border-left-color:#1e40af;background:linear-gradient(135deg,#eff6ff,#fff);">
                         <h4><i class="fas fa-box-open"></i> Pack ${def.nome}</h4>
                         <div class="report-item"><span>Escalão</span><span>${escLabel}</span></div>
-                        ${precoBase ? `<div class="report-item"><span>Preço base</span><span>${precoBase.toFixed(2)} €/mês${_IVA_INC}</span></div>` : ''}
+                        ${precoBase ? `<div class="report-item"><span>Preço de catálogo atual</span><span>${precoBase.toFixed(2)} €/mês${_IVA_INC}</span></div>` : ''}
                         <div style="margin-top:10px;font-size:.85rem;color:#334155;"><strong>Inclui:</strong> Base (OS, folhas, clientes, contratos, relatórios personalizados)${inclui.length ? ', ' + inclui.join(', ') : ''}.</div>
                     </div>`;
             }
@@ -4640,7 +4640,7 @@
                         <h4><i class="fas fa-id-card"></i> ${admin.nome}</h4>
                         <div class="report-item"><span>Empresa</span><span>${admin.empresa || '-'}</span></div>
                         <div class="report-item"><span>Plano</span><span>${planoLabel} ${isDemo ? '<span class="badge badge-demo">Demo</span>' : ''}</span></div>
-                        <div class="report-item"><span>Valor</span><span>${valor}€${_IVA_INC}</span></div>
+                        <div class="report-item"><span>Valor contratado da licença</span><span>${valor}€${_IVA_INC}</span></div>
                         <div class="report-item"><span>Funcionários permitidos</span><span>${maxFunc}</span></div>
                         <div class="report-item"><span>Funcionários atuais (incl. encarregados)</span><span>${totalFunc} / ${maxFunc}</span></div>
                         <div class="report-item"><span>Código da Licença</span><span><strong>${admin.licenca.codigo}</strong></span></div>
@@ -13046,7 +13046,7 @@
                 const diasTrabalhados = comp.dias.filter(d => d.horas > 0).length;
                 let normais = 0, extras = 0;
                 comp.dias.forEach(d => { normais += Math.min(d.horas, diario); extras += Math.floor(Math.max(0, d.horas - diario)); });
-                const faltasAprovadas = (dados.pedidos || []).filter(x => x.funcionarioId === p.id && x.tipo === 'falta' && x.status === 'aprovado_ped' && x.dataInicio && x.dataFim && x.dataInicio <= fimReal && x.dataFim >= ini);
+                const faltasAprovadas = (dados.pedidos || []).filter(x => x.funcionarioId === p.id && x.tipo === 'falta' && ['aprovado', 'aprovado_ped'].includes(x.status) && x.dataInicio && x.dataFim && x.dataInicio <= fimReal && x.dataFim >= ini);
                 let numFaltas = 0;
                 faltasAprovadas.forEach(f => { numFaltas += diasUteisFerias(f.dataInicio < ini ? ini : f.dataInicio, f.dataFim > fimReal ? fimReal : f.dataFim, hoje.getFullYear()); });
                 const taxa = diasUteis > 0 ? Math.min(100, Math.round((diasTrabalhados / diasUteis) * 100)) : 0;
@@ -13610,7 +13610,7 @@
             }
 
             if (moduloArmazemAtivo(adminAtual())) {
-                const stockBaixo = (dados.artigos || []).filter(a => a.adminId === adminId && a.alertaStock === true && a.stockMinimo != null && stockAtualArtigo(a.id) <= a.stockMinimo).length;
+                const stockBaixo = (dados.artigos || []).filter(a => a.adminId === adminId && _estadoStockArtigo(a, stockAtualArtigo(a.id)).alerta).length;
                 if (stockBaixo) alertas.push({ tipo: 'warning', titulo: `${stockBaixo} ${stockBaixo === 1 ? 'artigo em falta' : 'artigos em falta'}`, sub: 'Stock no mínimo ou abaixo — reponha o armazém.', acao: "abrirSecao('artigos')" });
 
                 const obrasExced = new Set();
@@ -13881,6 +13881,13 @@
         function _nomeArtigoStock(id) { const a = dados.artigos?.find(x => x.id === id); return a ? a.nome : '—'; }
         function _nomeObraStock(id) { const o = dados.obras?.find(x => x.id === id); return o ? o.nome : '—'; }
 
+        function _estadoStockArtigo(artigo, saldo) {
+            const minimo = artigo.stockMinimo;
+            const temMinimo = minimo !== null && minimo !== undefined && minimo !== '' && Number.isFinite(Number(minimo));
+            const negativo = Number(saldo) < 0;
+            const baixo = negativo || (temMinimo && Number(saldo) <= Number(minimo));
+            return { negativo, baixo, alerta: negativo || (baixo && artigo.alertaStock === true), label: negativo ? 'Stock negativo — regularizar' : baixo ? 'Repor' : 'OK' };
+        }
         function stockAtualArtigo(artigoId, armazemId) {
             const a = dados.artigos?.find(x => x.id === artigoId);
             if (!a) return 0;
@@ -14112,11 +14119,12 @@
             tb.innerHTML = lista.length ? lista.map(a => {
                 const st = stockAtualArtigo(a.id);
                 const min = a.stockMinimo;
-                const emFalta = (min != null && st <= min);
+                const estadoStock = _estadoStockArtigo(a, st);
+                const emFalta = estadoStock.baixo;
                 const monit = a.alertaStock === true;
-                if (emFalta && monit) baixo++;
+                if (estadoStock.alerta) baixo++;
                 const badge = emFalta
-                    ? `<span style="color:#dc2626;font-weight:700;"><i class="fas fa-exclamation-triangle"></i> Repor${monit ? ' <i class="fas fa-bell" title="Alerta ativo"></i>' : ''}</span>`
+                    ? `<span style="color:#dc2626;font-weight:700;"><i class="fas fa-exclamation-triangle"></i> ${estadoStock.label}${monit ? ' <i class="fas fa-bell" title="Alerta ativo"></i>' : ''}</span>`
                     : `<span style="color:#16a34a;font-weight:600;">OK${monit ? ' <i class="fas fa-bell" title="Alerta ativo" style="color:#94a3b8;"></i>' : ''}</span>`;
                 return `<tr>
                     <td>${escapeHtmlSimples(a.nome)}</td><td>${escapeHtmlSimples(a.marca || '—')}</td><td>${escapeHtmlSimples(a.categoria || '—')}</td><td>${escapeHtmlSimples(a.referencia || '—')}</td><td>${_unidadeLabel(a.unidade)}</td>
@@ -18219,7 +18227,7 @@
             const _corRel = _hexParaRgb(dados.administradores?.find(a => a.id === adminId)?.corCorporativa);
             doc.autoTable({
                 head: [['Artigo', 'Ref.', 'Unid.', 'Stock atual', 'Mínimo', 'Estado']],
-                body: arts.map(a => { const st = stockAtualArtigo(a.id); const falta = a.stockMinimo != null && st <= a.stockMinimo; return [a.nome, a.referencia || '-', a.unidade || 'un', String(st), a.stockMinimo != null ? String(a.stockMinimo) : '-', falta ? 'Repor' : 'OK']; }),
+                body: arts.map(a => { const st = stockAtualArtigo(a.id); const estado = _estadoStockArtigo(a, st); return [a.nome, a.referencia || '-', a.unidade || 'un', String(st), a.stockMinimo != null ? String(a.stockMinimo) : '-', estado.label]; }),
                 startY, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel }
             });
             _tgGuardarPdf(doc, `stock_${_hoje10()}.pdf`);
@@ -19242,7 +19250,7 @@
                         ${proximasManutencoes.length ? `<table class="hdc-tbl">
                             <thead><tr><th>Data</th><th>Cliente</th><th>Contrato</th><th>Estado</th></tr></thead>
                             <tbody>
-                                ${proximasManutencoes.map(({ c, prox, estado }) => `<tr onclick="abrirCardContratos()"><td>${(prox || '').split('-').reverse().slice(0, 2).join('/')}</td><td>${escapeHtmlSimples(obterNomeCliente(c.clienteId) || '—')}</td><td>${escapeHtmlSimples(c.numero || '—')}</td><td><span style="color:${estado.cor};font-weight:700;">${estado.label}</span></td></tr>`).join('')}
+                                ${proximasManutencoes.map(({ c, prox, estado }) => `<tr onclick="abrirCardContratos()"><td>${(prox || '').split('-').reverse().join('/')}</td><td>${escapeHtmlSimples(obterNomeCliente(c.clienteId) || '—')}</td><td>${escapeHtmlSimples(c.numero || '—')}</td><td><span style="color:${estado.cor};font-weight:700;">${estado.label}</span></td></tr>`).join('')}
                             </tbody>
                         </table>` : `<div class="hdc-vazio">Sem contratos de manutenção ativos.</div>`}
                     </div>
@@ -20368,7 +20376,7 @@
             } else {
                 document.getElementById('diasRestantes').textContent = '-';
             }
-            document.getElementById('countFunc').textContent = countFunc;
+            document.getElementById('countFunc').textContent = countFunc + ' funcionários · ' + countEncarregados + ' encarregados';
             document.getElementById('countCli').textContent = countCli;
             const elCountLeads = document.getElementById('countLeads');
             if (elCountLeads) elCountLeads.textContent = (dados.leads || []).filter(l => l.adminId === (usuarioLogado?.role === 'admin' ? usuarioLogado.id : usuarioLogado?.adminId) && l.estado !== 'ganho' && l.estado !== 'perdido').length;
@@ -25506,7 +25514,7 @@ async function salvarAdmin(e) {
                                         </div>
                                     `}
                                 </div>
-                                <div class="form-group"><label>Data</label><input type="date" id="s_data" value="${item ? item.data : today}" /></div>
+                                <div class="form-group"><label>Data</label><input type="date" id="s_data" onchange="_sAvisarDisponibilidade()" value="${item ? item.data : today}" /></div>
                                 <div class="form-group"><label>Hora</label><input type="time" id="s_hora" value="${item ? item.hora : now}" /></div>
                             </div>
                         </div>
@@ -26099,6 +26107,7 @@ async function salvarAdmin(e) {
                 (passo5 && !_expressoWiz) ? { titulo: 'Checklist de segurança', el: passo5 } : null,
                 _expressoWiz ? null : { titulo: 'Faturação', el: passo6 },
                 { titulo: 'Morada', el: passo7 },
+                { titulo: 'Rever e criar', el: document.createElement('section') },
             ].filter(Boolean);
 
             // Limpa o wrap e injeta: barra de progresso + os passos (todos escondidos, exceto o 1º)
@@ -26161,9 +26170,23 @@ async function salvarAdmin(e) {
             if (btnNao) { btnNao.style.background = !sim ? '#dc2626' : '#f1f5f9'; btnNao.style.color = !sim ? '#fff' : '#334155'; }
             if (secTipos) secTipos.style.display = sim ? '' : 'none';
         }
+        function _osWizResumoHtml() {
+            const value = id => document.getElementById(id)?.value || '';
+            const row = (label, text) => '<div style="padding:8px 0;border-bottom:1px solid #e2e8f0;"><strong>' + label + '</strong><div>' + escapeHtmlSimples(text || 'Não indicado') + '</div></div>';
+            const ids = [...document.querySelectorAll('#s_func_checkboxes input.s-func-check:checked')].map(c => c.value);
+            if (!ids.length && value('s_funcionario')) ids.push(value('s_funcionario'));
+            const local = document.getElementById('s_local');
+            return '<h3>Confirmar ordem de serviço</h3><p>Reveja os dados antes de criar. Use Voltar para corrigir.</p>' +
+                row('Cliente', value('s_cliente_busca')) + row('Equipa', ids.map(obterNomeFuncionario).join(', ')) +
+                row('Data e hora', [value('s_data'),value('s_hora')].filter(Boolean).join(' · ')) +
+                row('Trabalho', value('s_descricao')) + row('Relatórios', _sTiposTrabalhoSelecionados().join(', ') || 'Sem relatórios de especialidade') +
+                row('Instalação', local?.selectedOptions?.[0]?.textContent) + row('Morada', [value('s_morada'),value('s_numero_porta'),value('s_codigo_postal'),value('s_cidade')].filter(Boolean).join(', ')) +
+                row('Valor a faturar', value('s_valor') ? Number(value('s_valor')).toFixed(2) + ' €' : 'Não definido');
+        }
         function _osWizRenderBarra() {
             const barra = document.getElementById('osWizBarra'); if (!barra) return;
             const total = _osWizPassos.length;
+            if (_osWizPassos[_osWizPasso].titulo === 'Rever e criar') _osWizPassos[_osWizPasso].el.innerHTML = _osWizResumoHtml();
             barra.innerHTML = `
                 <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#64748b;margin-bottom:6px;">
                     <span>Passo ${_osWizPasso + 1} de ${total} — ${escapeHtmlSimples(_osWizPassos[_osWizPasso].titulo)}</span>
@@ -26174,7 +26197,7 @@ async function salvarAdmin(e) {
             const btnVoltar = document.getElementById('osWizVoltar');
             const btnSeguinte = document.getElementById('osWizSeguinte');
             if (btnVoltar) btnVoltar.style.visibility = _osWizPasso === 0 ? 'hidden' : 'visible';
-            if (btnSeguinte) btnSeguinte.innerHTML = _osWizPasso === total - 1 ? '<i class="fas fa-check"></i> Finalizar' : 'Seguinte <i class="fas fa-arrow-right"></i>';
+            if (btnSeguinte) btnSeguinte.innerHTML = _osWizPasso === total - 1 ? '<i class="fas fa-check"></i> Criar OS' : 'Seguinte <i class="fas fa-arrow-right"></i>';
         }
         function _osWizValidarPassoAtual() {
             const el = _osWizPassos[_osWizPasso].el;
@@ -26190,6 +26213,7 @@ async function salvarAdmin(e) {
                 alert('Seleciona pelo menos um funcionário para esta Ordem de Serviço.');
                 return false;
             }
+            if (funcChecks.length && _bloquearSeAusenteEmOS(Array.from(funcChecks).filter(c => c.checked).map(c => c.value), document.getElementById('s_data')?.value)) return false;
             return true;
         }
         function _osWizSeguinte() {
@@ -26232,7 +26256,7 @@ async function salvarAdmin(e) {
         // Sai do modo wizard sem perder dados já escritos — volta a mostrar tudo de uma vez,
         // como o formulário normal.
         function _osWizSair() {
-            _osWizPassos.forEach(p => { p.el.style.display = ''; });
+            _osWizPassos.forEach(p => { if (p.titulo === 'Rever e criar') p.el.remove(); else p.el.style.display = ''; });
             document.getElementById('osWizBarra')?.remove();
             document.getElementById('osWizVoltar')?.closest('div')?.remove();
             const modalActions = document.querySelector('#modalOverlay .modal-actions');
@@ -27048,6 +27072,7 @@ async function salvarAdmin(e) {
                 const funcionariosIds = _funcCheckCont
                     ? [...(_funcCheckCont.querySelectorAll('input.s-func-check:checked'))].map(c => c.value)
                     : (funcionarioId ? [funcionarioId] : []);
+                if (_bloquearSeAusenteEmOS(funcionariosIds, document.getElementById('s_data').value)) return;
                 let adminId = null;
                 if (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') {
                     adminId = _tenantId();
@@ -30222,6 +30247,17 @@ window._relPrefill = function(msg){
             _relEspecOnMessageAtual = onMessage;
         }
 
+        function _sAvisarDisponibilidade() {
+            const cont = document.getElementById('s_func_checkboxes');
+            const data = document.getElementById('s_data')?.value;
+            if (!cont) return;
+            let aviso = document.getElementById('s_aviso_disponibilidade');
+            if (!aviso) { aviso = document.createElement('div'); aviso.id = 's_aviso_disponibilidade'; aviso.setAttribute('role','status'); cont.after(aviso); }
+            const conflitos = [...cont.querySelectorAll('input.s-func-check:checked')].map(c => ({ id:c.value, ausencia:_funcionarioAusenteEm(c.value,data) })).filter(x => x.ausencia);
+            aviso.hidden = !conflitos.length;
+            aviso.style.cssText = 'color:#b91c1c;background:#fef2f2;padding:8px;border-radius:8px;margin-top:8px;';
+            aviso.textContent = conflitos.map(x => (obterNomeFuncionario(x.id) || 'Funcionário') + ' está de ' + x.ausencia.label + ' nesta data. Escolha outra pessoa ou data.').join(' ');
+        }
         function _sAtualizarFuncPrincipal() {
             const cont = document.getElementById('s_func_checkboxes');
             const hidden = document.getElementById('s_funcionario');
@@ -30233,6 +30269,7 @@ window._relPrefill = function(msg){
             const chkTodos = document.getElementById('s_func_todos');
             if (chkTodos) chkTodos.checked = todosMarcados;
             _sAtualizarDropdownRelatorioResponsavel();
+            _sAvisarDisponibilidade();
         }
         function _sToggleTodosFuncionarios(marcarTodos) {
             const cont = document.getElementById('s_func_checkboxes');
@@ -30938,7 +30975,7 @@ window._relPrefill = function(msg){
 
         function _funcionarioAusenteEm(funcionarioId, data) {
             if (!funcionarioId || !data) return null;
-            const p = (dados.pedidos || []).find(x => x.funcionarioId === funcionarioId && x.status === 'aprovado_ped' && x.dataInicio && x.dataFim && x.dataInicio <= data && x.dataFim >= data);
+            const p = (dados.pedidos || []).find(x => x.funcionarioId === funcionarioId && ['aprovado', 'aprovado_ped'].includes(x.status) && x.dataInicio && x.dataFim && x.dataInicio <= data && x.dataFim >= data);
             if (!p) return null;
             if (p.tipo === 'ferias') return { tipo: 'ferias', label: 'férias', icon: 'fa-umbrella-beach', cor: '#0ea5e9' };
             if (p.tipo === 'falta') {
@@ -32397,6 +32434,14 @@ window._relPrefill = function(msg){
         }
 
         async function restaurarSessaoAuth() {
+            const form = document.getElementById('tg-entrar');
+            const submit = form?.querySelector('button[type="submit"]');
+            const previousDisabled = submit?.disabled;
+            let status = document.getElementById('tg-session-restore');
+            if (form && !status) { status = document.createElement('p'); status.id = 'tg-session-restore'; status.setAttribute('role','status'); form.prepend(status); }
+            if (status) { status.hidden = false; status.textContent = 'A recuperar a sessão e a carregar os dados…'; }
+            form?.setAttribute('aria-busy','true');
+            if (submit) submit.disabled = true;
             try {
                 const { data } = await supa.auth.getSession();
                 if (data && data.session && data.session.user) {
@@ -32406,6 +32451,7 @@ window._relPrefill = function(msg){
                     if (ok) renderizarTudo();
                 }
             } catch (e) { console.warn('Restaurar sessão:', e); }
+            finally { if (status) status.hidden = true; form?.removeAttribute('aria-busy'); if (submit) submit.disabled = previousDisabled; }
         }
 
         // Verifica se um email já está registado (sem distinguir maiúsculas), em qualquer perfil.
@@ -32866,6 +32912,7 @@ window._relPrefill = function(msg){
                 subPai.classList.add('aberto');
                 const btnPai = document.querySelector(`#tgSidebarNav .tg-nav-grupo-btn[data-grupo-btn="${subPai.getAttribute('data-grupo-sub')}"]`);
                 if (btnPai) btnPai.classList.add('aberto');
+                document.querySelectorAll('#tgSidebarNav .tg-nav-grupo-btn').forEach(b => b.setAttribute('aria-expanded', String(b.classList.contains('aberto'))));
             }
         }
         function _atualizarBreadcrumb(t) {
@@ -32875,7 +32922,7 @@ window._relPrefill = function(msg){
         let _ultimoUserSidebar = null;
         function construirSidebar() {
             const nav = document.getElementById('tgSidebarNav'); if (!nav) return;
-            if (!usuarioLogado || usuarioLogado.role === 'cliente') { nav.innerHTML = ''; _ultimoUserSidebar = null; return; }
+            if (!usuarioLogado || usuarioLogado.role === 'cliente') { nav.innerHTML = ''; delete nav.dataset.template; _ultimoUserSidebar = null; return; }
             if (usuarioLogado.id !== _ultimoUserSidebar) {
                 _ultimoUserSidebar = usuarioLogado.id;
                 _contextoAtual = '__inicio';
@@ -32899,7 +32946,7 @@ window._relPrefill = function(msg){
                     const grupoKey = grupo.getAttribute('data-grupo') || '';
                     const cards = [...grupo.querySelectorAll('.card-principal')].filter(c => !c.classList.contains('hidden-card') && !c.classList.contains('card-bloqueado'));
                     if (!cards.length) return;
-                    html += `<button type="button" class="tg-nav-grupo-btn" data-grupo-btn="${grupoKey}" onclick="_focoAlternarGrupo('${grupoKey}')"><i class="${icone}"></i><span>${titulo}</span><i class="fas fa-chevron-right chev"></i></button>`;
+                    html += `<button type="button" class="tg-nav-grupo-btn" data-grupo-btn="${grupoKey}" aria-expanded="false" onclick="_focoAlternarGrupo('${grupoKey}')"><i class="${icone}"></i><span>${titulo}</span><i class="fas fa-chevron-right chev"></i></button>`;
                     html += `<div class="tg-nav-submenu" data-grupo-sub="${grupoKey}">`;
                     cards.forEach(c => {
                         const sec = c.getAttribute('data-card');
@@ -32931,12 +32978,13 @@ window._relPrefill = function(msg){
                     });
                 });
             }
-            nav.innerHTML = html;
+            const menuMudou = nav.dataset.template !== html;
+            if (menuMudou) { nav.innerHTML = html; nav.dataset.template = html; }
             const fu = document.getElementById('tgSideUser');
             if (fu) fu.innerHTML = `<i class="fas fa-user-circle"></i> ${usuarioLogado.nome || ''}<div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">${_papelLabel(usuarioLogado.role)}</div>`;
             const sb = document.getElementById('tgSideBrandNome');
             if (sb) sb.textContent = (usuarioLogado.role === 'superadmin') ? 'Total Gest' : (adminAtual()?.empresa || 'Total Gest');
-            _marcarNavAtivo(_contextoAtual || '__inicio');
+            if (menuMudou) _marcarNavAtivo(_contextoAtual || '__inicio');
             if (!_contextoAtual || _contextoAtual === '__inicio') { _mostrarInicioConteudo(); _atualizarBreadcrumb('Início'); }
         }
         // Acordeão do layout "Total Gest Foco" — clicar num grupo abre/fecha o submenu logo por
@@ -32950,6 +32998,7 @@ window._relPrefill = function(msg){
             document.querySelectorAll('#tgSidebarNav .tg-nav-submenu.aberto').forEach(s => s.classList.remove('aberto'));
             document.querySelectorAll('#tgSidebarNav .tg-nav-grupo-btn.aberto').forEach(b => b.classList.remove('aberto'));
             if (!jaAberto) { sub.classList.add('aberto'); btn.classList.add('aberto'); }
+            document.querySelectorAll('#tgSidebarNav .tg-nav-grupo-btn').forEach(b => b.setAttribute('aria-expanded', String(b.classList.contains('aberto'))));
         }
         function _focoFecharPainel() {
             // Mantido só por segurança, caso algum sítio ainda chame isto — o painel lateral já
@@ -35100,9 +35149,9 @@ window._relPrefill = function(msg){
     const script = document.createElement('script');
     script.id = 'tg-assistente-script';
     const base = new URL('.', document.currentScript.src);
-    script.src = new URL('tg-assistente.js?v=4.0.0-teco', base).href;
+    script.src = new URL('tg-assistente.js?v=4.1.0-dock', base).href;
     const engine = document.createElement('script');
-    engine.src = new URL('tg-smart-engine.js?v=3.0.0-teco', base).href;
+    engine.src = new URL('tg-smart-engine.js?v=3.1.0-stock', base).href;
     engine.onload = () => document.head.appendChild(script);
     engine.onerror = () => document.head.appendChild(script);
     document.head.appendChild(engine);

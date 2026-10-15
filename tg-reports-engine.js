@@ -101,9 +101,9 @@
   if(type==='stock'){
    const list=s.articles.filter(x=>!use(f.article)||x.id===f.article);
    const balance=a=>round(number(a.stockInicial)+s.movements.filter(x=>x.artigoId===a.id).reduce((v,m)=>v+(m.tipo==='saida'?-number(m.quantidade):['entrada','devolucao','ajuste'].includes(m.tipo)?number(m.quantidade):0),0));
-   const low=a=>a.stockMinimo!=null&&balance(a)<number(a.stockMinimo);
+   const low=a=>balance(a)<0||(a.stockMinimo!=null&&a.stockMinimo!==''&&balance(a)<=number(a.stockMinimo));
    const arts=list.filter(x=>!use(f.state)||f.state==='baixo'&&low(x)||f.state==='normal'&&!low(x));
-   table('Saldo atual',['Referência','Artigo','Unidade','Stock atual','Mínimo','Situação'],arts.map(x=>[x.referencia||'—',x.nome||'—',x.unidade||'un',balance(x),x.stockMinimo??'—',low(x)?'Abaixo do mínimo':'Normal']));
+   table('Saldo atual',['Referência','Artigo','Unidade','Stock atual','Mínimo','Situação'],arts.map(x=>[x.referencia||'—',x.nome||'—',x.unidade||'un',balance(x),x.stockMinimo??'—',balance(x)<0?'Stock negativo — regularizar':low(x)?'No mínimo ou abaixo':'Normal']));
    const ids=new Set(arts.map(x=>x.id));const moves=s.movements.filter(x=>ids.has(x.artigoId)&&period(x.data)&&(!use(f.movement)||x.tipo===f.movement));
    table('Movimentos no período',['Data','Artigo','Tipo','Quantidade','Unidade','Obra / serviço','Nota'],moves.map(x=>{const a=arts.find(a=>a.id===x.artigoId);return [x.data||'—',a.nome||'—',x.tipo,number(x.quantidade),a.unidade||'un',s.works.find(w=>w.id===x.obraId)?.nome||s.os.find(o=>o.id===x.origemId)?.numeroRegisto||x.origemTipo||'—',x.nota||'—'];}));
    metric('Artigos',arts.length);metric('Abaixo do mínimo',arts.filter(low).length);metric('Movimentos',moves.length);

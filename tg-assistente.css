@@ -66,3 +66,14 @@ body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#243
 #tg-assistente[data-state="alert"] .tg-header-mascot{animation:tg-attention .7s ease-in-out 5}
 #tg-assistente[data-state="success"] .tg-header-mascot,#tg-assistente[data-state="wave"] .tg-header-mascot{animation:tg-wave .65s ease-in-out 4}
 @media(prefers-reduced-motion:reduce){#tg-assistente .tg-header-mascot{animation:none!important}}
+
+/* Keep the assistant outside action columns on operational screens. */
+#tg-assistente.tg-docked{right:12px;bottom:18px}
+#tg-assistente.tg-docked .tg-open{width:44px;height:44px;border-radius:50%;background:var(--tg-ink);color:white;box-shadow:0 3px 12px #162b4f30;justify-content:center}
+#tg-assistente.tg-docked .tg-open img{display:none}
+#tg-assistente.tg-docked .tg-open span{font-size:0;border:0;background:none;padding:0;box-shadow:none;color:inherit}
+#tg-assistente.tg-docked .tg-open span::after{content:'?';font-size:22px;font-weight:750}
+#tg-assistente.tg-docked .tg-minimize{display:none}
+#tg-assistente.tg-docked .tg-chat{bottom:58px;max-height:calc(100dvh - 100px)}
+body.tg-assistant-docked .section-container{padding-inline-end:76px!important}
+body:has(.modal-overlay.open) #tg-assistente,body:has(#wsClienteOverlay.open) #tg-assistente,body:has(dialog[open]) #tg-assistente{display:none!important}

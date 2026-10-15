@@ -40,15 +40,108 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></noscript>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=e2e-review-20261015" />
     <link rel="stylesheet" href="landing-ui.css?v=1.0.1" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 
 <link rel="stylesheet" href="access.css?v=2" />
-<link rel="stylesheet" href="responsive-device.css?v=2" />
-<link rel="stylesheet" href="tg-nexus.css?v=1.1.1" />
+<link rel="stylesheet" href="responsive-device.css?v=1" />
+<link rel="stylesheet" href="tg-nexus.css?v=1.1.2" />
 <script src="app-entry.js"></script>
+<style id="tg-contracts-redesign">
+#secao-contratos .section-header {margin-bottom:12px;gap:12px;flex-wrap:wrap}
+#secao-contratos .section-header>div {display:flex;flex-wrap:wrap;gap:7px}
+#secao-contratos .tg-status-box {flex:1;min-width:145px;padding:9px 12px!important;border-radius:10px}
+#secao-contratos .tg-status-val {font-size:1.2rem!important;line-height:1.25}
+#secao-contratos .tg-painel-claro {padding:12px!important;margin-bottom:12px!important}
+#secao-contratos .tg-painel-claro>div:first-child {margin-bottom:7px!important}
+#secao-contratos #ctrResumoCategorias {max-height:0;overflow:hidden;transition:max-height .2s ease}
+#secao-contratos .tg-painel-claro.ct-expanded #ctrResumoCategorias {max-height:550px;overflow:auto}
+#secao-contratos .tg-mini-card {padding:8px 12px!important}
+#secao-contratos .table-wrapper {overflow-x:auto}
+#secao-contratos .tabela-compacta-contratos {min-width:1100px}
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell] {min-width:95px;white-space:nowrap}
+#secao-contratos .tabela-compacta-contratos td {vertical-align:middle}
+@media(max-width:700px){#secao-contratos .section-header>div .btn{font-size:.76rem;padding:8px}#secao-contratos .tg-status-box{min-width:95px}}
+</style>
+<style id="tg-contracts-calendar-v2">
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell]{min-width:125px}
+#secao-contratos .section-header>div{row-gap:8px}
+.ct-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.ct-month{border:1px solid #dce5f0;border-radius:10px;padding:12px;min-width:0;background:#fff}
+.ct-month>strong{display:block;margin-bottom:8px;color:#173758}
+.ct-month>small{font-size:.77rem;color:#64748b}
+.ct-month-event{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px;font-size:.78rem;padding:7px 5px;border-top:1px solid #edf1f6}
+.ct-event-feito{color:#167449}.ct-event-atraso{color:#b91c1c}.ct-event-previsto{color:#255ca9}
+@media(max-width:800px){.ct-month-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#modalContratoOverlay .modal{padding:18px 14px;max-width:100%}#ct_contract_tabs{position:sticky;top:0;background:#fff;z-index:3;padding:8px 0;overflow-x:auto;flex-wrap:nowrap!important}#ct_contract_tabs .btn{flex-shrink:0}}
+@media(max-width:530px){.ct-month-grid{grid-template-columns:1fr}#secao-contratos .section-header{align-items:start}#secao-contratos .section-header>div{width:100%}#secao-contratos select{min-width:130px!important}#modalContratoOverlay .ff-secao-body{grid-template-columns:1fr}}
+</style>
+<style id="ct-final-polish">
+#secao-contratos .ct-fast-search{display:block;width:100%;max-width:460px;box-sizing:border-box;border:1px solid #cad7e6;border-radius:10px;padding:11px 14px;margin:12px 0;background:var(--card-bg,#fff);color:inherit}
+#secao-contratos .ct-alert-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0;padding:10px 13px;border:1px solid #f2dca4;background:#fffbeb;color:#874c0b;border-radius:10px;font-size:.84rem}
+#secao-contratos .ct-alert-strip small{color:#796b4f}
+#secao-contratos .tabela-compacta-contratos tbody tr[hidden]{display:none!important}
+@media(max-width:650px){#secao-contratos .ct-alert-strip{display:block}#secao-contratos .ct-alert-strip>*{margin-right:4px}#secao-contratos .ct-fast-search{max-width:none}#secao-contratos .table-wrapper{overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}#secao-contratos .section-header>div{justify-content:flex-start}}
+</style>
+<style id="ct-layout-repair">
+#secao-contratos .ct-contract-toolbar{display:flex;align-items:center;gap:12px;justify-content:space-between;margin:8px 0 12px;flex-wrap:wrap}
+#secao-contratos .ct-contract-toolbar .ct-fast-search{flex:1 1 290px;width:auto!important;max-width:390px!important;margin:0!important;min-height:38px}
+#secao-contratos .ct-contract-toolbar .ct-alert-strip{flex:1 1 400px;display:flex;align-items:center;justify-content:flex-end;gap:6px;background:#fffbeb!important;border:1px solid #f4e3b5!important;padding:9px 12px!important;margin:0!important;border-radius:9px;min-height:38px;box-sizing:border-box}
+#secao-contratos .ct-alert-strip small{display:none}
+#secao-contratos .tg-painel-claro{padding:12px!important}
+#secao-contratos .tg-painel-claro #ctrResumoCategorias{max-height:0!important;overflow:hidden!important}
+#secao-contratos .tg-painel-claro.ct-expanded #ctrResumoCategorias{max-height:480px!important;overflow-y:auto!important}
+#secao-contratos .table-wrapper{width:100%;overflow-x:auto!important}
+#secao-contratos .tabela-compacta-contratos{width:100%;min-width:1380px;border-collapse:collapse;table-layout:auto}
+#secao-contratos .tabela-compacta-contratos thead{display:table-header-group!important}
+#secao-contratos .tabela-compacta-contratos tbody{display:table-row-group!important}
+#secao-contratos .tabela-compacta-contratos tr{display:table-row}
+#secao-contratos .tabela-compacta-contratos th,#secao-contratos .tabela-compacta-contratos td{vertical-align:middle;text-align:left;padding:10px 8px;white-space:nowrap}
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell]{min-width:110px}
+#secao-contratos .tabela-compacta-contratos td:last-child{min-width:190px;white-space:normal}
+@media(max-width:900px){#secao-contratos .ct-contract-toolbar{align-items:stretch}#secao-contratos .ct-contract-toolbar .ct-fast-search{max-width:none!important}#secao-contratos .ct-contract-toolbar .ct-alert-strip{justify-content:flex-start}}
+</style>
+<style id="tg-contract-final-layout">
+/* Maintenance contract cockpit, scoped so other Total Gest modules are not affected */
+#secao-contratos.tg-contract-final{--ct-border:#e2e8f0;--ct-ink:#19314d}
+#secao-contratos .section-header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0 0 14px}
+#secao-contratos .section-header h2{margin:0;font-size:1.15rem}
+#secao-contratos .section-header>div{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#secao-contratos .section-header .btn{border-radius:9px;padding:9px 12px;min-height:38px}
+#secao-contratos>.section-header+div{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px!important;margin-bottom:10px!important}
+#secao-contratos>.section-header+div .tg-status-box{width:auto!important;min-width:0!important;box-sizing:border-box;flex:auto!important;border-radius:11px!important;padding:11px 14px!important;display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
+#secao-contratos .tg-status-label{font-size:.76rem!important;font-weight:600}
+#secao-contratos .tg-status-val{font-size:1.35rem!important;line-height:1.3!important}
+#secao-contratos>.tg-painel-claro{border:1px solid var(--ct-border)!important;border-radius:11px!important;padding:11px 14px!important;margin:0 0 12px!important}
+#secao-contratos>.tg-painel-claro>div:first-child{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0 0 7px!important}
+#secao-contratos>.tg-painel-claro .tg-mini-card{min-height:56px!important;padding:9px 14px!important;border-radius:8px}
+#secao-contratos>.tg-painel-claro .tg-mini-card>div:last-child{font-size:1.12rem!important}
+#secao-contratos>.tg-painel-claro>div:nth-child(2){display:inline-flex;align-items:center;margin:0 8px 3px 0!important}
+#secao-contratos>.tg-painel-claro>button{margin:0 0 5px!important;padding:6px 10px;font-size:.76rem}
+#secao-contratos>.tg-painel-claro #ctrResumoCategorias{max-height:0!important;overflow:hidden!important;gap:5px!important;transition:max-height .2s ease}
+#secao-contratos>.tg-painel-claro.ct-expanded #ctrResumoCategorias{max-height:350px!important;overflow-y:auto!important;padding-top:7px}
+#secao-contratos>.tg-painel-claro #ctrResumoCategorias>div{margin:0!important}
+#secao-contratos>.tg-painel-claro+div{display:grid!important;grid-template-columns:repeat(5,minmax(140px,1fr));gap:8px!important;margin:0 0 10px!important}
+#secao-contratos>.tg-painel-claro+div select{box-sizing:border-box;width:100%;min-width:0!important;height:38px!important;padding:6px 9px;border:1px solid #cbd5e1;border-radius:9px;background:var(--card-bg,#fff)}
+#secao-contratos .ct-contract-toolbar{display:grid!important;grid-template-columns:minmax(210px,350px) minmax(280px,1fr);gap:10px;align-items:stretch;margin:0 0 12px!important}
+#secao-contratos .ct-contract-toolbar .ct-fast-search{max-width:none!important;width:100%!important;min-width:0;margin:0!important;padding:9px 12px!important;height:40px!important;font-size:.88rem}
+#secao-contratos .ct-contract-toolbar .ct-alert-strip{width:100%;min-width:0!important;flex:none;display:flex!important;justify-content:flex-start!important;align-items:center;gap:6px;padding:8px 12px!important;margin:0!important;min-height:40px!important;font-size:.79rem;box-sizing:border-box}
+#secao-contratos .ct-contract-toolbar .ct-alert-strip small{display:none!important}
+#secao-contratos .table-wrapper{border:1px solid var(--ct-border);border-radius:11px;overflow-x:auto!important;width:100%;box-sizing:border-box}
+#secao-contratos .tabela-compacta-contratos{width:100%;min-width:1300px;border-collapse:separate;border-spacing:0}
+#secao-contratos .tabela-compacta-contratos th{background:#f1f5f9;color:#334155;font-weight:700;font-size:.75rem;padding:12px 9px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--ct-border)}
+#secao-contratos .tabela-compacta-contratos td{padding:11px 9px!important;border-bottom:1px solid #edf2f7;text-align:left!important;vertical-align:middle;white-space:normal;overflow-wrap:anywhere}
+#secao-contratos .tabela-compacta-contratos tbody tr:hover{background:#f8fafc}
+#secao-contratos .tabela-compacta-contratos th:nth-child(2),#secao-contratos .tabela-compacta-contratos td:nth-child(2){min-width:118px}
+#secao-contratos .tabela-compacta-contratos th:nth-child(3){min-width:180px}
+#secao-contratos .tabela-compacta-contratos td[data-ct-year-cell]{min-width:100px!important;text-align:center!important;white-space:nowrap}
+#secao-contratos .tabela-compacta-contratos td:last-child{min-width:188px!important;max-width:210px;white-space:normal;line-height:2.35}
+#secao-contratos .tabela-compacta-contratos td:last-child .btn,#secao-contratos .tabela-compacta-contratos td:last-child button{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;min-height:32px;min-width:32px;margin:2px!important;padding:6px!important;border-radius:8px!important}
+@media(max-width:1200px){#secao-contratos>.tg-painel-claro+div{grid-template-columns:repeat(3,minmax(140px,1fr))}}
+@media(max-width:780px){#secao-contratos .ct-contract-toolbar{grid-template-columns:1fr}#secao-contratos .section-header>div{justify-content:flex-start}#secao-contratos>.tg-painel-claro+div{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){#secao-contratos>.section-header+div{gap:6px!important}#secao-contratos>.section-header+div .tg-status-box{padding:9px 7px!important;align-items:center;text-align:center}#secao-contratos>.section-header+div .tg-status-label{font-size:.66rem!important}#secao-contratos>.tg-painel-claro>div:first-child{gap:6px!important}#secao-contratos>.tg-painel-claro+div{grid-template-columns:1fr 1fr}#secao-contratos .section-header .btn{font-size:.77rem;padding:8px!important}}
+</style>
 </head>
 <body>
 <div id="tg-landing" class="tg-login-page"><main class="tg-login-layout"><a class="tg-login-brand" href="index.html"><img id="tg-logo-master" src="logo-totalgest.png" alt="Total Gest" width="300" height="300" /></a><form class="login-card" id="tg-entrar" onsubmit="return loginLanding(event)">
@@ -121,7 +214,7 @@
                         <span id="ligacaoTexto" class="tg-ligacao-texto">A verificar…</span>
                     </span>
                     <div id="sinoWrap" style="position:relative; display:none;">
-                        <button id="btnSino" type="button" class="btn-sino" aria-label="Notificações" onclick="toggleSino(event)" title="Notificações"><i class="fas fa-bell" aria-hidden="true"></i><span id="sinoBadge" class="sino-badge" style="display:none;">0</span></button>
+                        <button id="btnSino" class="btn-sino" onclick="toggleSino(event)" title="Notificações"><i class="fas fa-bell"></i><span id="sinoBadge" class="sino-badge" style="display:none;">0</span></button>
                         <div id="sinoDropdown" class="sino-dropdown" style="display:none;"></div>
                     </div>
                     <button id="btnNotifMassa" class="btn-sino" style="display:none;width:auto;padding:0 12px;gap:6px;" onclick="abrirModalNotifMassa()" title="Notificação em massa"><i class="fas fa-tower-broadcast"></i><span style="margin-left:6px;font-size:.85rem;font-weight:600;">Notificação em massa</span></button>
@@ -537,11 +630,11 @@
                         <div class="icon"><i class="fas fa-file-signature"></i></div>
                         <div class="info"><h3>Contratos de Manutenção</h3><p id="contratosResumo"><span class="count" id="countContratos">0</span></p></div>
                     </div>
-                    <a class="card-principal" id="cardCRM" data-card="crm" href="#crm" onclick="return _abrirCRM(event)">
+                    <a class="card-principal" id="cardCRM" data-card="crm" href="TOTALGEST_CRM.html" onclick="return window.TGModules ? window.TGModules.open('crm') : _abrirCRM(event)">
                         <div class="icon"><i class="fas fa-bullseye"></i></div>
                         <div class="info"><h3>CRM Comercial</h3><p>Leads · Oportunidades · Propostas · Comissões</p></div>
                     </a>
-                    <a class="card-principal" id="cardAssist" data-card="assistencias" href="#assistencias" onclick="return _abrirAssist(event)">
+                    <a class="card-principal" id="cardAssist" data-card="assistencias" href="TOTALGEST_ASSIST.html" target="_blank" rel="noopener" onclick="return _abrirAssist(event)">
                         <div class="icon"><i class="fas fa-headset"></i></div>
                         <div class="info"><h3>Assistências</h3><p>Pedidos de suporte e assistência técnica</p></div>
                     </a>
@@ -1015,7 +1108,7 @@
         <p id="emptyEncarregados" class="text-muted text-center mt-10" style="display:none;">Nenhum encarregado.</p>
     </div>
 
-    <div id="secao-contratos" class="section-container">
+    <div id="secao-contratos" class="section-container tg-contract-final">
         <div class="section-header">
             <h2><i class="fas fa-file-signature"></i> Contratos de Manutenção</h2>
             <div>
@@ -1035,7 +1128,7 @@
                 <div class="tg-mini-card" style="border-left:4px solid #16a34a;"><div style="font-size:.78rem;color:#64748b;" class="tg-mini-card-lbl"><i class="fas fa-euro-sign" style="color:#16a34a;"></i> Valor total</div><div style="font-size:1.3rem;font-weight:800;" id="ctrTotalValor">0,00 €</div></div>
             </div>
             <div style="font-weight:700;color:#152a52;margin-bottom:8px;font-size:.85rem;"><i class="fas fa-chart-pie"></i> Por categoria</div>
-            <div id="ctrResumoCategorias" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="this.closest('.tg-painel-claro').classList.toggle('ct-expanded');this.setAttribute('aria-expanded',String(this.closest('.tg-painel-claro').classList.contains('ct-expanded')))" aria-expanded="false" style="margin:4px 0 8px">Mostrar / ocultar estatísticas por categoria</button><div id="ctrResumoCategorias" style="display:flex;flex-direction:column;gap:6px;"></div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
             <select id="filtroEstado" onchange="renderizarContratos()" style="flex:1; min-width:140px;">
@@ -1056,6 +1149,7 @@
             <select id="filtroTecnico" onchange="renderizarContratos()" style="flex:1; min-width:140px;"><option value="">Todos os técnicos</option></select>
             <select id="filtroCidade" onchange="renderizarContratos()" style="flex:1; min-width:140px;"><option value="">Todas as cidades</option></select>
         </div>
+        <div id="ct-contract-toolbar" class="ct-contract-toolbar"></div>
         <div id="contratosBarraSelecao" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:10px 14px;margin-bottom:14px;">
             <strong id="contratosSelecionadosTxt" style="color:#3730a3;"></strong>
             <button class="btn btn-sm" style="background:#7c3aed;color:#fff;" onclick="abrirModalGerarOSMassa()"><i class="fas fa-clipboard-list"></i> Gerar OS em massa</button>
@@ -1063,7 +1157,7 @@
         </div>
         <div class="table-wrapper">
             <table class="tabela-compacta-contratos">
-                <thead><tr><th style="width:26px;"><input type="checkbox" id="chkTodosContratos" onchange="toggleSelecaoTodosContratos(this.checked)" /></th><th>Nº</th><th>Cliente</th><th>Instalação</th><th>Cidade</th><th>Equipamento</th><th>Period.</th><th>Início</th><th>Próx.</th><th>Valor</th><th>Estado</th><th>Ações</th></tr></thead>
+                <thead><tr><th style="width:26px;"><input type="checkbox" id="chkTodosContratos" onchange="toggleSelecaoTodosContratos(this.checked)" /></th><th>Nº</th><th>Cliente</th><th>Instalação</th><th>Cidade</th><th>Equipamento</th><th>Period.</th><th>Início</th><th>Próx.</th><th>Visitas 2026</th><th>Valor</th><th>Estado</th><th>Ações</th></tr></thead>
                 <tbody id="tabelaContratos"></tbody>
             </table>
         </div>
@@ -1157,6 +1251,7 @@
         <div class="section-header">
             <h2><i class="fas fa-tools"></i> Ordens de Serviço</h2>
             <button class="btn btn-primary" id="btnNovaOS" onclick="abrirModal('servico', null)"><i class="fas fa-plus"></i> Novo serviço</button>
+            <button type="button" class="btn btn-outline" onclick="window.TGOSPlannerUI?.open()" title="Recomendações indicativas, sujeitas a confirmação"><i class="fas fa-calendar-check"></i> Sugerir técnico</button>
         </div>
         <div id="servicosFiltroKpi"></div>
         <div id="servicosAvisoEspecialidade"></div>
@@ -2242,19 +2337,21 @@
     <!-- EmailJS para envio de emails de pagamento -->
     <script src="emailjs-config.js"></script>
 
-    <script src="app-principal.js?v=nexus-default-1"></script>
-    <script src="tg-equipment-reports.js?v=1.1.1"></script>
-    <script src="tg-contract-maintenance.js?v=1.4.0"></script>
-    <link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
-    <script src="tg-integrated-modules.js?v=1.0.0"></script>
-    <link rel="stylesheet" href="tg-client-history.css?v=1.0.0">
-    <script src="tg-client-history.js?v=1.0.0"></script>
+    <script src="tg-planner.js?v=1.0.2"></script>
+<script src="app-principal.js?v=e2e-review-20261015"></script>
+<link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
+<script src="tg-integrated-modules.js?v=1.0.2"></script>
+<script src="tg-os-planning-ui.js?v=1.0.0"></script>
     <link rel="stylesheet" href="tg-passport.css?v=1.0.0">
-    <script src="tg-passport.js?v=1.2.1"></script>
+    <script src="tg-equipment-reports.js?v=1.1.1"></script>
+    <script src="tg-contract-maintenance.js?v=1.8.1"></script>
+    <link rel="stylesheet" href="tg-client-history.css?v=1.0.0">
+    <script src="tg-client-history.js?v=1.0.2"></script>
+    <script src="tg-passport.js?v=1.3.0"></script>
     <link rel="stylesheet" href="tg-reports.css?v=1.0.0">
-    <script src="tg-reports-engine.js?v=1.0.0"></script>
+    <script src="tg-reports-engine.js?v=1.0.1"></script>
     <script src="tg-reports-ui.js?v=1.0.0"></script>
-    <script src="tg-nexus.js?v=1.1.0"></script>
+    <script src="tg-nexus.js?v=1.1.1"></script>
 
     <div id="tg-addon-overlay" onclick="if(event.target===this) fecharDetalheAddon()">
       <div id="tg-addon-card">
@@ -2465,7 +2562,7 @@
   </div>
 </div>
 
-<script src="landing-calculadora.js?v=2.0.0"></script>
+<script src="landing-calculadora.js?v=2.0.2"></script>
 
 </body>
 </html>

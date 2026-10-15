@@ -1735,10 +1735,12 @@ body.tem-menu-inferior .alerta-chev { color: var(--tgm-text-mute); }
     #tgSidebarNav .tg-nav-grupo-btn.aberto .chev { transform: rotate(90deg); }
     #tgSidebarNav .tg-nav-submenu {
         max-height: 0;
+        visibility: hidden;
+        pointer-events: none;
         overflow: hidden;
         transition: max-height .2s ease;
     }
-    #tgSidebarNav .tg-nav-submenu.aberto { max-height: 800px; }
+    #tgSidebarNav .tg-nav-submenu.aberto { max-height: 800px; visibility: visible; pointer-events: auto; }
     #tgSidebarNav .tg-nav-submenu .tg-nav-item {
         padding-left: 34px !important;
         font-weight: 500 !important;

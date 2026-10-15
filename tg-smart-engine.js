@@ -44,7 +44,7 @@
     const late=s.os.filter(x=>open(x)&&valid(x.data)&&x.data<s.today).sort((a,b)=>a.data.localeCompare(b.data));
     const expired=s.contracts.filter(x=>valid(x.validadeContrato)&&x.validadeContrato<s.today).sort((a,b)=>a.validadeContrato.localeCompare(b.validadeContrato));
     const due=s.contracts.filter(x=>valid(x.validadeContrato)&&x.validadeContrato>=s.today&&x.validadeContrato<=shift(s.today,30)).sort((a,b)=>a.validadeContrato.localeCompare(b.validadeContrato));
-    const low=s.stock.filter(x=>x.alertaStock===true&&x.stockMinimo!==null&&x.stockMinimo!==undefined&&x.stockMinimo!==''&&Number.isFinite(Number(x.stockMinimo))&&x.quantity<Number(x.stockMinimo));
+    const low=s.stock.filter(x=>x.quantity<0||(x.alertaStock===true&&x.stockMinimo!==null&&x.stockMinimo!==undefined&&x.stockMinimo!==''&&Number.isFinite(Number(x.stockMinimo))&&x.quantity<=Number(x.stockMinimo)));
     const portal=(s.assistance || []).filter(x=>x.origem==='portal' && x.estado==='aberta');
     const urgent=(s.assistance || []).filter(x=>x.origem!=='portal' && !['concluida','concluido','cancelada','cancelado','fechada'].includes(norm(x.estado)) && ['alta','urgente'].includes(norm(x.prioridade || x.urgencia)));
     if(portal.length)a.push({kind:'portal',section:'assistencias',title:'Pedidos do portal por tratar',items:portal,severity:'high'});
@@ -53,7 +53,7 @@
     if(late.length)a.push({kind:'late',section:'servicos',title:'OS atrasadas',items:late,severity:'high'});
     if(expired.length)a.push({kind:'expired',section:'contratos',title:'Contratos expirados',items:expired,severity:'high'});
     if(due.length)a.push({kind:'due',section:'contratos',title:'Contratos a vencer em 30 dias',items:due,severity:'medium'});
-    if(low.length)a.push({kind:'stock',section:'artigos',title:'Artigos abaixo do stock mínimo',items:low,severity:'medium'});
+    if(low.length)a.push({kind:'stock',section:'artigos',title:'Stock negativo ou no mínimo',items:low,severity:'medium'});
     return a;
   }
   const fmt = d => valid(d)?d.split('-').reverse().join('/'):'Sem data';

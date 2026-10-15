@@ -234,7 +234,7 @@
     // Session/layout changes can also happen without a home render.
     new MutationObserver(() => {
         if (observerPending) return;
-        observerPending = true; queueMicrotask(() => { observerPending = false; if (active() !== document.body.classList.contains('tg-nexus')) refresh(); });
+        observerPending = true; queueMicrotask(() => { observerPending = false; if (typeof document === 'undefined' || !document.body) return; if (active() !== document.body.classList.contains('tg-nexus')) refresh(); });
     }).observe(document.body, {attributes:true,attributeFilter:['class']});
     window.TGNexus = {refresh, open, close};
     refresh();

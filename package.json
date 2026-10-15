@@ -1,0 +1,12 @@
+{
+  "name": "totalgest-regression-tests",
+  "private": true,
+  "scripts": {
+    "test:billing": "node --test tests/billing-packs.test.cjs tests/billing-http.test.cjs tests/billing-ui.test.cjs"
+  },
+  "engines": { "node": ">=24" },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
+    "jsdom": "26.1.0"
+  }
+}

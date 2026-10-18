@@ -2556,15 +2556,13 @@
             const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
+        function _podeAtivarQuiosque() {
+            if (!['admin','subadmin','encarregado'].includes(usuarioLogado?.role) || !_licencaValidaTenant()) return false;
+            const admin = usuarioLogado.role === 'admin' ? adminAtual() : adminDoUtilizador();
+            return !!admin && !admin.ehDistribuidor && moduloArmazemAtivo(admin);
+        }
         function ativarModoQuiosque() {
-            if (usuarioLogado?.role !== 'admin' && usuarioLogado?.role !== 'subadmin' && usuarioLogado?.role !== 'encarregado') { alert('Apenas administradores e encarregados podem ativar o Modo Quiosque.'); return; }
-            const adminRefQuiosque = usuarioLogado.role === 'admin' ? adminAtual() : adminDoUtilizador();
-            if (!moduloArmazemAtivo(adminRefQuiosque)) {
-                fecharModalPerfil();
-                alert('O Modo Quiosque está incluído no add-on "Armazém / Stock / Gestão de Obras". Ative-o na secção "Minha Licença" para o usar.');
-                abrirSecao('minha-licenca');
-                return;
-            }
+            if (!_podeAtivarQuiosque()) { alert('O Modo Quiosque não está disponível para este perfil ou para a licença desta empresa.'); return; }
             const adminId = _tenantQuiosque();
             const obras = (dados.obras || []).filter(o => o.adminId === adminId && o.estado !== 'concluida');
             document.getElementById('qs_obra').innerHTML = obras.length
@@ -3911,6 +3909,8 @@
             atualizarContactos();
             verificarBloqueios();
             aplicarConfigHeader();
+            const btnQuiosque = document.getElementById('btnQuiosque');
+            if (btnQuiosque) btnQuiosque.style.display = _podeAtivarQuiosque() ? 'inline-flex' : 'none';
             const btnPontoAdmin = document.getElementById('btnPontoAdmin');
             if (btnPontoAdmin) {
                 btnPontoAdmin.style.display = (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') ? 'inline-flex' : 'none';
@@ -20779,6 +20779,11 @@
             cards.forEach(card => {
                 const cardName = card.dataset.card;
 
+                if (cardName === 'quiosque') {
+                    card.classList.toggle('hidden-card', !_podeAtivarQuiosque());
+                    return;
+                }
+
                 // TotalGest Express: primeiro filtro — se não estiver na lista permitida, esconde
                 // sempre, para toda a gente da empresa (admin incluído). Superadmin nunca é
                 // afetado (precisa de ver tudo, para dar suporte). Cartões que passem este filtro
@@ -34139,6 +34144,7 @@ window._relPrefill = function(msg){
             else _voltarMeuDia();
         }
         function abrirSecao(nome) {
+            if (nome === 'quiosque') { ativarModoQuiosque(); return; }
             if (['crm', 'assistencias'].includes(nome) && !window.TGModules.prepare(nome)) return;
             if (nome === 'exportar-dados') { abrirModalExportarImportar(); return; }
             _registarUsoSecao(nome);

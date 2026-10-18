@@ -1064,6 +1064,10 @@
                         <div class="icon"><i class="fas fa-users"></i></div>
                         <div class="info"><h3>Funcionários</h3><p><span class="count" id="countFunc">0</span></p></div>
                     </div>
+                    <div class="card-principal hidden-card" data-card="quiosque" onclick="abrirSecao('quiosque')">
+                        <div class="icon"><i class="fas fa-tablet-screen-button"></i></div>
+                        <div class="info"><h3>Modo Quiosque</h3><p>Configurar ponto partilhado neste dispositivo</p></div>
+                    </div>
                     <div class="card-principal" data-card="ponto" onclick="abrirSecao('ponto')">
                         <div class="icon"><i class="fas fa-clock"></i></div>
                         <div class="info"><h3>Registo de Ponto</h3><p><span class="count" id="countPonto">0</span> registos</p></div>
@@ -1690,6 +1694,7 @@
             <div>
                 <button class="btn btn-success" id="btnPicar" onclick="picarPonto()" style="display:none;"><i class="fas fa-fingerprint"></i> Picar entrada</button>
                 <button class="btn btn-outline" onclick="carregarPonto()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                <button type="button" class="btn btn-outline" id="btnQuiosque" onclick="ativarModoQuiosque()" style="display:none;"><i class="fas fa-tablet-screen-button"></i> Modo Quiosque</button>
                 <button class="btn btn-ponto-admin" onclick="abrirModalPontoAdmin()" id="btnPontoAdmin" style="display:none;"><i class="fas fa-user-cog"></i> Admin - Marcar Ponto</button>
                 <button class="btn" style="background:#f59e0b;color:#fff;display:none;" onclick="_repararEntradasPresas()" id="btnRepararPonto"><i class="fas fa-wrench"></i> Reparar entradas presas</button>
             </div>
@@ -2751,13 +2756,13 @@
     <script src="emailjs-config.js"></script>
 
     <script src="tg-planner.js?v=1.0.2"></script>
-<script src="app-principal.js?v=e2e-review-20261015"></script>
+<script src="app-principal.js?v=contract-kiosk-20261018"></script>
 <link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
 <script src="tg-integrated-modules.js?v=1.0.2"></script>
 <script src="tg-os-planning-ui.js?v=1.0.0"></script>
     <link rel="stylesheet" href="tg-passport.css?v=1.0.0">
     <script src="tg-equipment-reports.js?v=1.1.1"></script>
-    <script src="tg-contract-maintenance.js?v=1.8.1"></script>
+    <script src="tg-contract-maintenance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="tg-client-history.css?v=1.0.0">
     <script src="tg-client-history.js?v=1.0.2"></script>
     <script src="tg-passport.js?v=1.3.0"></script>

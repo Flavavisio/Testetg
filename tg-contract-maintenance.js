@@ -56,49 +56,65 @@
             return `<div data-ct-system="${esc(tipo)}" data-ct-equipment="${esc(e.id)}" data-ct-equipment-name="${esc(name)}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px;grid-column:1/-1"><strong>${esc(name)}</strong><div class="ff-secao-body"><div class="form-group"><label>Periodicidade<select data-period ${forced?'disabled':''}>${option(PERIODICIDADE_LABEL,forced?'anual':(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual')}</select></label></div><div class="form-group"><label>Próxima manutenção<input type="date" data-next value="${esc((p.equipamentoId?p.proximaData:config.proximaData) || config.proximaData || p.proximaData || avancarPeriodicidade(read('ct_inicio') || getDataHoje(),(p.equipamentoId?p.periodicidade:config.periodicidade) || config.periodicidade || p.periodicidade || read('ct_period') || 'anual'))}"></label></div><div class="form-group"><label>Intervenção<select data-intervention ${forced?'disabled':''}>${option({presencial:'Presencial',remota:'Remota'},forced?'presencial':p.intervencao || read('ct_interv') || 'presencial')}</select></label></div><div class="form-group ff-span2"><label>Tarefas de manutenção (uma por linha)<textarea rows="4">${esc((p.tarefas || []).map(t=>t.texto).join('\n'))}</textarea></label></div></div></div>`;
         }).join('') || '<p class="help-text">Seleciona primeiro os equipamentos abrangidos.</p>';
     }
-    // Accessible customer picker outside the scrolling contract modal.
-    // The existing select stays authoritative for legacy validation and saving.
+    // Works with the current hidden customer ID and the older select form.
     function openCustomerPicker(){
-        const select=document.getElementById('ct_cliente');
-        if(!select)return;
+        const field=document.getElementById('ct_cliente');
+        const actor=()=>JSON.stringify([usuarioLogado?.adminId || usuarioLogado?.id,usuarioLogado?.id]);
+        const owner=actor(),tenant=usuarioLogado?.adminId || usuarioLogado?.id;
+        const permitted=()=>field?.isConnected && document.getElementById('ct_cliente')===field && actor()===owner && manager(editing || draftContract()) && (typeof _licencaValidaTenant!=='function' || _licencaValidaTenant());
+        if(!permitted())return;
         document.getElementById('ct-client-picker')?.remove();
+        const customers=()=> (dados.clientes || []).filter(c=>c.adminId===tenant && !c.apagadoSuperAdmin);
+        const scoped=new Map(customers().map(c=>[c.id,c]));
+        const options=field.tagName==='SELECT'
+            ? [...field.options].filter(o=>o.value && !o.disabled && scoped.has(o.value)).map(o=>({value:o.value,label:o.textContent.trim()}))
+            : customers().map(c=>({value:c.id,label:_clienteLabel(c)}));
+        options.sort((a,b)=>a.label.localeCompare(b.label,'pt',{numeric:true}));
         const dlg=document.createElement('dialog');dlg.id='ct-client-picker';
         dlg.setAttribute('aria-label','Selecionar cliente');
-        dlg.style.cssText='position:fixed;inset:0;margin:auto;width:min(94vw,600px);max-height:85vh;border:1px solid #d7e2ef;border-radius:16px;padding:18px;background:#fff;color:#162a45;box-shadow:0 28px 90px #0005;z-index:2147483647;';
+        dlg.style.cssText='position:fixed;inset:0;margin:auto;width:min(94vw,600px);box-sizing:border-box;max-height:85vh;overflow-y:auto;border:1px solid #d7e2ef;border-radius:16px;padding:18px;background:#fff;color:#162a45;box-shadow:0 28px 90px #0005;z-index:2147483647;';
         const title=document.createElement('h3');title.textContent='Selecionar cliente';title.style.margin='0 0 14px';
         const search=document.createElement('input');search.type='search';search.placeholder='Pesquisar por nome ou número de cliente…';search.setAttribute('aria-label','Pesquisar clientes');
-        search.style.cssText='width:100%;padding:12px;border:1px solid #b7c8dd;border-radius:9px;margin-bottom:10px';
-        const list=document.createElement('div');list.style.cssText='max-height:55vh;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:4px';
+        search.style.cssText='box-sizing:border-box;width:100%;padding:12px;border:1px solid #b7c8dd;border-radius:9px;margin-bottom:10px';
+        const countLabel=document.createElement('p');countLabel.setAttribute('role','status');countLabel.style.cssText='margin:0 0 10px;font-size:.85rem';
+        const list=document.createElement('div');list.style.cssText='max-height:55vh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;display:flex;flex-direction:column;gap:4px';
         const footer=document.createElement('button');footer.type='button';footer.textContent='Fechar';footer.className='btn btn-outline';footer.style.marginTop='12px';
         footer.onclick=()=>dlg.close();
-        dlg.append(title,search,list,footer);
-        const options=[...select.options].filter(o=>o.value && !o.disabled).map(o=>({value:o.value,label:o.textContent.trim()}));
+        dlg.append(title,search,countLabel,list,footer);
         function render(){
+            if(!permitted()){dlg.close();return;}
             const query=search.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-            list.replaceChildren();
-            let count=0;
+            list.replaceChildren();let count=0;
             for(const o of options){
                 if(query&&!o.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query))continue;
                 count++;
                 const btn=document.createElement('button');btn.type='button';
-                btn.textContent=o.label;btn.style.cssText='display:block;width:100%;text-align:left;padding:12px;border:1px solid #e0e7ef;border-radius:8px;background:'+(o.value===select.value?'#e9f2ff':'#fff')+';color:#172842;cursor:pointer';
-                btn.onclick=()=>{if(!select.isConnected){dlg.close();return;}select.value=o.value;select.dispatchEvent(new Event('change',{bubbles:true}));dlg.close();};
+                btn.textContent=o.label;btn.style.cssText='display:block;width:100%;text-align:left;padding:12px;border:1px solid #e0e7ef;border-radius:8px;background:'+(o.value===field.value?'#e9f2ff':'#fff')+';color:#172842;cursor:pointer';
+                btn.onclick=()=>{
+                    if(!permitted() || !customers().some(c=>c.id===o.value)){dlg.close();return;}
+                    field.value=o.value;
+                    const input=document.getElementById('ct_cliente_busca');
+                    if(input){input.value=o.label;input.dataset.selecionadoLabel=o.label;}
+                    const dropdown=document.getElementById('ct_cliente_busca_dd');if(dropdown)dropdown.style.display='none';
+                    if(field.tagName!=='SELECT' && typeof onClienteContratoChange==='function')onClienteContratoChange();
+                    field.dispatchEvent(new Event('change',{bubbles:true}));
+                    dlg.close();
+                };
                 list.appendChild(btn);
             }
-            if(!count){const empty=document.createElement('p');empty.textContent='Nenhum cliente encontrado. Confirma os filtros e os clientes carregados na conta.';list.appendChild(empty);}
+            countLabel.textContent=count+' cliente'+(count===1?'':'s');
+            if(!count){const empty=document.createElement('p');empty.textContent='Nenhum cliente encontrado.';list.appendChild(empty);}
         }
         search.addEventListener('input',render);
-        dlg.addEventListener('close',()=>dlg.remove(),{once:true});
-        document.body.appendChild(dlg);
-        render();
-        dlg.showModal();search.focus();
+        dlg.addEventListener('close',()=>{dlg.remove();if(permitted())document.getElementById('ct-client-open')?.focus();},{once:true});
+        document.body.appendChild(dlg);render();dlg.showModal();search.focus();
     }
     function mountCustomerPicker(){
         const select=document.getElementById('ct_cliente');
         if(!select || document.getElementById('ct-client-open'))return;
         const btn=document.createElement('button');btn.id='ct-client-open';btn.type='button';btn.className='btn btn-outline';
         btn.textContent='Pesquisar / ver todos os clientes';
-        btn.style.cssText='display:block;margin:10px 0 3px;font-size:.85rem;max-width:100%';
+        btn.style.cssText='display:block;margin:10px 0 3px;font-size:.85rem;max-width:100%;background:#fff;color:#152a52;border:1px solid #b7c8dd';
         btn.onclick=openCustomerPicker;
         select.insertAdjacentElement('afterend',btn);
     }

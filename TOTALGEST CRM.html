@@ -640,8 +640,8 @@
             },
             encomendas: {
                 tabela: 'encomendas',
-                from: r => ({ id: r.id, adminId: r.admin_id, fornecedorId: r.fornecedor_id, obraId: r.obra_id, data: r.data, estado: r.estado, observacoes: r.observacoes, fatura: r.fatura, faturaNome: r.fatura_nome, compraMoloniId: r.compra_moloni_id || null, dataCriacao: isoToMs(r.data_criacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, fornecedor_id: o.fornecedorId || null, obra_id: o.obraId || null, data: nn(o.data), estado: o.estado || 'pendente', observacoes: o.observacoes || null, fatura: o.fatura || null, fatura_nome: o.faturaNome || null, compra_moloni_id: o.compraMoloniId || null, data_criacao: msToISO(o.dataCriacao) })
+                from: r => ({ id: r.id, numero: r.numero || null, adminId: r.admin_id, fornecedorId: r.fornecedor_id, obraId: r.obra_id, data: r.data, estado: r.estado, observacoes: r.observacoes, fatura: r.fatura, faturaNome: r.fatura_nome, compraMoloniId: r.compra_moloni_id || null, dataCriacao: isoToMs(r.data_criacao) }),
+                to:   o => ({ id: o.id, numero: o.numero || null, admin_id: o.adminId, fornecedor_id: o.fornecedorId || null, obra_id: o.obraId || null, data: nn(o.data), estado: o.estado || 'pendente', observacoes: o.observacoes || null, fatura: o.fatura || null, fatura_nome: o.faturaNome || null, compra_moloni_id: o.compraMoloniId || null, data_criacao: msToISO(o.dataCriacao) })
             },
             encomendaItens: {
                 tabela: 'encomenda_itens',
@@ -2859,69 +2859,44 @@
             const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         }
         function _gerarPdfEncomendaCRM(encomenda, itens) {
-            if (!window.jspdf) { alert('Biblioteca de PDF não disponível.'); return; }
-            const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-            const admin = dados.administradores?.find(a => a.id === _tenantId());
-            const fornecedor = dados.fornecedores?.find(f => f.id === encomenda.fornecedorId);
-            const margem = 40, direita = 555;
-            let y = 52;
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(21); doc.setTextColor(23, 78, 155);
-            doc.text('Nota de Encomenda', margem, y);
-            y += 25; doc.setFontSize(11); doc.setTextColor(65, 65, 65);
-            const nomeEmpresa = admin?.empresa || admin?.nome || 'Empresa';
-            doc.text(String(nomeEmpresa), margem, y); y += 17;
-            if (admin?.nomeFiscal && admin.nomeFiscal !== nomeEmpresa) {
-                doc.setFontSize(9); doc.text(String(admin.nomeFiscal), margem, y); y += 15;
-            }
-            const registoAnepc = admin?.numeroAnepc || admin?.numero_anepc;
-            const registoPrevio = admin?.numeroRegistoPrevio || admin?.numero_registo_previo;
-            if (registoAnepc) { doc.text('Registada na ANEPC com o número ' + registoAnepc, margem, y); y += 15; }
-            if (registoPrevio) { doc.text('Certificada com número de registo prévio ' + registoPrevio, margem, y); y += 15; }
-            doc.text('N.º: ' + (encomenda.numero || '—'), margem, y); y += 15;
-            doc.text('Data: ' + (encomenda.data ? new Date(encomenda.data + 'T12:00:00').toLocaleDateString('pt-PT') : new Date().toLocaleDateString('pt-PT')), margem, y); y += 24;
-            if (admin?.logo) {
-                try {
-                    const formato = /^data:image\/jpe?g/i.test(admin.logo) ? 'JPEG' : 'PNG';
-                    doc.addImage(admin.logo, formato, 480, 30, 75, 75, undefined, 'FAST');
-                } catch (e) { console.warn('Logo da encomenda:', e); }
-            }
-            doc.setFontSize(11); doc.setTextColor(35, 35, 35);
-            doc.text('Fornecedor: ' + String(fornecedor?.nome || 'Fornecedor'), margem, y); y += 17;
-            if (fornecedor?.nif) { doc.text('NIF: ' + fornecedor.nif, margem, y); y += 17; }
-            y += 17;
-            const largura = direita - margem;
-            function cabecalho() {
-                doc.setFillColor(26, 95, 122); doc.rect(margem, y, largura, 25, 'F');
-                doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
-                doc.text('Artigo', margem + 7, y + 16);
-                doc.text('Quantidade', 300, y + 16);
-                doc.text('Preço unit.', 397, y + 16);
-                doc.text('Subtotal', direita - 8, y + 16, { align: 'right' });
-                y += 25; doc.setFont('helvetica','normal'); doc.setTextColor(45,45,45);
-            }
-            cabecalho();
-            let total = 0;
-            itens.forEach((it, index) => {
-                const qtd = Number(it.quantidade) || 0, preco = it.precoUnit == null ? null : Number(it.precoUnit);
-                const subtotal = preco == null ? null : qtd * preco;
-                if (subtotal != null) total += subtotal;
-                const nomeLinhas = doc.splitTextToSize(String(it.nome || '(sem descrição)'), 215);
-                const altura = Math.max(27, nomeLinhas.length * 12 + 11);
-                if (y + altura > 745) { doc.addPage(); y = 47; cabecalho(); }
-                if (index % 2 === 0) { doc.setFillColor(244,244,244); doc.rect(margem,y,largura,altura,'F'); }
-                doc.setFontSize(9); doc.setTextColor(45,45,45);
-                doc.text(nomeLinhas, margem+7,y+15);
-                doc.text(qtd + ' un',300,y+15);
-                doc.text(preco == null ? '—' : preco.toFixed(2) + ' €',397,y+15);
-                doc.text(subtotal == null ? '—' : subtotal.toFixed(2) + ' €',direita-8,y+15,{align:'right'});
-                y += altura;
-            });
-            if (y > 720) { doc.addPage(); y=60; }
-            y += 26; doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(25,25,25);
-            doc.text('Total estimado: ' + total.toFixed(2) + ' €',direita,y,{align:'right'});
-            y += 30; doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
-            doc.text('Observações: ' + (encomenda.observacoes || 'Gerada a partir do orçamento'),margem,y);
-            doc.save((encomenda.numero || 'nota_encomenda') + '.pdf');
+            // Modelo idêntico à Nota de Encomenda do cartão Armazém.
+            if (!window.jspdf?.jsPDF) { alert('Biblioteca PDF indisponível.'); return; }
+            const doc = new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+            if(typeof doc.autoTable!=='function'){alert('Tabela PDF indisponível.');return;}
+            const admin=dados.administradores?.find(a=>a.id===_tenantId());
+            const fornecedor=dados.fornecedores?.find(f=>f.id===encomenda.fornecedorId);
+            const empresa=String(admin?.empresa||admin?.nome||'Empresa');
+            const fiscal=String(admin?.nomeFiscal||'').trim();
+            const pw=doc.internal.pageSize.getWidth();let y=16;
+            if(admin?.logo){try{const p=doc.getImageProperties(admin.logo);const w=28;doc.addImage(admin.logo,p.fileType||'PNG',pw-w-12,8,w,w*p.height/p.width);}catch(e){console.warn('Logo encomenda:',e);}}
+            doc.setFont('helvetica','normal');doc.setFontSize(15);doc.setTextColor(26,95,122);doc.text('Nota de Encomenda',14,y);y+=7;
+            doc.setFontSize(10);doc.setTextColor(90,90,90);doc.text(empresa,14,y);y+=5;
+            if(fiscal&&fiscal!==empresa){doc.setFontSize(9);const l=doc.splitTextToSize(fiscal,pw-28);doc.text(l,14,y);y+=l.length*4.5+1;doc.setFontSize(10);}
+            const anepc=admin?.numeroAnepc||admin?.numero_anepc,previo=admin?.numeroRegistoPrevio||admin?.numero_registo_previo;
+            if(anepc){doc.text('Registada na ANEPC com o número '+anepc,14,y);y+=5;}
+            if(previo){doc.text('Certificada com número de registo prévio '+previo,14,y);y+=5;}
+            if(encomenda.numero){doc.text('N.º: '+encomenda.numero,14,y);y+=5;}
+            const date=String(encomenda.data||'').slice(0,10);
+            doc.text('Data: '+(date?new Date(date+'T12:00:00').toLocaleDateString('pt-PT'):new Date().toLocaleDateString('pt-PT')),14,y);y+=8;
+            doc.setTextColor(30,30,30);
+            if(fornecedor){doc.text('Fornecedor: '+(fornecedor.nome||'-'),14,y);y+=5;
+                if(fornecedor.nif){doc.text('NIF: '+fornecedor.nif,14,y);y+=5;}
+                if(fornecedor.contacto){doc.text('Contacto: '+fornecedor.contacto,14,y);y+=5;}}
+            y+=3;
+            const linhas=itens.map(i=>{const a=(dados.artigos||[]).find(a=>a.id===i.artigoId);
+                const q=Number(i.quantidade)||0,p=i.precoUnit==null?null:Number(i.precoUnit);
+                return [String(a?.nome||i.nome||'(artigo removido)'),q+' '+(a?.unidade||'un'),
+                    p==null?'—':p.toFixed(2)+' €',p==null?'—':(q*p).toFixed(2)+' €'];});
+            doc.autoTable({startY:y,head:[['Artigo','Quantidade','Preço unit.','Subtotal']],body:linhas,
+                styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[26,95,122]}});
+            y=(doc.lastAutoTable?.finalY||y)+6;
+            if(y>275){doc.addPage();y=20;}
+            const total=itens.reduce((v,i)=>v+(Number(i.quantidade)||0)*(Number(i.precoUnit)||0),0);
+            doc.setFontSize(11);doc.setFont('helvetica','bold');
+            doc.text('Total estimado: '+total.toFixed(2)+' €',195,y,{align:'right'});
+            doc.setFont('helvetica','normal');
+            if(encomenda.observacoes){y+=10;doc.setFontSize(9);doc.setTextColor(90,90,90);doc.text(doc.splitTextToSize('Observações: '+encomenda.observacoes,180),14,y);}
+            doc.save((encomenda.numero||'nota_encomenda')+'.pdf');
         }
         function abrirCriarObraDeProposta(propostaId) {
             const p = dados.propostas?.find(x => x.id === propostaId);

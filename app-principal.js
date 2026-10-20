@@ -30113,6 +30113,44 @@ window._relPrefill = function(msg){
             await iframeCarregado;
 
             const adminRec = dados.administradores?.find(a => a.id === _tenantId());
+
+            // Identificação fiscal nos relatórios de especialidade: exclui sempre RDI.
+            // Corre também após a inicialização do modelo, porque os cabeçalhos
+            // são preenchidos dinamicamente pelos diversos templates.
+            if (tipo !== 'RDI' && adminRec?.nomeFiscal) {
+                const empresaComercial = String(adminRec.empresa || adminRec.nome || '').trim();
+                const nomeFiscal = String(adminRec.nomeFiscal || '').trim();
+                if (nomeFiscal && nomeFiscal !== empresaComercial) {
+                    const aplicarFiscalNoRelatorio = () => {
+                        try {
+                            const d = iframe.contentDocument;
+                            if (!d?.body) return false;
+                            if (d.getElementById('tg-nome-fiscal-especialidade')) return true;
+                            const normalizar = v => String(v || '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase('pt-PT');
+                            const candidatos = [...d.body.querySelectorAll('h1,h2,h3,h4,strong,b,span,div,p')]
+                                .filter(el => el.children.length === 0 && normalizar(el.textContent) === normalizar(empresaComercial));
+                            // Insere depois do nome comercial; nunca antes do logótipo nem
+                            // por cima dos registos ANEPC / registo prévio.
+                            const alvo = candidatos[0];
+                            if (!alvo) return false;
+                            const fiscal = d.createElement('div');
+                            fiscal.id = 'tg-nome-fiscal-especialidade';
+                            fiscal.textContent = nomeFiscal;
+                            fiscal.style.cssText = 'display:block;clear:both;font:500 12px/1.45 Arial,sans-serif;color:#4b5563;margin:4px 0 5px;white-space:normal;';
+                            alvo.insertAdjacentElement('afterend', fiscal);
+                            return true;
+                        } catch (err) { console.warn('Nome fiscal no relatório:', err); return false; }
+                    };
+                    aplicarFiscalNoRelatorio();
+                    const observaFiscal = new MutationObserver(() => {
+                        if (aplicarFiscalNoRelatorio()) observaFiscal.disconnect();
+                    });
+                    if (!iframe.contentDocument?.getElementById('tg-nome-fiscal-especialidade')) {
+                        observaFiscal.observe(iframe.contentDocument.documentElement, {subtree:true,childList:true,characterData:true});
+                        iframe.addEventListener('load', () => observaFiscal.disconnect(), {once:true});
+                    }
+                }
+            }
             const contratoOS = os.contratoId ? dados.contratos?.find(ct => ct.id === os.contratoId) : null;
             const initMsg = {
                 type: 'init',

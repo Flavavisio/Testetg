@@ -18712,6 +18712,18 @@
             setTimeout(_renderizarMapaEquipaDashboardCentral, 60);
             _dashboardCarregarAlertasClima();
             _hdcAnimarGraficos(cont);
+            window.TGSatisfaction?.mount(document.getElementById('hdcSatisfacao'), _hdcRangeDoTipo(_hdcPeriodo.tipo, getDataHoje()));
+        }
+        // O gráfico usa os mesmos dados já autorizados/carregados para a sessão.
+        function _hdcContextoSatisfacao() {
+            return { user: usuarioLogado, tenantId: _tenantId(), reports: dados.relatoriosEspecialidade || [],
+                clients: dados.clientes || [], readSnapshot: async caminho => {
+                    const url = await _obterUrlStorage(caminho);
+                    if (!url) throw new Error('Relatório indisponível');
+                    const resposta = await fetch(url);
+                    if (!resposta.ok) throw new Error('Não foi possível ler o relatório');
+                    return resposta.text();
+                } };
         }
         // Anima todos os gráficos do Dashboard Central a "crescer" quando a página abre, em vez
         // de aparecerem já no tamanho final — barras (verticais e horizontais) crescem de 0 até
@@ -18794,15 +18806,15 @@
             if (tipo === 'hoje') return { ini: hoje, fim: hoje, label: 'hoje' };
             if (tipo === 'semana') {
                 const seg = _segundaDaSemana(new Date(hoje + 'T00:00:00'));
-                return { ini: seg.toISOString().slice(0, 10), fim: hoje, label: 'esta semana' };
+                return { ini: _fmtDataAg(seg), fim: hoje, label: 'esta semana' };
             }
             if (tipo === 'custom' && _hdcPeriodo.ini && _hdcPeriodo.fim) {
                 return { ini: _hdcPeriodo.ini, fim: _hdcPeriodo.fim, label: `${_hdcPeriodo.ini.split('-').reverse().join('/')} a ${_hdcPeriodo.fim.split('-').reverse().join('/')}` };
             }
             // 'mes' (default e fallback do 'custom' sem datas escolhidas ainda)
             const d = new Date(hoje + 'T00:00:00');
-            const ini = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-            const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+            const ini = _fmtDataAg(new Date(d.getFullYear(), d.getMonth(), 1));
+            const fim = _fmtDataAg(new Date(d.getFullYear(), d.getMonth() + 1, 0));
             return { ini, fim, label: 'este mês' };
         }
         // Período imediatamente anterior, com a mesma duração (para o "↑/↓ vs. período anterior").
@@ -18835,6 +18847,7 @@
             const ini = document.getElementById('hdcCustomIni')?.value;
             const fim = document.getElementById('hdcCustomFim')?.value;
             if (!ini || !fim) return;
+            if (ini > fim) { alert('A data inicial deve ser anterior ou igual à data final.'); return; }
             _hdcPeriodo.ini = ini; _hdcPeriodo.fim = fim;
             renderizarDashboardCentralSecao();
         }
@@ -19185,6 +19198,8 @@
                         ${osHoje.length ? osHoje.map(s => { const est = _estadoOSHoje(s); return `<div class="fi" style="cursor:pointer;" onclick="abrirVerOS('${s.id}')"><span class="dot" style="background:${est.cor};"></span><div><div class="tt">${escapeHtmlSimples(s.hora ? s.hora + ' — ' : '')}${escapeHtmlSimples(obterNomeCliente(s.clienteId) || s.descricao || 'OS')}</div><div class="ds">${escapeHtmlSimples(s.descricao || '')}</div></div><span class="ago" style="color:${est.cor};font-weight:700;">${est.label}</span></div>`; }).join('') : `<div class="hdc-vazio">Sem OS marcadas para hoje.</div>`}
                     </div>`}
                 </div>
+
+                <div id="hdcSatisfacao" class="hdc-card" style="margin-bottom:12px;"></div>
 
                 <div class="hdc-row3">
                     ${moduloAssistAtivo(admin) ? (() => {
@@ -30240,6 +30255,7 @@ window._relPrefill = function(msg){
                     criadoEm: Date.now()
                 };
                 novoRel.campos={...novoRel.campos,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
+                if (window.TGSatisfaction) novoRel.campos.satisfacaoCliente = window.TGSatisfaction.extract(msg.html || '');
                 dados.relatoriosEspecialidade = dados.relatoriosEspecialidade || [];
                 dados.relatoriosEspecialidade = dados.relatoriosEspecialidade.filter(r => !(r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho));
                 dados.relatoriosEspecialidade.push(novoRel);

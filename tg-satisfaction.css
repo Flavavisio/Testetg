@@ -18,6 +18,64 @@
 #hdcSatisfacao th i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
 @media(max-width:520px){#hdcSatisfacao .tg-sat-body{grid-template-columns:minmax(0,1fr);gap:12px}#hdcSatisfacao .tg-sat-actions{width:100%}#hdcSatisfacao .tg-sat-actions button{flex:1}#hdcSatisfacao .tg-sat-table{font-size:.75rem}}
 
-#secao-dashboard-central .hdc-row4b{align-items:start}
-#secao-dashboard-central .hdc-row4b>.hdc-card{min-width:0;box-sizing:border-box}
-#secao-dashboard-central .hdc-acoes.hdc-acoes-rodape{grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}
+/* Dashboard Central: quatro indicadores na mesma grelha, sem esticar a
+   satisfação verticalmente nem deslocar os atalhos para outra coluna. */
+#secao-dashboard-central .hdc-row4b{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    align-items:stretch;
+    gap:12px;
+}
+#secao-dashboard-central .hdc-row4b>.hdc-card{
+    min-width:0;
+    box-sizing:border-box;
+    height:100%;
+}
+#secao-dashboard-central #hdcSatisfacao{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-heading{gap:8px;flex-wrap:wrap}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-actions{gap:5px}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-actions button{padding:5px 7px}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-period,
+#secao-dashboard-central #hdcSatisfacao .tg-sat-status{
+    margin:0;
+    font-size:.67rem;
+    line-height:1.35;
+    text-align:left;
+    overflow-wrap:anywhere;
+}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-body{
+    display:grid;
+    grid-template-columns:76px minmax(0,1fr);
+    align-items:center;
+    gap:10px;
+    width:100%;
+    max-width:none;
+    margin:0;
+}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-donut{width:74px;height:74px}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-donut>div{width:52px;height:52px}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-donut b{font-size:1rem}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-donut small{font-size:.60rem}
+#secao-dashboard-central #hdcSatisfacao .tg-sat-table{font-size:.70rem;min-width:0}
+#secao-dashboard-central #hdcSatisfacao th,
+#secao-dashboard-central #hdcSatisfacao td{padding:2px 0}
+#secao-dashboard-central #hdcSatisfacao th i{width:7px;height:7px;margin-right:5px}
+#secao-dashboard-central .hdc-acoes.hdc-acoes-rodape{
+    grid-column:1/-1;
+    grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+}
+@media(max-width:1250px){
+    #secao-dashboard-central .hdc-row4b{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:660px){
+    #secao-dashboard-central .hdc-row4b{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:360px){
+    #secao-dashboard-central #hdcSatisfacao .tg-sat-body{
+        grid-template-columns:minmax(0,1fr);
+    }
+}

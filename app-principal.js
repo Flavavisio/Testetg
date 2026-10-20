@@ -28708,6 +28708,7 @@ async function salvarAdmin(e) {
                     iframe.contentWindow.postMessage({
                         type: 'init',
                         empresaNome: admin.empresa || admin.nome || '',
+                        empresaFiscal: admin.nomeFiscal || '',
                         logoBase64: admin.logo || '',
                         corCorporativa: admin.corCorporativa || '',
                         anepcNumero: admin.numeroAnepc || '',
@@ -28997,6 +28998,7 @@ async function salvarAdmin(e) {
   <header class="top">
     <div class="brand">
       <div class="empresa-nome" id="empresaNomeTxt"></div>
+      <div id="empresaFiscalTxt" style="display:none;font-size:.76rem;font-weight:500;color:var(--muted);margin-top:3px;line-height:1.4;"></div>
       <div id="anepcRpLinha" style="display:none;font-size:.68rem;color:var(--muted);margin-top:3px;line-height:1.5;"></div>
       <img id="certLogoImg" style="display:none;max-height:34px;max-width:120px;margin-top:6px;object-fit:contain;" />
     </div>
@@ -29040,6 +29042,7 @@ window._relPrefill = function(msg){
   const moradaResto = [msg.codigoPostal, msg.localidade].filter(Boolean).join(' ');
   const moradaTxt = document.getElementById('txtMorada'); if (moradaTxt) moradaTxt.textContent = [moradaPartes, moradaResto].filter(Boolean).join(' · ') || '—';
   const empresaNomeTxt = document.getElementById('empresaNomeTxt'); if (empresaNomeTxt) empresaNomeTxt.textContent = msg.empresaNome || '';
+  const empresaFiscalTxt = document.getElementById('empresaFiscalTxt'); if (empresaFiscalTxt) { const fiscal = String(msg.empresaFiscal || '').trim(); empresaFiscalTxt.textContent = fiscal; empresaFiscalTxt.style.display = fiscal && fiscal !== String(msg.empresaNome || '').trim() ? 'block' : 'none'; }
 };
 <\/script>
 <script>
@@ -30129,6 +30132,7 @@ window._relPrefill = function(msg){
                 podeAssinar: podeAssinarRelatorio,
                 logoBase64: adminRec?.logo || '',
                 empresaNome: adminRec?.empresa || adminRec?.nome || '',
+                empresaFiscal: adminRec?.nomeFiscal || '',
                 empresaNif: adminRec?.nif || '',
                 registoPrevioData: adminRec?.dataRegistoPrevio || '',
                 anepcNumero: adminRec?.numeroAnepc || '',

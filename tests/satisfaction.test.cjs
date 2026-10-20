@@ -143,7 +143,7 @@ test('month and week boundaries use local dates in Portugal, not UTC conversion'
 });
 test('public shells and PWA cache reference the new module and app together', () => {
     for (const file of ['index.html', 'login.html', 'sw.js']) {
-        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.2/); assert.match(source, /app-principal.js\?v=satisfaction-compact-20261020/);
+        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.3/); assert.match(source, /app-principal.js\?v=satisfaction-fields-height-20261020/);
     }
 });
 
@@ -155,4 +155,31 @@ test('satisfaction dashboard layout keeps four desktop columns, aligned shortcut
     assert.match(css, /@media\(max-width:1250px\)/);
     assert.match(css, /@media\(max-width:660px\)/);
     assert.match(css, /#secao-dashboard-central #hdcSatisfacao \.tg-sat-body/);
+});
+
+// Satisfação em RCCTV / Intrusão e novo campo personalizável.
+test('specialty report satisfaction field is included in RCCTV and Intrusão and configurable in custom reports', () => {
+    const src = fs.readFileSync(path.join(root, 'app-principal.js'), 'utf8');
+    assert.match(src, /\['RCCTV', 'RIN'\]\.forEach\(tipo/);
+    assert.match(src, /Grau de satisfação do cliente/);
+    assert.match(src, /\{ valor: 'satisfacao', label: 'Satisfação do cliente \(4 níveis\)'/);
+    assert.match(src, /if \(c\.tipo === 'satisfacao'\) return/);
+    assert.match(src, /el\.id === 'tg_satisfacao_cliente'/);
+    const x = setup();
+    try {
+        const html = value => '<div><label for="tg_satisfacao_cliente">Grau de satisfação do cliente</label><select id="tg_satisfacao_cliente">' +
+            '<option value="">— Sem resposta —</option>' +
+            '<option value="satisfeito"' + (value === 'satisfeito' ? ' selected' : '') + '>Satisfeito</option>' +
+            '<option value="muito_satisfeito"' + (value === 'muito_satisfeito' ? ' selected' : '') + '>Muito satisfeito</option></select></div>';
+        assert.equal(x.api.extract(html('satisfeito')).grau, 'satisfeito');
+        assert.equal(x.api.extract(html('muito_satisfeito')).grau, 'muito_satisfeito');
+        assert.equal(x.api.extract(html('')).grau, null);
+    } finally { x.close(); }
+});
+test('four compact charts are as tall as the primary charts on desktop, excluding shortcuts', () => {
+    const css = fs.readFileSync(path.join(root, 'tg-satisfaction.css'), 'utf8');
+    assert.match(css, /\.hdc-row4 > \.hdc-card/);
+    assert.match(css, /\.hdc-row4b > \.hdc-card:not\(\.hdc-acoes\)/);
+    assert.match(css, /height:270px/);
+    assert.match(css, /@media \(max-width:660px\)/);
 });

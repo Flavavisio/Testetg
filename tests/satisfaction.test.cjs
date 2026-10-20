@@ -143,6 +143,16 @@ test('month and week boundaries use local dates in Portugal, not UTC conversion'
 });
 test('public shells and PWA cache reference the new module and app together', () => {
     for (const file of ['index.html', 'login.html', 'sw.js']) {
-        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.1/); assert.match(source, /app-principal.js\?v=satisfaction-compact-20261020/);
+        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.2/); assert.match(source, /app-principal.js\?v=satisfaction-compact-20261020/);
     }
+});
+
+// Regressão: o quarto inferior é uma grelha regular de quatro cartões.
+test('satisfaction dashboard layout keeps four desktop columns, aligned shortcuts and mobile stacking', () => {
+    const css = fs.readFileSync(path.join(root, 'tg-satisfaction.css'), 'utf8');
+    assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+    assert.match(css, /#secao-dashboard-central \.hdc-acoes\.hdc-acoes-rodape/);
+    assert.match(css, /@media\(max-width:1250px\)/);
+    assert.match(css, /@media\(max-width:660px\)/);
+    assert.match(css, /#secao-dashboard-central #hdcSatisfacao \.tg-sat-body/);
 });

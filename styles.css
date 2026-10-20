@@ -1782,3 +1782,8 @@ body.tem-menu-inferior .alerta-chev { color: var(--tgm-text-mute); }
     #tgQuiosqueOverlay.aberto{padding:16px 12px 26px !important;}
     #tgQuiosqueOverlay.aberto #tgqGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 }
+
+/* Legibilidade do nome fiscal no perfil da empresa */
+#perf_nome_fiscal { color: #142337 !important; -webkit-text-fill-color: #142337 !important; background-color: #fff !important; }
+#perf_nome_fiscal::placeholder { color: #49566a !important; opacity: 1 !important; }
+label[for="perf_nome_fiscal"] { color: #fff !important; text-shadow: 0 1px 2px rgba(0,0,0,.5); font-weight: 600; }

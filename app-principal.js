@@ -16838,7 +16838,9 @@
                 // Numeração por fornecedor: ENC-{Fornecedor}-001, 002, ... — conta quantas
                 // encomendas este fornecedor já teve nesta empresa, e usa a seguinte.
                 const nomeFornecedorSlug = (_nomeFornecedor(fornecedorId) || 'FORN').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '').toUpperCase().slice(0, 12) || 'FORN';
-                const seqFornecedor = (dados.encomendas || []).filter(e => e.adminId === adminId && e.fornecedorId === fornecedorId).length + 1;
+                const prefixoEnc = 'ENC-' + nomeFornecedorSlug + '-';
+                const seqFornecedor = (dados.encomendas || []).filter(e => e.adminId === adminId && typeof e.numero === 'string' && e.numero.startsWith(prefixoEnc))
+                    .reduce((max, e) => Math.max(max, Number(e.numero.slice(prefixoEnc.length)) || 0), 0) + 1;
                 const numeroEnc = 'ENC-' + nomeFornecedorSlug + '-' + String(seqFornecedor).padStart(3, '0');
                 (dados.encomendas = dados.encomendas || []).push({ id: encId, adminId, numero: numeroEnc, fornecedorId, obraId, data, estado: 'pendente', observacoes: obs, dataCriacao: Date.now() });
             }

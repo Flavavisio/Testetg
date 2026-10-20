@@ -2527,7 +2527,12 @@
     <div id="onbStep3" style="display:none;">
       <div class="modal-header"><h2><i class="fas fa-certificate"></i> Certificações e cor da empresa</h2></div>
       <div class="modal-body">
-        <p style="color:#5a6781;margin-bottom:14px;">Estes dados (se preenchidos) aparecem por baixo do logótipo em todos os relatórios. Pode preencher mais tarde no seu perfil.</p>
+        <p style="color:#5a6781;margin-bottom:14px;">Preencha a identificação legal da empresa e, se aplicável, os seus registos. O nome fiscal surge imediatamente abaixo do nome comercial nos documentos.</p>
+        <div class="form-group">
+          <label for="onb_nome_fiscal">Nome fiscal / denominação legal da empresa</label>
+          <input type="text" id="onb_nome_fiscal" maxlength="180" autocomplete="organization" placeholder="Nome registado nas Finanças/Registo Comercial" />
+          <div class="help-text">Pode atualizar mais tarde no Perfil da Empresa (apenas Admin e Subadmin).</div>
+        </div>
         <div class="form-group">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;">
             <input type="checkbox" id="onb_tem_anepc" onchange="document.getElementById('onb_anepc_campo').style.display=this.checked?'block':'none'" style="width:auto;" />

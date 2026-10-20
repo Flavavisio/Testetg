@@ -19199,8 +19199,6 @@
                     </div>`}
                 </div>
 
-                <div id="hdcSatisfacao" class="hdc-card" style="margin-bottom:12px;"></div>
-
                 <div class="hdc-row3">
                     ${moduloAssistAtivo(admin) ? (() => {
                         // Assistências ainda sem OS (precisam de decisão) vs. já convertidas em
@@ -19272,6 +19270,7 @@
                 </div>
 
                 <div class="hdc-row4b">
+                    <div id="hdcSatisfacao" class="hdc-card"></div>
                     ${expressAtivo(admin) ? '' : `<div class="hdc-card hdc-top5">
                         <h4>Top Clientes (faturação — ${range.label})</h4>
                         ${topClientes.length ? `<ul>${topClientes.map(([n, v], i) => `<li><span class="n">${i + 1}</span><span class="nm">${escapeHtmlSimples(n)}</span><span class="vl">${eur(v)}</span></li>`).join('')}</ul>` : `<div class="hdc-vazio">Sem OS concluídas com valor neste período.</div>`}
@@ -19301,7 +19300,7 @@
                         <div class="hdc-legenditem"><span class="k"><i style="background:#94a3b8;"></i>Sem agenda</span><b>${estadosContrato.sem} (${pct(estadosContrato.sem).toFixed(0)}%)</b></div>
                         ` : `<div class="hdc-vazio">Sem contratos de manutenção.</div>`}
                     </div>
-                    <div class="hdc-card hdc-acoes">
+                    <div class="hdc-card hdc-acoes hdc-acoes-rodape">
                         <button onclick="abrirSecao('servicos')"><div class="ic" style="background:var(--hb);"><i class="fas fa-plus"></i></div>Nova OS</button>
                         <button onclick="abrirSecao('clientes')"><div class="ic" style="background:var(--hp);"><i class="fas fa-user-plus"></i></div>Novo Cliente</button>
                         ${expressAtivo(admin)

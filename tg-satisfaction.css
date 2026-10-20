@@ -79,3 +79,31 @@
         grid-template-columns:minmax(0,1fr);
     }
 }
+
+/* Dashboard Central: alturas equivalentes entre as duas linhas de gráficos. */
+@media (min-width:1251px){
+    /* Ações rápidas ocupam a linha própria e não são cartões estatísticos. */
+    #secao-dashboard-central .hdc-row4 > .hdc-card,
+    #secao-dashboard-central .hdc-row4b > .hdc-card:not(.hdc-acoes){
+        box-sizing:border-box;
+        height:270px;
+        min-height:270px;
+        overflow:auto;
+    }
+}
+@media (min-width:661px) and (max-width:1250px){
+    #secao-dashboard-central .hdc-row4 > .hdc-card,
+    #secao-dashboard-central .hdc-row4b > .hdc-card:not(.hdc-acoes){
+        box-sizing:border-box;
+        min-height:260px;
+        height:auto;
+    }
+}
+@media (max-width:660px){
+    #secao-dashboard-central .hdc-row4 > .hdc-card,
+    #secao-dashboard-central .hdc-row4b > .hdc-card:not(.hdc-acoes){
+        height:auto;
+        min-height:0;
+        overflow:visible;
+    }
+}

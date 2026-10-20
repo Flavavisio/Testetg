@@ -18195,6 +18195,14 @@
             doc.setFontSize(10); doc.setTextColor(90, 90, 90);
             let y = 23;
             if (empresa) { doc.text(empresa, 14, y); y += 5; }
+            const nomeFiscal = String(adminRec?.nomeFiscal || '').trim();
+            if (nomeFiscal && nomeFiscal !== String(empresa).trim()) {
+                doc.setFontSize(9); doc.setTextColor(65, 65, 65);
+                const linhasFiscais = doc.splitTextToSize(nomeFiscal, pw - 28);
+                doc.text(linhasFiscais, 14, y);
+                y += linhasFiscais.length * 4.5 + 1;
+                doc.setFontSize(10); doc.setTextColor(90, 90, 90);
+            }
             if (sub) {
                 // "sub" pode vir com várias linhas (ex.: descrição de uma OS gerada a partir de
                 // uma Obra, com o texto de materiais incluído) — sem isto, o texto seguinte era

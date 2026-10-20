@@ -28423,6 +28423,7 @@ async function salvarAdmin(e) {
             { valor: 'checkbox', label: 'Sim / Não', icon: 'fa-toggle-on' },
             { valor: 'checklist', label: 'Passo do checklist (obrigatório)', icon: 'fa-list-check' },
             { valor: 'lista', label: 'Lista de escolha', icon: 'fa-caret-down' },
+            { valor: 'satisfacao', label: 'Satisfação do cliente (4 níveis)', icon: 'fa-face-smile' },
             { valor: 'data', label: 'Data', icon: 'fa-calendar-day' },
             { valor: 'hora', label: 'Hora', icon: 'fa-clock' },
             { valor: 'titulo', label: 'Título de secção', icon: 'fa-heading' },
@@ -28789,8 +28790,8 @@ async function salvarAdmin(e) {
             _rpAtualizarPreview(tipo);
         }
         async function _rpAdicionarCampo(codigo) {
-            const label = document.getElementById('rp_novo_campo_label').value.trim();
             const tipoCampo = document.getElementById('rp_novo_campo_tipo').value;
+            const label = tipoCampo === 'satisfacao' ? 'Grau de satisfação do cliente' : document.getElementById('rp_novo_campo_label').value.trim();
             if (!label) { alert('Escreve o nome do campo (ou, para um Título de secção, o texto do título).'); return; }
             let opcoes = null;
             if (tipoCampo === 'lista') {
@@ -28803,6 +28804,11 @@ async function salvarAdmin(e) {
             const tipo = (dados.tiposTrabalhoCustom || []).find(t => t.codigo === codigo && t.adminId === tid);
             if (!tipo) return;
             tipo.campos = tipo.campos || [];
+            // Uma única resposta de satisfação por relatório, para evitar duplicar métricas.
+            if (tipoCampo === 'satisfacao' && tipo.campos.some(c => c.tipo === 'satisfacao' || (c.tipo === 'lista' && /satisfaç|satisfac/i.test(c.label || '')))) {
+                alert('Este modelo já contém um campo de satisfação do cliente.');
+                return;
+            }
             // Limite de campos por relatório, conforme o pack (Express 5 / Expert 15 / Pro 40 / ∞).
             const limiteCampos = packLimite(adminAtual(), 'camposPorRelatorio');
             if (tipo.campos.length >= limiteCampos) {
@@ -28847,6 +28853,28 @@ async function salvarAdmin(e) {
         const REPORT_TEMPLATES = {};
         Object.keys(REPORT_TEMPLATES_B64).forEach(k => { try { REPORT_TEMPLATES[k] = decodeURIComponent(escape(atob(REPORT_TEMPLATES_B64[k]))); } catch(e) { REPORT_TEMPLATES[k] = atob(REPORT_TEMPLATES_B64[k]); } });
 
+        // RCCTV / Intrusão: adicionar uma resposta de satisfação opcional antes das assinaturas.
+        // O SELECT é serializado pelos modelos ao guardar rascunho ou concluir; a leitura
+        // existente TGSatisfaction.extract identifica os quatro graus no HTML do relatório.
+        function _tgAdicionarSatisfacaoRelatorio(html) {
+            const anchor = '<div class="signrow">';
+            if (!html || html.includes('id="tg_satisfacao_cliente"') || !html.includes(anchor)) return html;
+            const campo = `<div class="config-field" data-tg-sat-field="1" style="margin:14px 0 18px;">
+                <label for="tg_satisfacao_cliente" style="display:block;font-size:.76rem;color:var(--muted,#64748b);margin-bottom:7px;">Grau de satisfação do cliente</label>
+                <select id="tg_satisfacao_cliente" aria-label="Grau de satisfação do cliente" style="display:block;width:100%;max-width:320px;min-height:38px;padding:7px 10px;border:1px solid var(--line,#cbd5e1);border-radius:7px;background:#fff;font:inherit;">
+                    <option value="">— Sem resposta —</option>
+                    <option value="muito_insatisfeito">Muito insatisfeito</option>
+                    <option value="insatisfeito">Insatisfeito</option>
+                    <option value="satisfeito">Satisfeito</option>
+                    <option value="muito_satisfeito">Muito satisfeito</option>
+                </select>
+            </div>`;
+            return html.replace(anchor, campo + anchor);
+        }
+        ['RCCTV', 'RIN'].forEach(tipo => {
+            REPORT_TEMPLATES[tipo] = _tgAdicionarSatisfacaoRelatorio(REPORT_TEMPLATES[tipo]);
+        });
+
         // Gera, na hora, o formulário HTML de um relatório personalizado (tipo de trabalho
         // criado pelo próprio admin em "Relatórios personalizados por tipo"). Segue exatamente
         // o mesmo protocolo (mensagens init/permissao/rascunho/concluído) dos modelos fixos
@@ -28860,6 +28888,13 @@ async function salvarAdmin(e) {
                 if (c.tipo === 'numero') return `<input type="number" step="0.01" ${idAttr} style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:${fsz};">`;
                 if (c.tipo === 'data') return `<input type="date" ${idAttr} style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:${fsz};">`;
                 if (c.tipo === 'hora') return `<input type="time" ${idAttr} style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:${fsz};">`;
+                if (c.tipo === 'satisfacao') return `<select ${idAttr} aria-label="Grau de satisfação do cliente" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:${fsz};background:#fff;">
+                    <option value="">— Sem resposta —</option>
+                    <option value="muito_insatisfeito">Muito insatisfeito</option>
+                    <option value="insatisfeito">Insatisfeito</option>
+                    <option value="satisfeito">Satisfeito</option>
+                    <option value="muito_satisfeito">Muito satisfeito</option>
+                </select>`;
                 if (c.tipo === 'lista') return `<select ${idAttr} style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:${fsz};background:#fff;">
                     <option value="">— Escolhe —</option>
                     ${(c.opcoes || []).map(o => `<option value="${escapeHtmlSimples(o)}">${escapeHtmlSimples(o)}</option>`).join('')}
@@ -28891,7 +28926,7 @@ async function salvarAdmin(e) {
                     </div>`;
                     return;
                 }
-                const campoBloco = `<div style="flex:1;min-width:0;"><label style="font-size:${_RP_TAM_LABEL[tam]};">${escapeHtmlSimples(c.label)}</label>${campoHtml(c, _RP_TAM_CAMPO[tam])}</div>`;
+                const campoBloco = `<div style="flex:1;min-width:0;"><label ${c.tipo === 'satisfacao' ? `for="${c.id}"` : ''} style="font-size:${_RP_TAM_LABEL[tam]};">${escapeHtmlSimples(c.label)}</label>${campoHtml(c, _RP_TAM_CAMPO[tam])}</div>`;
                 if (c.largura === 'metade') {
                     if (_pendente) { camposHtml += `<div class="field-row" style="display:flex;gap:14px;">${_pendente}${campoBloco}</div>`; _pendente = null; }
                     else { _pendente = campoBloco; }
@@ -29949,7 +29984,7 @@ window._relPrefill = function(msg){
                     if (!htmlRascunho && rascunhoExistente.campos?.htmlSnapshotPath) {
                         htmlRascunho = await _obterTextoStorage(rascunhoExistente.campos.htmlSnapshotPath) || '';
                     }
-                    if (htmlRascunho) { iframe.srcdoc = htmlRascunho; usouRascunho = true; }
+                    if (htmlRascunho) { iframe.srcdoc = ['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho; usouRascunho = true; }
                 }
             }
             // Sem rascunho em aberto: se já existir um relatório CONCLUÍDO anterior desta mesma
@@ -29993,7 +30028,7 @@ window._relPrefill = function(msg){
                             const docAnterior = new DOMParser().parseFromString(htmlAnterior, 'text/html');
                             camposParaRestaurar = {};
                             docAnterior.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-                                if (/^sign_|_nome$/i.test(el.id) || el.tagName === 'CANVAS') return; // nunca reaproveita assinaturas/nomes de quem assinou
+                                if (/^sign_|_nome$/i.test(el.id) || el.id === 'tg_satisfacao_cliente' || (tipoCustomDef?.campos || []).some(c => c.tipo === 'satisfacao' && c.id === el.id) || el.tagName === 'CANVAS') return; // nunca reaproveita assinaturas nem avaliações antigas
                                 if (el.type === 'checkbox' || el.type === 'radio') camposParaRestaurar[el.id] = el.checked;
                                 else camposParaRestaurar[el.id] = el.tagName === 'TEXTAREA' ? el.textContent : el.value;
                             });

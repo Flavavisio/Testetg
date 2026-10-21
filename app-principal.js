@@ -13392,6 +13392,97 @@
             }
         }
 
+        // Cada aviso transporta os IDs que lhe deram origem, em vez de abrir a lista geral.
+        function _acaoPendenciasAlerta(tipo, itens) {
+            return `_abrirPendenciasAlerta(${JSON.stringify(tipo)},${JSON.stringify(itens.map(i => i.id))})`;
+        }
+        function _itensPendenciasAlerta(tipo, ids) {
+            if (!['admin', 'subadmin'].includes(usuarioLogado?.role) || !Array.isArray(ids)) return [];
+            const colecoes = { servico: 'servicos', contrato: 'contratos', veiculo: 'veiculos', requisicao: 'requisicoes', pedido: 'pedidos', artigo: 'artigos', obra: 'obras', assistencia: 'assistencias' };
+            const lista = dados[colecoes[tipo]] || [];
+            return lista.filter(i => i.adminId === _tenantId() && ids.includes(i.id));
+        }
+        function _rotuloPendenciaAlerta(tipo, item) {
+            if (tipo === 'pedido') return `${item.tipo === 'ferias' ? 'Férias' : 'Falta'} — ${obterNomeFuncionario(item.funcionarioId)} · ${item.dataInicio || ''} a ${item.dataFim || ''}`;
+            if (tipo === 'veiculo') return `${item.matricula || 'Veículo'} · ${item.marcaModelo || ''}`;
+            if (tipo === 'contrato') return `Contrato ${item.numero || item.id} · ${obterNomeCliente(item.clienteId)}`;
+            return item.assunto || item.nome || item.descricao || item.numeroRegisto || item.numero || item.id;
+        }
+        function _painelPendenciasAlerta(titulo) {
+            document.getElementById('tgPendenciasOverlay')?.remove();
+            const anterior = document.activeElement;
+            const overlay = document.createElement('div');
+            overlay.id = 'tgPendenciasOverlay'; overlay.className = 'modal-overlay open';
+            overlay.style.zIndex = '10050';
+            const modal = document.createElement('div'); modal.className = 'modal';
+            modal.style.cssText = 'width:min(680px,94vw);max-height:85dvh;overflow:auto;';
+            modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-label', titulo);
+            const cabecalho = document.createElement('div'); cabecalho.className = 'modal-header';
+            const heading = document.createElement('h3'); heading.textContent = titulo;
+            const fechar = document.createElement('button'); fechar.type = 'button'; fechar.className = 'btn btn-outline'; fechar.textContent = 'Fechar';
+            const encerrar = () => { overlay.remove(); anterior?.focus(); };
+            fechar.onclick = encerrar;
+            cabecalho.append(heading, fechar);
+            const corpo = document.createElement('div'); corpo.style.cssText = 'padding:16px;display:grid;gap:12px;';
+            modal.append(cabecalho, corpo); overlay.append(modal); document.body.append(overlay);
+            overlay.onclick = ev => { if (ev.target === overlay) encerrar(); };
+            overlay.onkeydown = ev => {
+                if (ev.key === 'Escape') { ev.stopPropagation(); encerrar(); }
+                if (ev.key === 'Tab') {
+                    const botoes = [...modal.querySelectorAll('button, a[href]')];
+                    const primeiro = botoes[0], ultimo = botoes[botoes.length - 1];
+                    if (ev.shiftKey && document.activeElement === primeiro) { ev.preventDefault(); ultimo.focus(); }
+                    else if (!ev.shiftKey && document.activeElement === ultimo) { ev.preventDefault(); primeiro.focus(); }
+                }
+            };
+            fechar.focus(); return corpo;
+        }
+        function _abrirPendenciasAlerta(tipo, ids) {
+            const itens = _itensPendenciasAlerta(tipo, ids);
+            if (!itens.length) { mostrarErro('Este aviso já não tem registos disponíveis.'); return; }
+            if (itens.length === 1) { _abrirRegistoPendenciaAlerta(tipo, itens[0].id); return; }
+            const corpo = _painelPendenciasAlerta('Registos deste aviso (' + itens.length + ')');
+            itens.forEach(item => {
+                const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-outline';
+                btn.style.cssText = 'text-align:left;white-space:normal;min-height:44px;';
+                btn.textContent = _rotuloPendenciaAlerta(tipo, item);
+                btn.onclick = () => _abrirRegistoPendenciaAlerta(tipo, item.id);
+                corpo.append(btn);
+            });
+        }
+        function _abrirRegistoPendenciaAlerta(tipo, id) {
+            const item = _itensPendenciasAlerta(tipo, [id])[0];
+            if (!item) { mostrarErro('Registo indisponível.'); return; }
+            document.getElementById('tgPendenciasOverlay')?.remove();
+            if (tipo === 'servico') { abrirVerOS(id); return; }
+            if (tipo === 'contrato') { abrirModalContrato(id); return; }
+            if (tipo === 'veiculo') { abrirModalVeiculo(id); return; }
+            if (tipo === 'obra') { abrirObraLongaDetalhe(id); return; }
+            if (tipo === 'artigo') { abrirModal('artigo', id); return; }
+            const corpo = _painelPendenciasAlerta(_rotuloPendenciaAlerta(tipo, item));
+            const detalhe = document.createElement('p'); detalhe.style.whiteSpace = 'pre-wrap';
+            detalhe.textContent = tipo === 'assistencia'
+                ? `${_assistResumoDados(item).cliente} · ${_assistResumoDados(item).local} · ${_assistResumoDados(item).urgencia}\n${item.descricao || ''}`
+                : tipo === 'requisicao'
+                ? `${item.obraDescricao || ''}\n${item.fornecedor || ''}\n${item.descricao || ''}\n${(item.itens || []).map(i => `${i.nome} (${i.quantidade})`).join(', ')}`
+                : `${item.observacao || ''}\n${item.horas ? item.horas + ' horas' : ''}`;
+            corpo.append(detalhe);
+            const botao = (texto, acao, classe = 'btn-outline') => {
+                const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn ' + classe; btn.textContent = texto;
+                btn.onclick = () => {
+                    if (!_itensPendenciasAlerta(tipo, [id]).length) { mostrarErro('Registo indisponível.'); return; }
+                    document.getElementById('tgPendenciasOverlay')?.remove(); acao();
+                }; corpo.append(btn);
+            };
+            if (tipo === 'assistencia') { botao('Criar OS desta assistência', () => _abrirAssist(null, id)); return; }
+            if (['pendente', 'pendente_aprov'].includes(item.status)) {
+                botao('Aprovar', () => tipo === 'pedido' ? aprovarPedido(id) : aprovarRequisicao(id), 'btn-success');
+                botao('Rejeitar', () => tipo === 'pedido' ? rejeitarPedido(id) : rejeitarRequisicao(id), 'btn-danger');
+            }
+            if (tipo === 'requisicao') botao('Editar requisição', () => abrirModal('requisicao', id));
+        }
+
         function renderizarAlertas() {
             const cont = document.getElementById('alertasPendencias');
             const contGlobal = document.getElementById('alertaPontoGlobal');
@@ -13462,22 +13553,22 @@
                 alertas.push({ tipo: 'info', titulo: `🎂 ${_aniversariantes.length === 1 ? _aniversariantes[0].nome + ' faz anos hoje' : _nomes + ' fazem anos hoje'}`, sub: 'Aproveite para o(a) cumprimentar!', acao: '' });
             }
 
-            const osPend = (dados.servicos || []).filter(s => s.adminId === adminId && (s.status || 'pendente') === 'pendente').length;
-            if (osPend) alertas.push({ tipo: 'info', titulo: `${osPend} ${osPend === 1 ? 'ordem de serviço pendente' : 'ordens de serviço pendentes'}`, sub: 'Atribua ou inicie as ordens para manter o fluxo.', acao: "abrirSecao('agenda-obras')" });
+            const osPendLista = (dados.servicos || []).filter(s => s.adminId === adminId && (s.status || 'pendente') === 'pendente');
+            if (osPendLista.length) alertas.push({ tipo: 'info', titulo: `${osPendLista.length} ${osPendLista.length === 1 ? 'ordem de serviço pendente' : 'ordens de serviço pendentes'}`, sub: 'Atribua ou inicie as ordens para manter o fluxo.', acao: _acaoPendenciasAlerta('servico', osPendLista) });
 
             const assistPortal = moduloAssistAtivo(dados.administradores?.find(a => a.id === adminId)) ? _assistPortalPorTratar(adminId) : [];
-            if (assistPortal.length) alertas.push({tipo:'warning',titulo: `${assistPortal.length} assistência(s) do Portal do Cliente por tratar`,sub:assistPortal.slice(0,3).map(a => {const d=_assistResumoDados(a);return `${d.cliente} · ${d.local} · ${d.urgencia}`;}).join(' | '),acao:'_abrirAssistGeral()'});
-            const assistPend = (dados.servicos || []).filter(s => s.adminId === adminId && s.status === 'por aprovar').length;
-            if (assistPend) alertas.push({ tipo: 'warning', titulo: `${assistPend} ${assistPend === 1 ? 'pedido de assistência por aprovar' : 'pedidos de assistência por aprovar'}`, sub: 'Pedidos enviados pelos clientes no Portal. Aprove ou rejeite.', acao: "abrirSecao('servicos')" });
+            if (assistPortal.length) alertas.push({tipo:'warning',titulo: `${assistPortal.length} assistência(s) do Portal do Cliente por tratar`,sub:assistPortal.slice(0,3).map(a => {const d=_assistResumoDados(a);return `${d.cliente} · ${d.local} · ${d.urgencia}`;}).join(' | '),acao:_acaoPendenciasAlerta('assistencia', assistPortal)});
+            const assistPendLista = (dados.servicos || []).filter(s => s.adminId === adminId && s.status === 'por aprovar');
+            if (assistPendLista.length) alertas.push({ tipo: 'warning', titulo: `${assistPendLista.length} ${assistPendLista.length === 1 ? 'pedido de assistência por aprovar' : 'pedidos de assistência por aprovar'}`, sub: 'Pedidos enviados pelos clientes no Portal. Aprove ou rejeite.', acao: _acaoPendenciasAlerta('servico', assistPendLista) });
 
             const adminRecAlerta = dados.administradores?.find(a => a.id === adminId);
             if (moduloContratosAtivo(adminRecAlerta)) {
                 const contratosAVencerLista = (dados.contratos || []).filter(c => c.adminId === adminId && estadoManutencao(calcularProximaManutencao(c)).chave === 'a_vencer');
-                if (contratosAVencerLista.length) alertas.push({ tipo: 'warning', titulo: `${contratosAVencerLista.length} ${contratosAVencerLista.length === 1 ? 'contrato de manutenção a vencer' : 'contratos de manutenção a vencer'} nos próximos 30 dias`, sub: 'Verifique se é preciso gerar a OS de manutenção.', acao: "abrirSecao('contratos')" });
+                if (contratosAVencerLista.length) alertas.push({ tipo: 'warning', titulo: `${contratosAVencerLista.length} ${contratosAVencerLista.length === 1 ? 'contrato de manutenção a vencer' : 'contratos de manutenção a vencer'} nos próximos 30 dias`, sub: 'Verifique se é preciso gerar a OS de manutenção.', acao: _acaoPendenciasAlerta('contrato', contratosAVencerLista) });
                 contratosAVencerLista.forEach(c => {
                     const dias = estadoManutencao(calcularProximaManutencao(c)).dias;
                     _notificarPorFaseVencimento('contrato_vencer_' + adminId, c.id, dias, () => {
-                        _notificarAdminESubadmin(adminId, '📄 Contrato de manutenção a vencer', 'Contrato ' + (c.numero || '#' + c.id) + ' — ' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ' vence em ' + dias + ' dia(s).', "abrirSecao('contratos')");
+                        _notificarAdminESubadmin(adminId, '📄 Contrato de manutenção a vencer', 'Contrato ' + (c.numero || '#' + c.id) + ' — ' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ' vence em ' + dias + ' dia(s).', _acaoPendenciasAlerta('contrato', [c]));
                     });
                 });
                 // Validade do CONTRATO em si (o acordo comercial) — diferente da próxima
@@ -13486,9 +13577,9 @@
                 contratosValidadeLista.forEach(c => {
                     const diasValidade = calcularDiasRestantes(new Date(c.validadeContrato + 'T00:00:00').getTime());
                     if (diasValidade <= 30) {
-                        alertas.push({ tipo: 'warning', titulo: `📄 Contrato a renovar — ${_clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {})}`, sub: `A validade do contrato (${c.numero || '#' + c.id}) termina em ${diasValidade} dia(s). Confirma se precisa de renovação/reajuste de preço.`, acao: "abrirSecao('contratos')" });
+                        alertas.push({ tipo: 'warning', titulo: `📄 Contrato a renovar — ${_clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {})}`, sub: `A validade do contrato (${c.numero || '#' + c.id}) termina em ${diasValidade} dia(s). Confirma se precisa de renovação/reajuste de preço.`, acao: _acaoPendenciasAlerta('contrato', [c]) });
                         _notificarPorFaseVencimento('contrato_validade_' + adminId, c.id, diasValidade, () => {
-                            _notificarAdminESubadmin(adminId, '📄 Contrato a renovar', 'A validade do contrato ' + (c.numero || '#' + c.id) + ' — ' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ' termina em ' + diasValidade + ' dia(s).', "abrirSecao('contratos')");
+                            _notificarAdminESubadmin(adminId, '📄 Contrato a renovar', 'A validade do contrato ' + (c.numero || '#' + c.id) + ' — ' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ' termina em ' + diasValidade + ' dia(s).', _acaoPendenciasAlerta('contrato', [c]));
                         });
                     }
                 });
@@ -13509,7 +13600,7 @@
                             tipo: 'danger',
                             titulo: `⚠️ Equipamento com falhas repetidas — ${_clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {})}`,
                             sub: `${assistenciasRecentes.length} assistências nos últimos 90 dias. Considera aumentar a frequência de manutenção ou avaliar substituir o equipamento.`,
-                            acao: `abrirSecao('contratos')`
+                            acao: _acaoPendenciasAlerta('contrato', [c])
                         });
                         // Só notifica de novo quando o número de falhas MUDAR desde a última vez
                         // (evita repetir a mesma notificação todos os dias sem nada de novo).
@@ -13518,7 +13609,7 @@
                         try { _ultimoValor = localStorage.getItem(_chaveFalhas); } catch (e) {}
                         if (String(assistenciasRecentes.length) !== _ultimoValor) {
                             try { localStorage.setItem(_chaveFalhas, String(assistenciasRecentes.length)); } catch (e) {}
-                            _notificarAdminESubadmin(adminId, '⚠️ Equipamento com falhas repetidas', 'O equipamento do contrato ' + (c.numero || '#' + c.id) + ' (' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ') teve ' + assistenciasRecentes.length + ' assistências nos últimos 90 dias.', "abrirSecao('contratos')");
+                            _notificarAdminESubadmin(adminId, '⚠️ Equipamento com falhas repetidas', 'O equipamento do contrato ' + (c.numero || '#' + c.id) + ' (' + _clienteLabel(dados.clientes?.find(cl => cl.id === c.clienteId) || {}) + ') teve ' + assistenciasRecentes.length + ' assistências nos últimos 90 dias.', _acaoPendenciasAlerta('contrato', [c]));
                         }
                     }
                 });
@@ -13538,7 +13629,7 @@
                 const manut = ultimaManut && crit.includes(estadoDataFrota(ultimaManut.proximaData).chave);
                 return crit.includes(insp) || crit.includes(seg) || manut;
             });
-            if (veicsAtencaoLista.length) alertas.push({ tipo: 'warning', titulo: `${veicsAtencaoLista.length} ${veicsAtencaoLista.length === 1 ? 'frota a vencer manutenção' : 'frota a vencer manutenção'}`, sub: 'Verifique a frota e agende a manutenção.', acao: "abrirSecao('frota')" });
+            if (veicsAtencaoLista.length) alertas.push({ tipo: 'warning', titulo: `${veicsAtencaoLista.length} ${veicsAtencaoLista.length === 1 ? 'frota a vencer manutenção' : 'frota a vencer manutenção'}`, sub: 'Verifique a frota e agende a manutenção.', acao: _acaoPendenciasAlerta('veiculo', veicsAtencaoLista) });
             veicsAtencaoLista.forEach(v => {
                 const insp = estadoDataFrota(v.inspecaoValidade);
                 const seg = estadoDataFrota(v.seguroValidade);
@@ -13551,15 +13642,15 @@
                 const candidatos = [insp, seg].concat(manutEstado ? [manutEstado] : []).filter(x => crit.includes(x.chave));
                 const dias = candidatos.length ? Math.min(...candidatos.map(x => x.dias)) : 30;
                 _notificarPorFaseVencimento('frota_vencer_' + adminId, v.id, isFinite(dias) ? dias : 30, () => {
-                    _notificarAdminESubadmin(adminId, '🚗 Veículo a vencer', 'Matrícula ' + (v.matricula || '—') + ' — ' + motivos.join(' e ') + ' a vencer em ' + (isFinite(dias) ? dias : '30') + ' dia(s).', "abrirSecao('frota')");
+                    _notificarAdminESubadmin(adminId, '🚗 Veículo a vencer', 'Matrícula ' + (v.matricula || '—') + ' — ' + motivos.join(' e ') + ' a vencer em ' + (isFinite(dias) ? dias : '30') + ' dia(s).', _acaoPendenciasAlerta('veiculo', [v]));
                 });
             });
 
-            const reqPend = (dados.requisicoes || []).filter(r => r.adminId === adminId && (r.status === 'pendente' || r.status === 'pendente_aprov')).length;
-            if (reqPend) alertas.push({ tipo: 'info', titulo: `${reqPend} ${reqPend === 1 ? 'requisição pendente' : 'requisições pendentes'}`, sub: 'Há requisições a aguardar resposta.', acao: "abrirSecao('requisicoes')" });
+            const reqPendLista = (dados.requisicoes || []).filter(r => r.adminId === adminId && (r.status === 'pendente' || r.status === 'pendente_aprov'));
+            if (reqPendLista.length) alertas.push({ tipo: 'info', titulo: `${reqPendLista.length} ${reqPendLista.length === 1 ? 'requisição pendente' : 'requisições pendentes'}`, sub: 'Há requisições a aguardar resposta.', acao: _acaoPendenciasAlerta('requisicao', reqPendLista) });
 
-            const pedPend = (dados.pedidos || []).filter(p => p.adminId === adminId && (p.status === 'pendente' || p.status === 'pendente_aprov')).length;
-            if (pedPend) alertas.push({ tipo: 'info', titulo: `${pedPend} ${pedPend === 1 ? 'pedido de férias/faltas pendente' : 'pedidos de férias/faltas pendentes'}`, sub: 'Há pedidos a aguardar aprovação.', acao: "abrirSecao('pedidos')" });
+            const pedPendLista = (dados.pedidos || []).filter(p => p.adminId === adminId && (p.status === 'pendente' || p.status === 'pendente_aprov'));
+            if (pedPendLista.length) alertas.push({ tipo: 'info', titulo: `${pedPendLista.length} ${pedPendLista.length === 1 ? 'pedido de férias/faltas pendente' : 'pedidos de férias/faltas pendentes'}`, sub: 'Há pedidos a aguardar aprovação.', acao: _acaoPendenciasAlerta('pedido', pedPendLista) });
 
             if (adminRecAlerta?.licenca?.dataExpiracao) {
                 const diasLic = calcularDiasRestantes(adminRecAlerta.licenca.dataExpiracao);
@@ -13608,23 +13699,23 @@
                     vencSHST.setFullYear(vencSHST.getFullYear() + periodicidadeAnos);
                     const diasSHST = calcularDiasRestantes(vencSHST.getTime());
                     if (diasSHST <= 30) {
-                        alertas.push({ tipo: 'danger', titulo: `⚠️ SHST a renovar — ${p.nome}`, sub: `Consulta de medicina do trabalho vence em ${diasSHST} dia(s) (${vencSHST.toLocaleDateString('pt-PT')}).`, acao: `abrirModal('funcionario','${p.id}')` });
+                        alertas.push({ tipo: 'danger', titulo: `⚠️ SHST a renovar — ${p.nome}`, sub: `Consulta de medicina do trabalho vence em ${diasSHST} dia(s) (${vencSHST.toLocaleDateString('pt-PT')}).`, acao: (dados.encarregados || []).some(e => e.id === p.id) ? `abrirModalEditarEncarregado('${p.id}')` : `abrirModal('funcionario','${p.id}')` });
                         _notificarPorFaseVencimento('shst_' + p.id, 'atual', diasSHST, () => {
-                            _notificarAdminESubadmin(adminId, '⚠️ SHST a renovar', 'A consulta de medicina do trabalho de ' + p.nome + ' vence em ' + diasSHST + ' dia(s).', `abrirModal('funcionario','${p.id}')`);
+                            _notificarAdminESubadmin(adminId, '⚠️ SHST a renovar', 'A consulta de medicina do trabalho de ' + p.nome + ' vence em ' + diasSHST + ' dia(s).', (dados.encarregados || []).some(e => e.id === p.id) ? `abrirModalEditarEncarregado('${p.id}')` : `abrirModal('funcionario','${p.id}')`);
                         });
                     }
                 });
             }
 
             if (moduloArmazemAtivo(adminAtual())) {
-                const stockBaixo = (dados.artigos || []).filter(a => a.adminId === adminId && _estadoStockArtigo(a, stockAtualArtigo(a.id)).alerta).length;
-                if (stockBaixo) alertas.push({ tipo: 'warning', titulo: `${stockBaixo} ${stockBaixo === 1 ? 'artigo em falta' : 'artigos em falta'}`, sub: 'Stock no mínimo ou abaixo — reponha o armazém.', acao: "abrirSecao('artigos')" });
+                const stockBaixoLista = (dados.artigos || []).filter(a => a.adminId === adminId && _estadoStockArtigo(a, stockAtualArtigo(a.id)).alerta);
+                if (stockBaixoLista.length) alertas.push({ tipo: 'warning', titulo: `${stockBaixoLista.length} ${stockBaixoLista.length === 1 ? 'artigo em falta' : 'artigos em falta'}`, sub: 'Stock no mínimo ou abaixo — reponha o armazém.', acao: _acaoPendenciasAlerta('artigo', stockBaixoLista) });
 
                 const obrasExced = new Set();
                 (dados.obraMateriais || []).forEach(m => {
                     if (m.adminId === adminId && (m.qtdConsumida || 0) > (m.qtdPrevista || 0)) obrasExced.add(m.obraId);
                 });
-                if (obrasExced.size) alertas.push({ tipo: 'warning', titulo: `${obrasExced.size} ${obrasExced.size === 1 ? 'obra com excedente de materiais' : 'obras com excedente de materiais'}`, sub: 'Consumo acima do previsto. Verifique o plano da obra.', acao: "abrirSecao('obras')" });
+                if (obrasExced.size) alertas.push({ tipo: 'warning', titulo: `${obrasExced.size} ${obrasExced.size === 1 ? 'obra com excedente de materiais' : 'obras com excedente de materiais'}`, sub: 'Consumo acima do previsto. Verifique o plano da obra.', acao: _acaoPendenciasAlerta('obra', (dados.obras || []).filter(o => o.adminId === adminId && obrasExced.has(o.id))) });
             }
 
             if (!alertas.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
@@ -13634,7 +13725,7 @@
                 : t === 'warning'
                 ? '<span class="alerta-ic warn"><i class="fas fa-exclamation-triangle"></i></span>'
                 : '<span class="alerta-ic info"><i class="fas fa-info"></i></span>';
-            const linhasHtml = alertas.map(a => `<div class="alerta-linha ${a.tipo === 'danger' ? 'danger' : ''}" onclick="${a.acao}">
+            const linhasHtml = alertas.map(a => `<div class="alerta-linha ${a.tipo === 'danger' ? 'danger' : ''}" role="button" tabindex="0" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();this.click();}" onclick="${escapeHtmlSimples(a.acao)}">
                     ${icone(a.tipo)}
                     <div class="alerta-txt"><div class="alerta-t">${a.titulo}</div><div class="alerta-s">${a.sub}</div></div>
                     <i class="fas fa-chevron-right alerta-chev"></i>
@@ -15358,12 +15449,12 @@
             const semPontoAinda = (expressAtivo(admin) || agoraMin <= limiteMin) ? [] : equipa.filter(p => !pontoGeralAberto(p.id));
 
             const osAtrasadas = (dados.servicos || []).filter(s => s.adminId === adminId && s.data === hoje && s.hora && s.status !== 'concluído' && s.status !== 'cancelado' && s.status !== 'em andamento' && s.hora < new Date().toTimeString().slice(0, 5));
-            const feriasPendentes = (dados.pedidos || []).filter(p => p.adminId === adminId && p.status === 'pendente');
+            const feriasPendentes = (dados.pedidos || []).filter(p => p.adminId === adminId && ['pendente', 'pendente_aprov'].includes(p.status));
 
             const alertas = [];
             if (semPontoAinda.length) alertas.push({ icone: 'fa-user-clock', cor: '#dc2626', texto: `${semPontoAinda.length} ${semPontoAinda.length === 1 ? 'pessoa ainda não picou' : 'pessoas ainda não picaram'} o ponto hoje`, aviso: semPontoAinda.map(p => p.nome).join(', '), acao: `abrirSecao('ponto')` });
-            if (osAtrasadas.length) alertas.push({ icone: 'fa-triangle-exclamation', cor: '#f59e0b', texto: `${osAtrasadas.length} ${osAtrasadas.length === 1 ? 'OS atrasada' : 'OS atrasadas'}`, aviso: osAtrasadas.slice(0, 3).map(s => obterNomeCliente(s.clienteId)).join(', '), acao: `abrirSecao('servicos')` });
-            if (feriasPendentes.length) alertas.push({ icone: 'fa-umbrella-beach', cor: '#0ea5e9', texto: `${feriasPendentes.length} ${feriasPendentes.length === 1 ? 'pedido' : 'pedidos'} por aprovar`, aviso: '', acao: `abrirSecao('pedidos')` });
+            if (osAtrasadas.length) alertas.push({ icone: 'fa-triangle-exclamation', cor: '#f59e0b', texto: `${osAtrasadas.length} ${osAtrasadas.length === 1 ? 'OS atrasada' : 'OS atrasadas'}`, aviso: osAtrasadas.slice(0, 3).map(s => obterNomeCliente(s.clienteId)).join(', '), acao: _acaoPendenciasAlerta('servico', osAtrasadas) });
+            if (feriasPendentes.length) alertas.push({ icone: 'fa-umbrella-beach', cor: '#0ea5e9', texto: `${feriasPendentes.length} ${feriasPendentes.length === 1 ? 'pedido' : 'pedidos'} por aprovar`, aviso: '', acao: _acaoPendenciasAlerta('pedido', feriasPendentes) });
 
             // --- Estado da equipa em tempo real ---
             const estadoPessoa = p => _estadoPresencaPessoa(p.id, hoje);
@@ -15379,7 +15470,7 @@
             return `
                 <div class="tgm-panel tgm-panel--admin">
                     ${alertas.length ? `<div class="tgm-alertas-admin">${alertas.map(a => `
-                        <div class="tgm-alerta-admin" onclick="${a.acao}">
+                        <div class="tgm-alerta-admin" onclick="${escapeHtmlSimples(a.acao)}">
                             <i class="fas ${a.icone}" style="color:${a.cor};"></i>
                             <div><div class="tgm-alerta-txt">${a.texto}</div>${a.aviso ? `<div class="tgm-alerta-sub">${escapeHtmlSimples(a.aviso)}</div>` : ''}</div>
                             <i class="fas fa-chevron-right" style="margin-left:auto;color:#cbd5e1;font-size:.8rem;"></i>

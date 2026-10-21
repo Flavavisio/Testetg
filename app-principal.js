@@ -6579,8 +6579,15 @@
             const obra = os.obraId ? (dados.obras || []).find(o => o.id === os.obraId) : null;
             const picagens = (dados.ponto || []).filter(p => p.servicoId === osId).sort((a, b) => (a.data + a.entrada) < (b.data + b.entrada) ? -1 : 1);
             const folhas = (dados.folhasObra || []).filter(f => f.servicoId === osId);
-            const totalHoras = picagens.reduce((s, p) => s + (p.entrada && p.saida ? calcularHoras(p.entrada, p.saida) : 0), 0);
-            const funcionariosEnvolvidos = [...new Set(picagens.map(p => p.funcionarioId))];
+            // As folhas de obra registam o trabalho efetivamente realizado, incluindo o do Admin.
+            // Usá-las como fonte do total evita excluir horas de quem não tem picagens de funcionário.
+            const totalHorasFolhas = folhas.reduce((s, f) => s + Math.max(0, Number(f.horasTrabalhadas) || 0), 0);
+            const totalHorasPicagens = picagens.reduce((s, p) => s + (p.entrada && p.saida ? calcularHoras(p.entrada, p.saida) : 0), 0);
+            const totalHoras = folhas.length ? totalHorasFolhas : totalHorasPicagens;
+            const funcionariosEnvolvidos = [...new Set([
+                ...picagens.map(p => p.funcionarioId),
+                ...folhas.flatMap(f => [f.funcionarioId, ...(_colegasEnvolvidosNaFolha(f) || [])])
+            ].filter(Boolean))];
 
             doc.setFontSize(11); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]);
             doc.autoTable({

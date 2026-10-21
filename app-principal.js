@@ -15321,6 +15321,24 @@
         // sem ter de abrir a Agenda completa.
         // Painel do admin em "O Meu Dia" — alertas do dia, estado da equipa em tempo real,
         // ações rápidas e resumo financeiro. Pensado para gerir, não para trabalho de campo.
+        // Estado de presença partilhado pelos dois painéis; apenas consulta as picagens.
+        function _estadoPresencaPessoa(funcionarioId, hoje) {
+            const emOS = (dados.ponto || []).find(x => x.funcionarioId === funcionarioId && x.servicoId && x.data === hoje && x.entrada && !x.saida);
+            if (emOS) {
+                const os = dados.servicos?.find(s => s.id === emOS.servicoId);
+                return { label: 'Em OS — ' + (obterNomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9', ativo: true };
+            }
+            const emObra = (dados.obraPontoLonga || []).find(x => x.funcionarioId === funcionarioId && x.data === hoje && x.entrada && !x.saida);
+            if (emObra) {
+                const obra = dados.obras?.find(o => o.id === emObra.obraId);
+                return { label: 'Em Obra — ' + (obra?.nome || '—'), cor: '#0ea5e9', ativo: true };
+            }
+            const geral = (dados.ponto || []).filter(x => x.funcionarioId === funcionarioId && !x.servicoId && !x.obraId && x.data === hoje && x.entrada)
+                .sort((a, b) => String(b.entrada).localeCompare(String(a.entrada)) || String(b.dataCriacao || b.id || '').localeCompare(String(a.dataCriacao || a.id || '')))[0];
+            if (geral && !geral.saida) return { label: 'Em serviço', cor: '#16a34a', ativo: true };
+            if (geral) return { label: 'Terminou o dia', cor: '#f97316', ativo: false };
+            return { label: 'Ainda não começou', cor: '#94a3b8', ativo: false };
+        }
         function _htmlPainelAdminHoje(adminId, hoje) {
             const admin = dados.administradores?.find(a => a.id === adminId);
             const equipa = [
@@ -15348,26 +15366,7 @@
             if (feriasPendentes.length) alertas.push({ icone: 'fa-umbrella-beach', cor: '#0ea5e9', texto: `${feriasPendentes.length} ${feriasPendentes.length === 1 ? 'pedido' : 'pedidos'} por aprovar`, aviso: '', acao: `abrirSecao('pedidos')` });
 
             // --- Estado da equipa em tempo real ---
-            const estadoPessoa = p => {
-                const emOS = (dados.ponto || []).find(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada && !x.saida);
-                if (emOS) { const os = dados.servicos?.find(s => s.id === emOS.servicoId); return { label: 'Em OS — ' + (obterNomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9' }; }
-                const emObra = (dados.obraPontoLonga || []).find(x => x.funcionarioId === p.id && x.data === hoje && x.entrada && !x.saida);
-                if (emObra) { const ob = dados.obras?.find(o => o.id === emObra.obraId); return { label: 'Em Obra — ' + (ob?.nome || '—'), cor: '#0ea5e9' }; }
-                const geral = (dados.ponto || []).filter(x => x.funcionarioId === p.id && !x.servicoId && !x.obraId && x.data === hoje && x.entrada)
-                    .sort((a, b) => String(b.entrada).localeCompare(String(a.entrada)) || String(b.dataCriacao || b.id || '').localeCompare(String(a.dataCriacao || a.id || '')))[0];
-                if (geral && !geral.saida) return { label: 'Em serviço', cor: '#16a34a' };
-                if (geral && geral.saida) {
-                    // O Ponto Geral pode ter sido fechado automaticamente por causa de uma pausa
-                    // para almoço a meio de uma OS (não é um "Terminar o Dia" a sério). Se, depois
-                    // dessa saída, a pessoa ainda entrou/saiu de alguma OS ou Obra, está claramente
-                    // a trabalhar — não faz sentido dizer que "terminou o dia".
-                    const aindaTrabalhouDepois = (dados.ponto || []).some(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada > geral.saida && !x.saida)
-                        || (dados.obraPontoLonga || []).some(x => x.funcionarioId === p.id && x.data === hoje && x.entrada > geral.saida && !x.saida);
-                    if (aindaTrabalhouDepois) return { label: 'Em serviço', cor: '#16a34a' };
-                    return { label: 'Terminou o dia', cor: '#f97316' };
-                }
-                return { label: 'Ainda não começou', cor: '#1e293b' };
-            };
+            const estadoPessoa = p => _estadoPresencaPessoa(p.id, hoje);
             const linhasEquipa = equipa.slice(0, 12).map(p => {
                 const e = estadoPessoa(p);
                 return `<div class="tgm-equipa-linha"><span class="tgm-equipa-dot" style="background:${e.cor};"></span><span class="tgm-equipa-nome">${escapeHtmlSimples(p.nome)}</span><span class="tgm-equipa-estado" style="color:${e.cor};">${e.label}</span></div>`;
@@ -18964,21 +18963,7 @@
                 ...(dados.funcionarios || []).filter(f => f.adminId === adminId && f.role !== 'admin' && f.role !== 'superadmin' && f.suspenso !== true),
                 ...(dados.encarregados || []).filter(e => e.adminId === adminId && e.suspenso !== true)
             ];
-            const estadoPessoa = p => {
-                const emOS = (dados.ponto || []).find(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada && !x.saida);
-                if (emOS) { const os = dados.servicos?.find(s => s.id === emOS.servicoId); return { label: 'Em OS — ' + (obterNomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9', ativo: true }; }
-                const emObra = (dados.obraPontoLonga || []).find(x => x.funcionarioId === p.id && x.data === hoje && x.entrada && !x.saida);
-                if (emObra) { const ob = dados.obras?.find(o => o.id === emObra.obraId); return { label: 'Em Obra — ' + (ob?.nome || '—'), cor: '#0ea5e9', ativo: true }; }
-                const geral = (dados.ponto || []).find(x => x.funcionarioId === p.id && !x.servicoId && !x.obraId && x.data === hoje && x.entrada);
-                if (geral && !geral.saida) return { label: 'Em serviço', cor: '#16a34a', ativo: true };
-                if (geral && geral.saida) {
-                    const aindaTrabalhouDepois = (dados.ponto || []).some(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada > geral.saida)
-                        || (dados.obraPontoLonga || []).some(x => x.funcionarioId === p.id && x.data === hoje && x.entrada > geral.saida);
-                    if (aindaTrabalhouDepois) return { label: 'Em serviço', cor: '#16a34a', ativo: true };
-                    return { label: 'Terminou o dia', cor: '#f97316', ativo: false };
-                }
-                return { label: 'Ainda não começou', cor: '#94a3b8', ativo: false };
-            };
+            const estadoPessoa = p => _estadoPresencaPessoa(p.id, hoje);
             const equipaComEstado = equipa.map(p => ({ p, e: estadoPessoa(p) }));
             const tecnicosAtivos = equipaComEstado.filter(x => x.e.ativo).length;
 

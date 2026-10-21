@@ -143,7 +143,7 @@ test('month and week boundaries use local dates in Portugal, not UTC conversion'
 });
 test('public shells and PWA cache reference the new module and app together', () => {
     for (const file of ['index.html', 'login.html', 'sw.js']) {
-        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.3/); assert.match(source, /app-principal.js\?v=satisfaction-fields-height-20261020/);
+        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.3/); assert.match(source, /app-principal.js\?v=specialty-fiscal-20261021/);
     }
 });
 

@@ -28866,6 +28866,29 @@ async function salvarAdmin(e) {
         const REPORT_TEMPLATES = {};
         Object.keys(REPORT_TEMPLATES_B64).forEach(k => { try { REPORT_TEMPLATES[k] = decodeURIComponent(escape(atob(REPORT_TEMPLATES_B64[k]))); } catch(e) { REPORT_TEMPLATES[k] = atob(REPORT_TEMPLATES_B64[k]); } });
 
+        // O nome fiscal faz parte do branding: reaplicar em cada render/página e rascunho.
+        function _tgAtualizarNomeFiscalDocumento(doc, nomeFiscal, empresaNome) {
+            const fiscal = String(nomeFiscal || '').trim();
+            const comercial = String(empresaNome || '').trim();
+            doc.querySelectorAll('#tg-nome-fiscal-especialidade').forEach(el => el.remove());
+            doc.querySelectorAll('.brand').forEach(brand => {
+                const nome = brand.querySelector('.empresa-nome');
+                if (!nome) return;
+                let el = brand.querySelector('.empresa-fiscal');
+                if (!fiscal || fiscal === comercial) { if (el) el.remove(); return; }
+                if (!el) { el = doc.createElement('div'); el.className = 'empresa-fiscal'; }
+                el.textContent = fiscal;
+                el.style.cssText = 'display:block;clear:both;font:500 12px/1.45 Arial,sans-serif;color:#374151;margin:4px 0 5px;white-space:normal;overflow-wrap:anywhere;';
+                nome.insertAdjacentElement('afterend', el);
+            });
+        }
+        function _tgPrepararNomeFiscalEspecialidade(html, tipo) {
+            if (!html || tipo === 'RDI') return html;
+            const anchor = 'nomeEl.textContent = msg.empresaNome;';
+            const chamada = '(' + _tgAtualizarNomeFiscalDocumento.toString() + ')(document, msg.empresaFiscal, msg.empresaNome);';
+            return html.replaceAll(anchor, anchor + chamada);
+        }
+
         // RCCTV / Intrusão: adicionar uma resposta de satisfação opcional antes das assinaturas.
         // O SELECT é serializado pelos modelos ao guardar rascunho ou concluir; a leitura
         // existente TGSatisfaction.extract identifica os quatro graus no HTML do relatório.
@@ -29999,7 +30022,7 @@ window._relPrefill = function(msg){
                     if (!htmlRascunho && rascunhoExistente.campos?.htmlSnapshotPath) {
                         htmlRascunho = await _obterTextoStorage(rascunhoExistente.campos.htmlSnapshotPath) || '';
                     }
-                    if (htmlRascunho) { iframe.srcdoc = ['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho; usouRascunho = true; }
+                    if (htmlRascunho) { iframe.srcdoc = _tgPrepararNomeFiscalEspecialidade(['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho, tipo); usouRascunho = true; }
                 }
             }
             // Sem rascunho em aberto: se já existir um relatório CONCLUÍDO anterior desta mesma
@@ -30084,7 +30107,7 @@ window._relPrefill = function(msg){
                     }
                 }
             }
-            if (!usouRascunho) iframe.srcdoc = template; // sempre o modelo normal — nunca o snapshot bloqueado
+            if (!usouRascunho) iframe.srcdoc = _tgPrepararNomeFiscalEspecialidade(template, tipo); // sempre o modelo normal — nunca o snapshot bloqueado
 
             let numeroInicial = 1;
             // Já não se acrescenta "-L1"/"-L2" ao número — a Sede e cada Local têm o mesmo
@@ -30114,42 +30137,9 @@ window._relPrefill = function(msg){
 
             const adminRec = dados.administradores?.find(a => a.id === _tenantId());
 
-            // Identificação fiscal nos relatórios de especialidade: exclui sempre RDI.
-            // Corre também após a inicialização do modelo, porque os cabeçalhos
-            // são preenchidos dinamicamente pelos diversos templates.
-            if (tipo !== 'RDI' && adminRec?.nomeFiscal) {
-                const empresaComercial = String(adminRec.empresa || adminRec.nome || '').trim();
-                const nomeFiscal = String(adminRec.nomeFiscal || '').trim();
-                if (nomeFiscal && nomeFiscal !== empresaComercial) {
-                    const aplicarFiscalNoRelatorio = () => {
-                        try {
-                            const d = iframe.contentDocument;
-                            if (!d?.body) return false;
-                            if (d.getElementById('tg-nome-fiscal-especialidade')) return true;
-                            const normalizar = v => String(v || '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase('pt-PT');
-                            const candidatos = [...d.body.querySelectorAll('h1,h2,h3,h4,strong,b,span,div,p')]
-                                .filter(el => el.children.length === 0 && normalizar(el.textContent) === normalizar(empresaComercial));
-                            // Insere depois do nome comercial; nunca antes do logótipo nem
-                            // por cima dos registos ANEPC / registo prévio.
-                            const alvo = candidatos[0];
-                            if (!alvo) return false;
-                            const fiscal = d.createElement('div');
-                            fiscal.id = 'tg-nome-fiscal-especialidade';
-                            fiscal.textContent = nomeFiscal;
-                            fiscal.style.cssText = 'display:block;clear:both;font:500 12px/1.45 Arial,sans-serif;color:#4b5563;margin:4px 0 5px;white-space:normal;';
-                            alvo.insertAdjacentElement('afterend', fiscal);
-                            return true;
-                        } catch (err) { console.warn('Nome fiscal no relatório:', err); return false; }
-                    };
-                    aplicarFiscalNoRelatorio();
-                    const observaFiscal = new MutationObserver(() => {
-                        if (aplicarFiscalNoRelatorio()) observaFiscal.disconnect();
-                    });
-                    if (!iframe.contentDocument?.getElementById('tg-nome-fiscal-especialidade')) {
-                        observaFiscal.observe(iframe.contentDocument.documentElement, {subtree:true,childList:true,characterData:true});
-                        iframe.addEventListener('load', () => observaFiscal.disconnect(), {once:true});
-                    }
-                }
+            // Rascunhos não recebem init (preserva os valores); atualiza só o cabeçalho.
+            if (usouRascunho && tipo !== 'RDI') {
+                _tgAtualizarNomeFiscalDocumento(iframe.contentDocument, adminRec?.nomeFiscal, adminRec?.empresa || adminRec?.nome);
             }
             const contratoOS = os.contratoId ? dados.contratos?.find(ct => ct.id === os.contratoId) : null;
             const initMsg = {

@@ -15360,8 +15360,8 @@
                     // para almoço a meio de uma OS (não é um "Terminar o Dia" a sério). Se, depois
                     // dessa saída, a pessoa ainda entrou/saiu de alguma OS ou Obra, está claramente
                     // a trabalhar — não faz sentido dizer que "terminou o dia".
-                    const aindaTrabalhouDepois = (dados.ponto || []).some(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada > geral.saida)
-                        || (dados.obraPontoLonga || []).some(x => x.funcionarioId === p.id && x.data === hoje && x.entrada > geral.saida);
+                    const aindaTrabalhouDepois = (dados.ponto || []).some(x => x.funcionarioId === p.id && x.servicoId && x.data === hoje && x.entrada > geral.saida && !x.saida)
+                        || (dados.obraPontoLonga || []).some(x => x.funcionarioId === p.id && x.data === hoje && x.entrada > geral.saida && !x.saida);
                     if (aindaTrabalhouDepois) return { label: 'Em serviço', cor: '#16a34a' };
                     return { label: 'Terminou o dia', cor: '#f97316' };
                 }

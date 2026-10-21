@@ -14261,12 +14261,15 @@
             return mapa;
         }
         function totalHorasObra(obraId) {
-            // As folhas sem descrição não deviam existir (todos os caminhos que criam uma folha
-            // exigem uma) — são tratadas como dados corrompidos/de teste e ficam de fora do total,
-            // tal como em _horasObraPorFuncionarioNoPeriodo.
-            const folhas = (dados.folhasObra || []).filter(f => f.obraId === obraId && f.descricao);
-            const horasFolhas = folhas.reduce((s, f) => s + (Number(f.horasTrabalhadas) || 0), 0);
-            const idsComFolha = new Set(folhas.map(f => f.funcionarioId));
+            // Contabiliza folhas ligadas diretamente à obra e folhas ligadas a uma OS
+            // pertencente à obra. Alguns registos (incluindo folhas criadas pelo Admin)
+            // ficam associados à OS e não têm obraId, embora sejam trabalho dessa obra.
+            const osIdsObra = new Set((dados.servicos || []).filter(os => os.obraId === obraId).map(os => os.id));
+            const folhas = (dados.folhasObra || []).filter(f =>
+                f.descricao && (f.obraId === obraId || (f.servicoId && osIdsObra.has(f.servicoId)))
+            );
+            const horasFolhas = folhas.reduce((s, f) => s + Math.max(0, Number(f.horasTrabalhadas) || 0), 0);
+            const idsComFolha = new Set(folhas.map(f => f.funcionarioId).filter(Boolean));
             const mapaHoras = _horasObraPorFuncionario(obraId);
             let horasPontoOutros = 0;
             Object.keys(mapaHoras).forEach(fid => { if (!idsComFolha.has(fid)) horasPontoOutros += mapaHoras[fid]; });
@@ -14346,7 +14349,8 @@
 
             // Folhas sem descrição são tratadas como dados corrompidos/de teste — ficam de fora
             // deste relatório, tal como já acontece no Auto de Medição e no "Total de horas".
-            const folhas = (dados.folhasObra || []).filter(f => f.obraId === obraId && f.descricao);
+            const _osIdsObraRel = new Set((dados.servicos || []).filter(os => os.obraId === obraId).map(os => os.id));
+            const folhas = (dados.folhasObra || []).filter(f => f.descricao && (f.obraId === obraId || (f.servicoId && _osIdsObraRel.has(f.servicoId))));
             const horas = totalHorasObra(obraId);
             const responsavelNome = obra.responsavelId ? (obterNomeFuncionario(obra.responsavelId) || '—') : '—';
             const funcionariosEnvolvidos = [...new Set(folhas.map(f => f.funcionarioId))];

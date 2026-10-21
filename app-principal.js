@@ -34662,7 +34662,7 @@ window._relPrefill = function(msg){
                                 <input type="text" id="perf_empresa" class="ff-nome-input" placeholder="Nome da empresa" value="${admin?.empresa || ''}" />
                                 <label for="perf_nome_fiscal">Nome fiscal / denominação social</label>
                                 <input type="text" id="perf_nome_fiscal" maxlength="180" class="ff-cargo-input" placeholder="Nome fiscal nos documentos" value="${String(admin?.nomeFiscal || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" />
-                                <input type="text" id="perf_nome" class="ff-cargo-input" placeholder="Nome do responsável *" value="${admin?.nome || ''}" required />
+                                <input type="text" id="perf_nome" class="ff-cargo-input" placeholder="Nome do responsável *" value="${String((usuarioLogado.role === 'subadmin' ? (func?.nome || usuarioLogado.nome) : (admin?.nome || usuarioLogado.nome)) || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" required />
                             </div>
                         </div>
                         <div id="perf_logo_preview" style="display:none;"></div>
@@ -35072,7 +35072,7 @@ window._relPrefill = function(msg){
                 if (registoPrevio && _numeroJaUsado('numeroRegistoPrevio', registoPrevio, admin.id)) { alert('Já existe outra empresa com esse número de registo prévio.'); return; }
                 if (cor && !/^#[0-9a-fA-F]{6}$/.test(cor)) { alert('A cor deve estar no formato #RRGGBB (ex.: #152A52).'); return; }
                 const aplicar = (logoData) => {
-                    admin.nome = nome;
+                    if (usuarioLogado.role === 'admin') admin.nome = nome;
                     admin.empresa = empresa;
                     admin.nif = nifEmpresa || null;
                     admin.nomeFiscal = nomeFiscal;
@@ -35094,7 +35094,7 @@ window._relPrefill = function(msg){
                     admin.segurosAtivo = document.getElementById('perf_seguros_ativo')?.checked || false;
                     admin.shstAtivo = document.getElementById('perf_shst_ativo')?.checked || false;
                     admin.materiaisEntregaAtivo = document.getElementById('perf_materiais_entrega_ativo')?.checked || false;
-                    if (senha) admin.senha = senha;
+                    if (senha && usuarioLogado.role === 'admin') admin.senha = senha;
                     if (logoData !== undefined) admin.logo = logoData;
                     if (window._perfCertificadoraLogoRemover) { admin.certificadoraLogo = null; window._perfCertificadoraLogoRemover = false; }
                     if (window._perfCertificadoraLogoNova !== undefined) { admin.certificadoraLogo = window._perfCertificadoraLogoNova || null; window._perfCertificadoraLogoNova = undefined; }

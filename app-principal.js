@@ -15353,7 +15353,8 @@
                 if (emOS) { const os = dados.servicos?.find(s => s.id === emOS.servicoId); return { label: 'Em OS — ' + (obterNomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9' }; }
                 const emObra = (dados.obraPontoLonga || []).find(x => x.funcionarioId === p.id && x.data === hoje && x.entrada && !x.saida);
                 if (emObra) { const ob = dados.obras?.find(o => o.id === emObra.obraId); return { label: 'Em Obra — ' + (ob?.nome || '—'), cor: '#0ea5e9' }; }
-                const geral = (dados.ponto || []).find(x => x.funcionarioId === p.id && !x.servicoId && !x.obraId && x.data === hoje && x.entrada);
+                const geral = (dados.ponto || []).filter(x => x.funcionarioId === p.id && !x.servicoId && !x.obraId && x.data === hoje && x.entrada)
+                    .sort((a, b) => String(b.entrada).localeCompare(String(a.entrada)) || String(b.dataCriacao || b.id || '').localeCompare(String(a.dataCriacao || a.id || '')))[0];
                 if (geral && !geral.saida) return { label: 'Em serviço', cor: '#16a34a' };
                 if (geral && geral.saida) {
                     // O Ponto Geral pode ter sido fechado automaticamente por causa de uma pausa

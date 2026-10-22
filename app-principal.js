@@ -14279,7 +14279,7 @@
             const doc = _novoPdf(false); if (!doc) return null;
             const fornecedor = dados.fornecedores?.find(f => f.id === e.fornecedorId);
             const itens = (dados.encomendaItens || []).filter(i => i.encomendaId === encId);
-            let y = _pdfArmHeader(doc, 'Nota de Encomenda', e.numero || '');
+            let y = _pdfArmHeader(doc, 'Nota de Encomenda', e.numero ? 'N.º de encomenda: ' + e.numero : '');
             doc.setFontSize(10); doc.setTextColor(30, 30, 30);
             if (fornecedor) {
                 doc.text('Fornecedor: ' + (fornecedor.nome || '-'), 14, y); y += 5;

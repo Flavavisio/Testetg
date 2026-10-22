@@ -2936,7 +2936,7 @@
             if (typeof doc.autoTable !== 'function') { alert('Componente de tabelas do PDF não carregado.'); return null; }
             const fornecedor = dados.fornecedores?.find(f => f.id === e.fornecedorId);
             const itens = (dados.encomendaItens || []).filter(i => i.encomendaId === encId);
-            let y = _crmPdfEncomendaHeader(doc, 'Nota de Encomenda', e.numero || '');
+            let y = _crmPdfEncomendaHeader(doc, 'Nota de Encomenda', e.numero ? 'N.º de encomenda: ' + e.numero : '');
             doc.setFontSize(10); doc.setTextColor(30, 30, 30);
             if (fornecedor) {
                 doc.text('Fornecedor: ' + (fornecedor.nome || '-'), 14, y); y += 5;

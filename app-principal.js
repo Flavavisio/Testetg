@@ -13496,43 +13496,20 @@
                 // No Express não há ponto nenhum — sem isto, "jaPicou" ficava sempre falso (nunca
                 // há picagem para encontrar) e o aviso "ainda não picaste" nunca desaparecia.
                 const jaPicou = expressAtivo(adminDoUtilizador()) ? true : (dados.ponto || []).some(p => p.funcionarioId === usuarioLogado.id && p.data === hojeF && p.entrada);
-                const precisaAtivarPush = (typeof Notification !== 'undefined' && Notification.permission === 'default') && moduloNotificacoesAtivo(adminDoUtilizador());
-                const botaoNotif = precisaAtivarPush
-                    ? `<button class="btn btn-sm" style="margin-left:auto;background:#0ea5e9;color:#fff;" onclick="_ativarNotificacoesPush()"><i class="fas fa-bell"></i> Ativar lembretes no telemóvel</button>`
-                    : '';
-                if (!jaPicou || precisaAtivarPush) {
+                if (!jaPicou) {
                     cont.style.display = 'block';
-                    cont.innerHTML = (!jaPicou ? `<div class="home-card" style="border-left:4px solid #f59e0b;margin-bottom:10px;">
+                    cont.innerHTML = `<div class="home-card" style="border-left:4px solid #f59e0b;margin-bottom:10px;">
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                             <i class="fas fa-clock" style="color:#f59e0b;font-size:1.3rem;"></i>
                             <div><strong>Ainda não picaste o ponto hoje.</strong><br><span style="font-size:.85rem;color:#64748b;">Não te esqueças de registar a tua entrada.</span></div>
-                            ${botaoNotif}
                         </div>
-                    </div>` : (precisaAtivarPush ? `<div class="home-card" style="border-left:4px solid #0ea5e9;">
-                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                            <i class="fas fa-bell" style="color:#0ea5e9;font-size:1.3rem;"></i>
-                            <div><strong>Ativa as notificações no telemóvel</strong><br><span style="font-size:.85rem;color:#64748b;">Recebe logo os avisos de novas OS e lembretes de ponto.</span></div>
-                            ${botaoNotif}
-                        </div>
-                    </div>` : ''));
+                    </div>`;
                     if (contGlobal) {
                         contGlobal.classList.add('mostrar');
-                        // No topo do telemóvel, o pedido para ativar as notificações tem sempre prioridade
-                        // sobre o aviso de ponto — é a primeira coisa que a pessoa deve ver ao abrir a app.
-                        if (precisaAtivarPush) {
-                            contGlobal.innerHTML = `<div class="conteudo-alerta" style="justify-content:space-between;">
-                                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                                    <i class="fas fa-bell" style="color:#0ea5e9;"></i>
-                                    <div style="min-width:0;"><strong>Ativa as notificações</strong><div class="sub">${!jaPicou ? 'E não te esqueças: ainda não picaste o ponto hoje.' : 'Recebe avisos de novas OS e lembretes de ponto.'}</div></div>
-                                </div>
-                                <button class="btn btn-sm" style="background:#0ea5e9;color:#fff;flex-shrink:0;" onclick="event.stopPropagation();_ativarNotificacoesPush()"><i class="fas fa-bell"></i> Ativar</button>
-                            </div>`;
-                        } else {
-                            contGlobal.innerHTML = `<div class="conteudo-alerta" onclick="abrirSecao('ponto')" style="cursor:pointer;">
-                                <i class="fas fa-clock" style="color:#f59e0b;"></i>
-                                <div><strong>Ainda não picaste o ponto hoje.</strong><div class="sub">Toca aqui para ires a "Registo de Ponto".</div></div>
-                            </div>`;
-                        }
+                        contGlobal.innerHTML = `<div class="conteudo-alerta" onclick="abrirSecao('ponto')" style="cursor:pointer;">
+                            <i class="fas fa-clock"></i>
+                            <div><strong>Ainda não picaste o ponto hoje.</strong><div class="sub">Toca aqui para ires a "Registo de Ponto".</div></div>
+                        </div>`;
                     }
                 } else {
                     cont.style.display = 'none'; cont.innerHTML = '';
@@ -34966,16 +34943,6 @@ window._relPrefill = function(msg){
                             <div class="ff-hero-fields">
                                 <input type="text" id="perf_nome" class="ff-nome-input" placeholder="Nome *" value="${func.nome}" required />
                                 <input type="text" class="ff-cargo-input" value="${func.cargo || ''}" disabled />
-                            </div>
-                        </div>
-
-                        <div class="ff-secao ff-tint-acesso">
-                            <div class="ff-secao-head"><i class="fas fa-bell"></i> Notificações</div>
-                            <div class="ff-secao-body">
-                                <div class="form-group ff-span2">
-                                    <div class="help-text" style="margin:-2px 0 8px;">Recebe um aviso no telemóvel se te esqueceres de picar o ponto, ou quando um pedido de férias/faltas for aprovado.</div>
-                                    <button type="button" class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="_ativarNotificacoesPush()"><i class="fas fa-bell"></i> Ativar notificações neste dispositivo</button>
-                                </div>
                             </div>
                         </div>
 

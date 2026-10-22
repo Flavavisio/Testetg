@@ -20,19 +20,22 @@
         return detail || 'Verifique e volte a ligar as notificações deste dispositivo.';
     }
     function render() {
-        const dd = document.getElementById('sinoDropdown');
-        if (!dd) return;
+        const host = document.getElementById('omeudia');
+        if (!host) return;
         let card = document.getElementById('tgPushDeviceStatus');
         if (!enabled()) { card?.remove(); return; }
         if (!card) {
             card = document.createElement('div'); card.id = 'tgPushDeviceStatus';
-            card.style.cssText = 'padding:12px 16px;border-top:1px solid #e2e8f0;';
-            const title = document.createElement('strong'); title.textContent = 'Notificações neste dispositivo';
-            const text = document.createElement('p'); text.dataset.pushDetail = '1'; text.style.cssText = 'margin:5px 0 8px;font-size:.8rem;';
+            card.className = 'home-card tg-push-row';
+            card.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;margin-bottom:14px;border-radius:12px;';
+            const copy = document.createElement('div'); copy.style.cssText = 'flex:1;min-width:180px;';
+            const title = document.createElement('strong'); title.textContent = 'Notificações da app';
+            const text = document.createElement('p'); text.dataset.pushDetail = '1'; text.style.cssText = 'margin:4px 0 0;font-size:.8rem;opacity:.85;';
             text.setAttribute('role', 'status');
-            const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-sm btn-outline';
+            const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-sm btn-primary';
+            button.style.cssText = 'flex-shrink:0;min-height:36px;';
             button.onclick = () => { void activate(); };
-            card.append(title, text, button); dd.appendChild(card);
+            copy.append(title, text); card.append(copy, button); host.prepend(card);
         }
         card.querySelector('[data-push-detail]').textContent = message();
         const btn = card.querySelector('button');
@@ -109,8 +112,12 @@
         }
     }
     _ativarNotificacoesPush = activate;
-    const originalSino = atualizarSino;
-    atualizarSino = function () { originalSino(); render(); };
+    // The daily panel is rebuilt on refresh and moved into the desktop home.
+    // Reinsert the separate notification row before its cards on every rebuild.
+    if (typeof renderizarOMeuDia === 'function') {
+        const originalMeuDia = renderizarOMeuDia;
+        renderizarOMeuDia = function (...args) { const result = originalMeuDia.apply(this, args); render(); return result; };
+    }
     document.addEventListener('tg:interface-updated', () => { void sync(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void sync(); });
     window.addEventListener('online', () => { attemptedAt = 0; void sync(true); });

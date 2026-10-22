@@ -26,7 +26,10 @@
         const host = document.getElementById('omeudia');
         if (!host) return;
         let card = document.getElementById('tgPushDeviceStatus');
-        if (!enabled()) { card?.remove(); return; }
+        const registered = supported() && Notification.permission === 'granted' && checkedIdentity === identity()
+            && status !== 'error' && status !== 'needs_activation';
+        const checking = supported() && Notification.permission === 'granted' && status === 'preparing';
+        if (!enabled() || registered || checking) { card?.remove(); return; }
         if (!card) {
             card = document.createElement('div'); card.id = 'tgPushDeviceStatus';
             card.className = 'home-card tg-push-row';
@@ -38,19 +41,13 @@
             const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-sm btn-primary';
             button.style.cssText = 'flex-shrink:0;min-height:36px;';
             button.onclick = () => { void activate(); };
-            const test = document.createElement('button'); test.type = 'button'; test.className = 'btn btn-sm btn-outline';
-            test.dataset.pushTest = '1'; test.textContent = 'Testar com ecrã bloqueado';
-            test.onclick = () => { void testPush(); };
-            copy.append(title, text); card.append(copy, button, test); host.prepend(card);
+            copy.append(title, text); card.append(copy, button); host.prepend(card);
         }
         card.querySelector('[data-push-detail]').textContent = message();
         const btn = card.querySelector('button');
         btn.textContent = status === 'needs_activation' || !supported() || Notification.permission !== 'granted'
             ? 'Ativar notificações' : (status === 'error' ? 'Reativar notificações' : 'Verificar notificações');
         btn.disabled = !!running;
-        const test = card.querySelector('[data-push-test]');
-        test.style.display = status === 'ready' && checkedIdentity === identity() ? '' : 'none';
-        test.disabled = testing;
     }
     function sameAccount(expected) {
         if (!expected || identity() !== expected) throw new Error('A conta mudou durante a configuração. Volte a verificar as notificações.');
@@ -191,7 +188,7 @@
             try {
                 const subscription = await subscriptionPromise; sameAccount(expected); stage = 'save';
                 await persist(subscription, expected);
-                alert('Notificações ligadas neste dispositivo. Pode agora testar com o ecrã bloqueado.'); return true;
+                alert('Notificações ligadas neste dispositivo.'); return true;
             } catch (error) {
                 if (identity() === expected) {
                     fail(error, stage);

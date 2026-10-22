@@ -1,10 +1,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../tg-push.js'),'utf8');
-function setup({permission='granted',sub=true,upsertError=null,slow=false,getError=null,subscribeError=null,configError=null}={}) {
- const calls={get:0,subscribe:0,upserts:[],prompt:0,unsubscribe:0,alerts:[],sino:0,functions:[]},events={};
+function setup({permission='granted',sub=true,upsertError=null,slow=false,getError=null,subscribeError=null,configError=null,workerState='activated'}={}) {
+ const calls={get:0,subscribe:0,upserts:[],prompt:0,unsubscribe:0,alerts:[],sino:0,functions:[],registrations:[]},events={};
  let currentSub=sub===true?subscription():sub;
  let finish;
- const reg={active:{},pushManager:{async getSubscription(){calls.get++;if(getError)throw getError;if(slow)await new Promise(r=>finish=r);return currentSub},async subscribe(opts){calls.subscribe++;if(subscribeError)throw subscribeError;c.Notification.permission='granted';assert.equal(opts.userVisibleOnly,true);return currentSub=subscription()}}};
+ const workerEvents={};const reg={active:{state:workerState,addEventListener(t,f){workerEvents[t]=f},removeEventListener(){}},addEventListener(){},removeEventListener(){},pushManager:{async getSubscription(){calls.get++;if(getError)throw getError;if(slow)await new Promise(r=>finish=r);return currentSub},async subscribe(opts){calls.subscribe++;if(subscribeError)throw subscribeError;c.Notification.permission='granted';assert.equal(opts.userVisibleOnly,true);return currentSub=subscription()}}};
  function subscription(){return {expirationTime:null,async unsubscribe(){calls.unsubscribe++;currentSub=null;return true},toJSON(){return {endpoint:'https://push.example/device',keys:{p256dh:'device-key',auth:'device-auth'}}}};}
  const supa={functions:{async invoke(name,options){calls.functions.push({name,body:options.body});return options.body.acao==='config'?{data:{chave_publica:'public'},error:configError}:{data:{agendado:true}}}},from(table){
   assert.equal(table,'push_subscriptions');
@@ -19,7 +19,7 @@ function setup({permission='granted',sub=true,upsertError=null,slow=false,getErr
  const c=vm.createContext({
   console:{warn(){}},Date,setTimeout,clearTimeout,Uint8Array,Promise,
   usuarioLogado:{id:'admin-1',role:'admin'},
-  navigator:{serviceWorker:{async getRegistration(){return reg},ready:Promise.resolve(reg),async register(){throw Error('must reuse registration')},addEventListener(t,f){events['sw:'+t]=f}}},
+  navigator:{serviceWorker:{async getRegistration(){return reg},ready:Promise.resolve(reg),async register(url){calls.registrations.push(url);return reg},addEventListener(t,f){events['sw:'+t]=f}}},
   Notification:{permission,async requestPermission(){calls.prompt++;return c.Notification.permission='granted'}},PushManager:function(){},
   document:{getElementById(){return null},addEventListener(t,f){events[t]=f},visibilityState:'visible'},
   addEventListener(t,f){events[t]=f},alert:t=>calls.alerts.push(t),
@@ -27,7 +27,7 @@ function setup({permission='granted',sub=true,upsertError=null,slow=false,getErr
   _urlBase64ToUint8Array:()=>new Uint8Array([1]),VAPID_PUBLIC_KEY:'public',supa
  });
  c.window=c;vm.runInContext(source,c);
- return {c,calls,events,reg,finish:()=>finish(),tick:()=>new Promise(r=>setImmediate(r))};
+ return {c,calls,events,reg,workerEvents,finish:()=>finish(),tick:()=>new Promise(r=>setImmediate(r))};
 }
 test('already permitted device restores a missing server registration without another permission prompt',async()=>{
  const {c,calls}=setup();assert.equal(await c.TGPush.sync(),true);assert.equal(calls.prompt,0);assert.equal(calls.subscribe,0);assert.equal(calls.upserts.length,1);assert.equal(calls.upserts[0].rows[0].utilizador_id,'admin-1');assert.equal(calls.upserts[0].rows[0].admin_id,'admin-1');assert.equal(calls.upserts[0].opts.onConflict,'endpoint');assert(c.TGPush.getState().registered);
@@ -72,4 +72,23 @@ test('a rejected permission request never claims registration',async()=>{
 });
 test('locked-screen test is scheduled by the server for the registered device only',async()=>{
  const {c,calls}=setup();await c.TGPush.sync();assert.equal(calls.functions.filter(x=>x.body.acao==='teste').length,0);await c.TGPush.test();const request=calls.functions.at(-1);assert.equal(request.name,'testar-push');assert.deepEqual(Object.keys(request.body).sort(),['acao','endpoint']);assert.equal(request.body.endpoint,'https://push.example/device');assert.match(calls.alerts.at(-1),/10 segundos/);
+});
+
+test('numeric DOMException 11 repairs a missing registration once and requires a fresh tap',async()=>{
+ const s=setup({sub:null,subscribeError:{code:11,message:'Subscribing for push requires an active service worker'}});await s.c.TGPush.sync();await s.c.TGPush.activate();assert.deepEqual(s.calls.registrations,['sw.js?push-repair=v82']);assert.equal(s.c.TGPush.getState().status,'needs_activation');assert.match(s.calls.alerts.at(-1),/Toque em Ativar/);assert.equal(s.calls.subscribe,1,'repair must not subscribe outside the tap');await s.c.TGPush.activate();assert.equal(s.calls.registrations.length,1,'persistent errors do not loop through worker resets');assert.match(s.c.TGPush.getState().message,/InvalidStateError/);assert.match(s.c.TGPush.getState().message,/active service worker/);
+});
+test('old subscription is cleared on InvalidStateError without reinstalling the app worker',async()=>{
+ const s=setup({subscribeError:{name:'InvalidStateError',code:11}});await s.c.TGPush.sync();await s.c.TGPush.activate();assert.equal(s.calls.unsubscribe,1);assert.equal(s.calls.registrations.length,0);assert.equal(s.c.TGPush.getState().registered,false);assert.equal(s.c.TGPush.getState().status,'needs_activation');
+});
+test('activation waits until the worker is fully activated',async()=>{
+ const s=setup({workerState:'activating'});await s.tick();assert.equal(s.calls.functions.length,0);assert.equal(s.c.TGPush.getState().status,'preparing');s.reg.active.state='activated';s.workerEvents.statechange();await s.c.TGPush.sync();assert(s.c.TGPush.getState().registered);
+});
+test('repair waits for the replacement worker rather than accepting the previous active worker',async()=>{
+ const s=setup({sub:null,subscribeError:{code:11}});await s.c.TGPush.sync();const listeners=new Set();const old=s.reg.active;const replacement={state:'installing',addEventListener(t,f){listeners.add(f)},removeEventListener(t,f){listeners.delete(f)}};
+ s.reg.installing=replacement;s.c.navigator.serviceWorker.register=async()=>s.reg;
+ const activation=s.c.TGPush.activate();await s.tick();assert.equal(s.c.TGPush.getState().status,'preparing');assert.equal(s.reg.active,old);
+ replacement.state='activated';s.reg.active=replacement;s.reg.installing=null;for(const fn of [...listeners])fn();await activation;assert.equal(s.c.TGPush.getState().status,'needs_activation');assert.equal(s.calls.subscribe,1);
+});
+test('failed removal of an old subscription never reports the repair as complete',async()=>{
+ const s=setup({subscribeError:{name:'InvalidStateError',code:11}});await s.c.TGPush.sync();s.reg.pushManager.getSubscription=async()=>({unsubscribe:async()=>false});await s.c.TGPush.activate();assert.equal(s.c.TGPush.getState().status,'error');assert.equal(s.c.TGPush.getState().registered,false);assert.match(s.c.TGPush.getState().message,/PreviousSubscriptionStillPresent/);
 });

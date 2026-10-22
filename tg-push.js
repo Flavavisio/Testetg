@@ -3,7 +3,7 @@
     'use strict';
     const RETRY_MS = 60000, REFRESH_MS = 5 * 60000;
     let running = null, checkedIdentity = '', checkedAt = 0, attemptedIdentity = '', attemptedAt = 0;
-    let status = 'idle', detail = '', failure = '', prepared = null, registeredEndpoint = '', testing = false;
+    let status = 'idle', detail = '', failure = '', prepared = null, registeredEndpoint = '', testing = false, repairedIdentity = '';
     const user = () => typeof usuarioLogado === 'undefined' ? null : usuarioLogado;
     const identity = () => { const u = user(); return u ? JSON.stringify([u.id, u.adminId || '', u.role]) : ''; };
     const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined';
@@ -15,6 +15,7 @@
         if (!supported()) return 'Abra a Total Gest pela aplicação instalada no ecrã principal, num dispositivo compatível.';
         if (Notification.permission === 'denied') return 'As notificações estão bloqueadas. Autorize a Total Gest nas definições de notificações do dispositivo.';
         if (status === 'error') return detail;
+        if (status === 'needs_activation' && detail) return detail;
         if (Notification.permission !== 'granted') return 'Ative os avisos neste dispositivo para os receber também com a app fechada.';
         if (status === 'syncing' || status === 'preparing') return 'A preparar as notificações deste dispositivo…';
         if (status === 'needs_activation') return detail || 'Toque em Ativar notificações para ligar este dispositivo.';
@@ -56,7 +57,7 @@
     }
     function fail(error, stage) {
         status = 'error';
-        failure = stage + '/' + String(error?.code || error?.name || 'Erro').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+        failure = stage + '/' + String(error?.name || (error?.code === 11 ? 'InvalidStateError' : error?.code) || 'Erro').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
         const descriptions = {
             worker: 'A app ainda não conseguiu preparar as notificações. Feche e volte a abrir a app instalada.',
             config: 'Não foi possível obter a configuração das notificações. Confirme a ligação à Internet.',
@@ -65,20 +66,64 @@
             save: 'Não foi possível guardar o registo deste dispositivo. Confirme a ligação e a sessão.',
             test: 'Não foi possível agendar o teste de notificações.'
         };
-        detail = (descriptions[stage] || 'Não foi possível ligar as notificações.') + ' Detalhe para suporte: ' + failure + '.';
+        const nativeMessage = String(error?.message || '').replace(/https?:\/\/\S+/gi, '[endereço]').replace(/[\r\n\t<>]/g, ' ').slice(0, 220);
+        detail = (descriptions[stage] || 'Não foi possível ligar as notificações.') + ' Detalhe para suporte: ' + failure + '.' + (nativeMessage ? ' Motivo do dispositivo: ' + nativeMessage : '');
         console.warn('Notificações push:', failure);
     }
+    function workerActivated(reg, target = null) {
+        const active = () => reg?.active?.state === 'activated' && (!target || reg.active === target);
+        if (active()) return Promise.resolve(reg);
+        return new Promise((resolve, reject) => {
+            const watched = new Set();
+            const cleanup = () => {
+                clearTimeout(timer); reg.removeEventListener('updatefound', check);
+                watched.forEach(worker => worker.removeEventListener('statechange', check));
+            };
+            const check = () => {
+                if (active()) { cleanup(); resolve(reg); return; }
+                [reg.installing, reg.waiting, reg.active].filter(Boolean).forEach(worker => {
+                    if (!watched.has(worker)) { watched.add(worker); worker.addEventListener('statechange', check); }
+                });
+            };
+            const timer = setTimeout(() => { cleanup(); reject(new Error('ServiceWorkerActivationTimeout')); }, 12000);
+            reg.addEventListener('updatefound', check); check();
+        });
+    }
     async function readyRegistration() {
-        let timer;
-        try {
-            const existing = await navigator.serviceWorker.getRegistration();
-            if (existing?.active && existing.pushManager) return existing;
-            if (!existing) await navigator.serviceWorker.register('sw.js');
-            return await Promise.race([
-                navigator.serviceWorker.ready,
-                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('ServiceWorkerTimeout')), 12000); })
-            ]);
-        } finally { clearTimeout(timer); }
+        const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('sw.js');
+        return workerActivated(reg);
+    }
+    async function recoverInvalidState(expected) {
+        if (repairedIdentity === expected) return false;
+        repairedIdentity = expected; status = 'preparing'; detail = '';
+        const config = prepared;
+        let old = null, queryFailed = false;
+        try { old = await config.reg.pushManager.getSubscription(); } catch { queryFailed = true; }
+        sameAccount(expected);
+        if (old) {
+            await old.unsubscribe(); sameAccount(expected);
+            // A false unsubscribe result does not prove that the previous subscription was removed.
+            if (await config.reg.pushManager.getSubscription()) throw new Error('PreviousSubscriptionStillPresent');
+            sameAccount(expected);
+        }
+        let reg = config.reg;
+        if (!old || queryFailed || reg.active?.state !== 'activated') {
+            // Refresh this app's worker when the stored registration no longer works.
+            // Do not unregister workers, clear app data, or touch other installed apps.
+            reg = await navigator.serviceWorker.register('sw.js?push-repair=v82', { updateViaCache: 'none' });
+            const activateWaiting = () => reg.waiting?.postMessage('SKIP_WAITING');
+            reg.addEventListener('updatefound', activateWaiting);
+            const installing = reg.installing;
+            installing?.addEventListener('statechange', activateWaiting);
+            try { const target = reg.installing || reg.waiting || reg.active; activateWaiting(); await workerActivated(reg, target); }
+            finally { reg.removeEventListener('updatefound', activateWaiting); installing?.removeEventListener('statechange', activateWaiting); }
+        }
+        sameAccount(expected);
+        prepared = { ...config, reg }; checkedIdentity = ''; registeredEndpoint = '';
+        status = 'needs_activation';
+        detail = 'A ligação foi preparada de novo. Toque em Ativar notificações para concluir.';
+        // A fresh tap is required; never retry subscribe() after these asynchronous operations.
+        return true;
     }
     async function prepare(expected) {
         let reg;
@@ -161,15 +206,11 @@
             } catch (error) {
                 if (identity() === expected) {
                     fail(error, stage);
-                    // A previous subscription can belong to an old VAPID key. Clear it, then require a fresh tap.
-                    if (stage === 'subscribe' && error?.name === 'InvalidStateError') {
-                        try {
-                            const old = await prepared.reg.pushManager.getSubscription();
-                            if (old) {
-                                await old.unsubscribe(); sameAccount(expected);
-                                status = 'needs_activation'; detail = 'A ligação antiga foi limpa. Toque novamente em Ativar notificações.';
-                            }
-                        } catch { /* Keep the original, actionable error. */ }
+                    if (stage === 'subscribe' && (error?.name === 'InvalidStateError' || error?.code === 11)) {
+                        try { await recoverInvalidState(expected); }
+                        catch (recoveryError) {
+                            if (identity() === expected) fail(recoveryError, 'worker');
+                        }
                     }
                     if (identity() === expected) alert(message());
                 }

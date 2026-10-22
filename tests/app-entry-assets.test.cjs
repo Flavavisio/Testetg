@@ -4,7 +4,7 @@ const pages=['index.html','login.html'];
 const files=pages.map(p=>fs.readFileSync(path.join(root,p),'utf8'));
 const scripts=html=>[...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map(m=>m[1]);
 const lists=files.map(scripts);
-for(const name of ['app-principal.js','tg-push.js','tg-work-sheets.js'])test(name+' loads the same version once on public and installed app entries',()=>{
+for(const name of ['app-principal.js','tg-push.js','tg-work-sheets.js','pwa-service-worker.js'])test(name+' loads the same version once on public and installed app entries',()=>{
  const entries=lists.map(list=>list.filter(src=>src.split('?')[0]===name));
  for(let i=0;i<entries.length;i++)assert.equal(entries[i].length,1,pages[i]);
  assert.equal(entries[0][0],entries[1][0]);assert(fs.existsSync(path.join(root,name)));

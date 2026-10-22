@@ -74,8 +74,8 @@ test('locked-screen test is scheduled by the server for the registered device on
  const {c,calls}=setup();await c.TGPush.sync();assert.equal(calls.functions.filter(x=>x.body.acao==='teste').length,0);await c.TGPush.test();const request=calls.functions.at(-1);assert.equal(request.name,'testar-push');assert.deepEqual(Object.keys(request.body).sort(),['acao','endpoint']);assert.equal(request.body.endpoint,'https://push.example/device');assert.match(calls.alerts.at(-1),/10 segundos/);
 });
 
-test('numeric DOMException 11 repairs a missing registration once and requires a fresh tap',async()=>{
- const s=setup({sub:null,subscribeError:{code:11,message:'Subscribing for push requires an active service worker'}});await s.c.TGPush.sync();await s.c.TGPush.activate();assert.deepEqual(s.calls.registrations,['sw.js?push-repair=v82']);assert.equal(s.c.TGPush.getState().status,'needs_activation');assert.match(s.calls.alerts.at(-1),/Toque em Ativar/);assert.equal(s.calls.subscribe,1,'repair must not subscribe outside the tap');await s.c.TGPush.activate();assert.equal(s.calls.registrations.length,1,'persistent errors do not loop through worker resets');assert.match(s.c.TGPush.getState().message,/InvalidStateError/);assert.match(s.c.TGPush.getState().message,/active service worker/);
+test('missing push subscription never replaces the worker or claims it was repaired',async()=>{
+ const s=setup({sub:null,subscribeError:{code:11,message:'Subscribing for push requires an active service worker'}});await s.c.TGPush.sync();await s.c.TGPush.activate();await s.c.TGPush.activate();assert.deepEqual(s.calls.registrations,[]);assert.equal(s.c.TGPush.getState().status,'error');assert.equal(s.c.TGPush.getState().registered,false);assert.match(s.c.TGPush.getState().message,/active service worker/);
 });
 test('old subscription is cleared on InvalidStateError without reinstalling the app worker',async()=>{
  const s=setup({subscribeError:{name:'InvalidStateError',code:11}});await s.c.TGPush.sync();await s.c.TGPush.activate();assert.equal(s.calls.unsubscribe,1);assert.equal(s.calls.registrations.length,0);assert.equal(s.c.TGPush.getState().registered,false);assert.equal(s.c.TGPush.getState().status,'needs_activation');
@@ -83,11 +83,9 @@ test('old subscription is cleared on InvalidStateError without reinstalling the 
 test('activation waits until the worker is fully activated',async()=>{
  const s=setup({workerState:'activating'});await s.tick();assert.equal(s.calls.functions.length,0);assert.equal(s.c.TGPush.getState().status,'preparing');s.reg.active.state='activated';s.workerEvents.statechange();await s.c.TGPush.sync();assert(s.c.TGPush.getState().registered);
 });
-test('repair waits for the replacement worker rather than accepting the previous active worker',async()=>{
- const s=setup({sub:null,subscribeError:{code:11}});await s.c.TGPush.sync();const listeners=new Set();const old=s.reg.active;const replacement={state:'installing',addEventListener(t,f){listeners.add(f)},removeEventListener(t,f){listeners.delete(f)}};
- s.reg.installing=replacement;s.c.navigator.serviceWorker.register=async()=>s.reg;
- const activation=s.c.TGPush.activate();await s.tick();assert.equal(s.c.TGPush.getState().status,'preparing');assert.equal(s.reg.active,old);
- replacement.state='activated';s.reg.active=replacement;s.reg.installing=null;for(const fn of [...listeners])fn();await activation;assert.equal(s.c.TGPush.getState().status,'needs_activation');assert.equal(s.calls.subscribe,1);
+test('OS push initialization failure never repairs, replaces the worker or claims success',async()=>{
+ const error={name:'InvalidStateError',code:11,message:'Push service initialization failed'};
+ const s=setup({getError:error,subscribeError:error});await s.c.TGPush.sync();for(let i=0;i<3;i++)await s.c.TGPush.activate();assert.deepEqual(s.calls.registrations,[]);assert.equal(s.calls.unsubscribe,0);assert.equal(s.calls.upserts.length,0);assert.equal(s.calls.get,1,'do not repeatedly query the failed OS daemon during activation');assert.equal(s.c.TGPush.getState().status,'error');assert.match(s.c.TGPush.getState().message,/reiniciar o iPhone/);assert.match(s.c.TGPush.getState().message,/Push service initialization failed/);assert(s.calls.alerts.every(x=>!x.includes('preparada de novo')));
 });
 test('failed removal of an old subscription never reports the repair as complete',async()=>{
  const s=setup({subscribeError:{name:'InvalidStateError',code:11}});await s.c.TGPush.sync();s.reg.pushManager.getSubscription=async()=>({unsubscribe:async()=>false});await s.c.TGPush.activate();assert.equal(s.c.TGPush.getState().status,'error');assert.equal(s.c.TGPush.getState().registered,false);assert.match(s.c.TGPush.getState().message,/PreviousSubscriptionStillPresent/);

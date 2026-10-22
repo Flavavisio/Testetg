@@ -55,6 +55,7 @@
     function sameAccount(expected) {
         if (!expected || identity() !== expected) throw new Error('A conta mudou durante a configuração. Volte a verificar as notificações.');
     }
+    const pushServiceFailed = error => /push service initialization failed/i.test(String(error?.message || ''));
     function fail(error, stage) {
         status = 'error';
         failure = stage + '/' + String(error?.name || (error?.code === 11 ? 'InvalidStateError' : error?.code) || 'Erro').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
@@ -67,7 +68,10 @@
             test: 'Não foi possível agendar o teste de notificações.'
         };
         const nativeMessage = String(error?.message || '').replace(/https?:\/\/\S+/gi, '[endereço]').replace(/[\r\n\t<>]/g, ' ').slice(0, 220);
-        detail = (descriptions[stage] || 'Não foi possível ligar as notificações.') + ' Detalhe para suporte: ' + failure + '.' + (nativeMessage ? ' Motivo do dispositivo: ' + nativeMessage : '');
+        const description = pushServiceFailed(error)
+            ? 'O serviço de notificações do dispositivo não conseguiu iniciar. Tente reiniciar o iPhone, desbloqueá-lo e voltar a ativar as notificações na Total Gest.'
+            : (descriptions[stage] || 'Não foi possível ligar as notificações.');
+        detail = description + ' Detalhe para suporte: ' + failure + '.' + (nativeMessage ? ' Motivo do dispositivo: ' + nativeMessage : '');
         console.warn('Notificações push:', failure);
     }
     function workerActivated(reg, target = null) {
@@ -93,36 +97,21 @@
         const reg = await navigator.serviceWorker.getRegistration() || await navigator.serviceWorker.register('sw.js');
         return workerActivated(reg);
     }
-    async function recoverInvalidState(expected) {
-        if (repairedIdentity === expected) return false;
-        repairedIdentity = expected; status = 'preparing'; detail = '';
+    async function recoverInvalidState(expected, error) {
+        // This error comes from the OS push daemon. Updating/replacing a service worker cannot restart it.
+        if (pushServiceFailed(error) || repairedIdentity === expected) return false;
         const config = prepared;
-        let old = null, queryFailed = false;
-        try { old = await config.reg.pushManager.getSubscription(); } catch { queryFailed = true; }
+        let old;
+        try { old = await config.reg.pushManager.getSubscription(); } catch { return false; }
         sameAccount(expected);
-        if (old) {
-            await old.unsubscribe(); sameAccount(expected);
-            // A false unsubscribe result does not prove that the previous subscription was removed.
-            if (await config.reg.pushManager.getSubscription()) throw new Error('PreviousSubscriptionStillPresent');
-            sameAccount(expected);
-        }
-        let reg = config.reg;
-        if (!old || queryFailed || reg.active?.state !== 'activated') {
-            // Refresh this app's worker when the stored registration no longer works.
-            // Do not unregister workers, clear app data, or touch other installed apps.
-            reg = await navigator.serviceWorker.register('sw.js?push-repair=v82', { updateViaCache: 'none' });
-            const activateWaiting = () => reg.waiting?.postMessage('SKIP_WAITING');
-            reg.addEventListener('updatefound', activateWaiting);
-            const installing = reg.installing;
-            installing?.addEventListener('statechange', activateWaiting);
-            try { const target = reg.installing || reg.waiting || reg.active; activateWaiting(); await workerActivated(reg, target); }
-            finally { reg.removeEventListener('updatefound', activateWaiting); installing?.removeEventListener('statechange', activateWaiting); }
-        }
+        if (!old) return false;
+        repairedIdentity = expected;
+        await old.unsubscribe(); sameAccount(expected);
+        if (await config.reg.pushManager.getSubscription()) throw new Error('PreviousSubscriptionStillPresent');
         sameAccount(expected);
-        prepared = { ...config, reg }; checkedIdentity = ''; registeredEndpoint = '';
-        status = 'needs_activation';
-        detail = 'A ligação foi preparada de novo. Toque em Ativar notificações para concluir.';
-        // A fresh tap is required; never retry subscribe() after these asynchronous operations.
+        checkedIdentity = ''; registeredEndpoint = ''; status = 'needs_activation';
+        detail = 'A ligação anterior foi removida. Toque em Ativar notificações para concluir.';
+        // Never update the service worker, navigate or reload as part of notification activation.
         return true;
     }
     async function prepare(expected) {
@@ -207,7 +196,7 @@
                 if (identity() === expected) {
                     fail(error, stage);
                     if (stage === 'subscribe' && (error?.name === 'InvalidStateError' || error?.code === 11)) {
-                        try { await recoverInvalidState(expected); }
+                        try { await recoverInvalidState(expected, error); }
                         catch (recoveryError) {
                             if (identity() === expected) fail(recoveryError, 'worker');
                         }

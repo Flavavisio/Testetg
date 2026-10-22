@@ -1,0 +1,13 @@
+#secao-folhas .acoes .btn { min-height:32px; }
+#secao-folhas .acoes [data-folha-validacao] { white-space:nowrap; }
+#secao-folhas .table-wrapper { max-width:100%; }
+body.dark-mode #secao-folhas .btn-outline { color:#dbeafe; border-color:#7da7c7; }
+body.dark-mode #secao-folhas .btn-outline:hover { color:#fff; background:#334155; }
+body.dark-mode #secao-folhas select { background:#243247; color:#e2e8f0; border-color:#64748b; }
+body.dark-mode #secao-folhas .table-wrapper table th:first-child { background:#243247; }
+body.dark-mode #secao-folhas .table-wrapper table td:first-child { background:#1a2436; }
+@media(max-width:600px) {
+    #secao-folhas .acoes .btn { min-height:44px; }
+    #secao-folhas #folhasFiltros { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+    #secao-folhas #folhasFiltros select { min-width:0; width:100%; }
+}

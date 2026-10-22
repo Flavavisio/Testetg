@@ -3,7 +3,7 @@
     'use strict';
     const RETRY_MS = 60000, REFRESH_MS = 5 * 60000;
     let running = null, checkedIdentity = '', checkedAt = 0, attemptedIdentity = '', attemptedAt = 0;
-    let status = 'idle', detail = '';
+    let status = 'idle', detail = '', failure = '', prepared = null, registeredEndpoint = '', testing = false;
     const user = () => typeof usuarioLogado === 'undefined' ? null : usuarioLogado;
     const identity = () => { const u = user(); return u ? JSON.stringify([u.id, u.adminId || '', u.role]) : ''; };
     const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && typeof Notification !== 'undefined';
@@ -14,9 +14,11 @@
     function message() {
         if (!supported()) return 'Abra a Total Gest pela aplicação instalada no ecrã principal, num dispositivo compatível.';
         if (Notification.permission === 'denied') return 'As notificações estão bloqueadas. Autorize a Total Gest nas definições de notificações do dispositivo.';
+        if (status === 'error') return detail;
         if (Notification.permission !== 'granted') return 'Ative os avisos neste dispositivo para os receber também com a app fechada.';
-        if (status === 'syncing') return 'A verificar as notificações deste dispositivo…';
-        if (status === 'ready' && checkedIdentity === identity()) return 'Este dispositivo está registado para receber notificações.';
+        if (status === 'syncing' || status === 'preparing') return 'A preparar as notificações deste dispositivo…';
+        if (status === 'needs_activation') return detail || 'Toque em Ativar notificações para ligar este dispositivo.';
+        if (status === 'ready' && checkedIdentity === identity()) return detail || 'Este dispositivo está registado para receber notificações.';
         return detail || 'Verifique e volte a ligar as notificações deste dispositivo.';
     }
     function render() {
@@ -35,81 +37,159 @@
             const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-sm btn-primary';
             button.style.cssText = 'flex-shrink:0;min-height:36px;';
             button.onclick = () => { void activate(); };
-            copy.append(title, text); card.append(copy, button); host.prepend(card);
+            const test = document.createElement('button'); test.type = 'button'; test.className = 'btn btn-sm btn-outline';
+            test.dataset.pushTest = '1'; test.textContent = 'Testar com ecrã bloqueado';
+            test.onclick = () => { void testPush(); };
+            copy.append(title, text); card.append(copy, button, test); host.prepend(card);
         }
         card.querySelector('[data-push-detail]').textContent = message();
         const btn = card.querySelector('button');
-        btn.textContent = supported() && Notification.permission === 'granted' ? 'Verificar notificações' : 'Ativar notificações';
+        btn.textContent = status === 'needs_activation' || !supported() || Notification.permission !== 'granted'
+            ? 'Ativar notificações' : (status === 'error' ? 'Reativar notificações' : 'Verificar notificações');
         btn.disabled = !!running;
+        const test = card.querySelector('[data-push-test]');
+        test.style.display = status === 'ready' && checkedIdentity === identity() ? '' : 'none';
+        test.disabled = testing;
     }
     function sameAccount(expected) {
         if (!expected || identity() !== expected) throw new Error('A conta mudou durante a configuração. Volte a verificar as notificações.');
+    }
+    function fail(error, stage) {
+        status = 'error';
+        failure = stage + '/' + String(error?.code || error?.name || 'Erro').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+        const descriptions = {
+            worker: 'A app ainda não conseguiu preparar as notificações. Feche e volte a abrir a app instalada.',
+            config: 'Não foi possível obter a configuração das notificações. Confirme a ligação à Internet.',
+            subscription: 'O dispositivo não conseguiu consultar a ligação de notificações. Toque em Reativar notificações.',
+            subscribe: 'O dispositivo recusou criar a ligação de notificações. Abra a app pelo ícone instalado e volte a tentar.',
+            save: 'Não foi possível guardar o registo deste dispositivo. Confirme a ligação e a sessão.',
+            test: 'Não foi possível agendar o teste de notificações.'
+        };
+        detail = (descriptions[stage] || 'Não foi possível ligar as notificações.') + ' Detalhe para suporte: ' + failure + '.';
+        console.warn('Notificações push:', failure);
     }
     async function readyRegistration() {
         let timer;
         try {
             const existing = await navigator.serviceWorker.getRegistration();
+            if (existing?.active && existing.pushManager) return existing;
             if (!existing) await navigator.serviceWorker.register('sw.js');
             return await Promise.race([
                 navigator.serviceWorker.ready,
-                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('A aplicação ainda está a atualizar. Tente novamente dentro de alguns segundos.')), 12000); })
+                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('ServiceWorkerTimeout')), 12000); })
             ]);
         } finally { clearTimeout(timer); }
     }
-    async function reconcile(expected) {
-        const reg = await readyRegistration(); sameAccount(expected);
-        let subscription = await reg.pushManager.getSubscription(); sameAccount(expected);
-        if (subscription && subscription.expirationTime != null && subscription.expirationTime <= Date.now()) {
-            await subscription.unsubscribe(); subscription = null; sameAccount(expected);
+    async function prepare(expected) {
+        let reg;
+        try { reg = await readyRegistration(); } catch (error) { error.pushStage = 'worker'; throw error; }
+        sameAccount(expected);
+        let result;
+        try { result = await supa.functions.invoke('testar-push', { body: { acao: 'config' } }); }
+        catch (error) { error.pushStage = 'config'; throw error; }
+        if (result.error || !result.data?.chave_publica) {
+            const error = result.error || new Error('MissingPublicKey'); error.pushStage = 'config'; throw error;
         }
-        if (!subscription) {
-            subscription = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
-            sameAccount(expected);
-        }
+        sameAccount(expected);
+        prepared = { identity: expected, reg, key: _urlBase64ToUint8Array(result.data.chave_publica) };
+        return prepared;
+    }
+    async function persist(subscription, expected) {
+        sameAccount(expected);
         const s = subscription.toJSON(), u = user();
-        if (!s.endpoint || !s.keys?.p256dh || !s.keys?.auth) throw new Error('Não foi possível obter a inscrição deste dispositivo.');
+        if (!s.endpoint || !s.keys?.p256dh || !s.keys?.auth) throw new Error('InvalidSubscription');
         const row = { utilizador_id: u.id, admin_id: u.role === 'admin' ? u.id : (u.adminId || null), endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth };
         const { data, error } = await supa.from('push_subscriptions').upsert([row], { onConflict: 'endpoint' }).select('utilizador_id').single();
         if (error) throw error;
         sameAccount(expected);
-        if (data?.utilizador_id !== u.id) throw new Error('Não foi possível confirmar o registo das notificações no servidor.');
-        checkedIdentity = expected; checkedAt = Date.now(); status = 'ready'; detail = '';
+        if (data?.utilizador_id !== u.id) throw new Error('RegistrationNotConfirmed');
+        registeredEndpoint = s.endpoint; checkedIdentity = expected; checkedAt = Date.now(); status = 'ready'; detail = ''; failure = '';
         return true;
+    }
+    async function reconcile(expected) {
+        const config = await prepare(expected);
+        if (Notification.permission !== 'granted') { status = 'needs_activation'; detail = ''; return false; }
+        let subscription;
+        try { subscription = await config.reg.pushManager.getSubscription(); }
+        catch (error) { error.pushStage = 'subscription'; throw error; }
+        sameAccount(expected);
+        const key = subscription?.options?.applicationServerKey;
+        const wrongKey = key && (new Uint8Array(key).length !== config.key.length || new Uint8Array(key).some((byte, i) => byte !== config.key[i]));
+        if (subscription && (wrongKey || (subscription.expirationTime != null && subscription.expirationTime <= Date.now()))) {
+            await subscription.unsubscribe(); sameAccount(expected); subscription = null;
+        }
+        // Safari requires subscribe() directly in a click handler. Background sync must never create a subscription.
+        if (!subscription) { status = 'needs_activation'; detail = 'Toque em Ativar notificações para renovar a ligação deste dispositivo.'; return false; }
+        try { return await persist(subscription, expected); }
+        catch (error) { error.pushStage = 'save'; throw error; }
     }
     async function sync(force = false) {
         const expected = identity();
-        if (!expected || !enabled() || !supported() || Notification.permission !== 'granted') { render(); return false; }
+        if (!expected || !enabled() || !supported() || Notification.permission === 'denied') { render(); return false; }
         if (running) return running.identity === expected ? running.promise : false;
         if (!force && ((checkedIdentity === expected && Date.now() - checkedAt < REFRESH_MS) || (attemptedIdentity === expected && Date.now() - attemptedAt < RETRY_MS))) { render(); return checkedIdentity === expected && status === 'ready'; }
-        attemptedIdentity = expected; attemptedAt = Date.now(); status = 'syncing'; detail = '';
-        const job = { identity: expected };
-        running = job;
+        attemptedIdentity = expected; attemptedAt = Date.now(); status = 'preparing'; detail = '';
+        const job = { identity: expected }; running = job;
         job.promise = (async () => {
             try { return await reconcile(expected); }
-            catch (error) {
+            catch (error) { if (identity() === expected) fail(error, error.pushStage || 'subscription'); return false; }
+            finally { if (running === job) running = null; render(); }
+        })();
+        render(); return job.promise;
+    }
+    function activate() {
+        const expected = identity();
+        if (!expected || !enabled()) return Promise.resolve(false);
+        if (!supported() || Notification.permission === 'denied') { alert(message()); return Promise.resolve(false); }
+        if (running) return running.promise;
+        if (prepared?.identity !== expected) {
+            return sync(true).then(ok => { if (!ok && identity() === expected) alert(message()); return ok; });
+        }
+        let subscriptionPromise;
+        try {
+            // Must be called synchronously from the user's tap: no permission/read/network awaits before this line.
+            subscriptionPromise = prepared.reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: prepared.key });
+        } catch (error) { fail(error, 'subscribe'); render(); alert(message()); return Promise.resolve(false); }
+        status = 'syncing'; detail = '';
+        const job = { identity: expected }; running = job;
+        job.promise = (async () => {
+            let stage = 'subscribe';
+            try {
+                const subscription = await subscriptionPromise; sameAccount(expected); stage = 'save';
+                await persist(subscription, expected);
+                alert('Notificações ligadas neste dispositivo. Pode agora testar com o ecrã bloqueado.'); return true;
+            } catch (error) {
                 if (identity() === expected) {
-                    status = 'error'; detail = 'Não foi possível ligar as notificações. Toque em “Verificar notificações” para tentar novamente.';
-                    console.warn('Registo de notificações push:', error?.message || 'Falha na configuração');
+                    fail(error, stage);
+                    // A previous subscription can belong to an old VAPID key. Clear it, then require a fresh tap.
+                    if (stage === 'subscribe' && error?.name === 'InvalidStateError') {
+                        try {
+                            const old = await prepared.reg.pushManager.getSubscription();
+                            if (old) {
+                                await old.unsubscribe(); sameAccount(expected);
+                                status = 'needs_activation'; detail = 'A ligação antiga foi limpa. Toque novamente em Ativar notificações.';
+                            }
+                        } catch { /* Keep the original, actionable error. */ }
+                    }
+                    if (identity() === expected) alert(message());
                 }
                 return false;
             } finally { if (running === job) running = null; render(); }
         })();
         render(); return job.promise;
     }
-    async function activate() {
-        if (!user() || !enabled()) return;
-        if (!supported()) { alert(message()); return; }
+    async function testPush() {
+        const expected = identity();
+        if (testing || checkedIdentity !== expected || status !== 'ready' || !registeredEndpoint) return;
+        testing = true; render();
         try {
-            // Permission prompts remain tied to an explicit click, including on iOS.
-            if (Notification.permission === 'default') await Notification.requestPermission();
-            if (Notification.permission !== 'granted') { render(); alert(message()); return; }
-            const ok = await sync(true);
-            if (ok) alert('Notificações ligadas neste dispositivo.');
-            else alert(message());
-        } catch (error) {
-            status = 'error'; detail = 'Não foi possível ativar as notificações. Abra a app instalada e tente novamente.';
-            render(); alert(message());
-        }
+            const { data, error } = await supa.functions.invoke('testar-push', { body: { acao: 'teste', endpoint: registeredEndpoint } });
+            if (identity() !== expected) return;
+            if (error || !data?.agendado) throw error || new Error('TestNotScheduled');
+            detail = 'Teste agendado. Bloqueie o ecrã agora: o servidor enviará o aviso dentro de 10 segundos.';
+            alert(detail);
+        } catch (error) { if (identity() === expected) { fail(error, 'test'); alert(message()); } }
+        finally { testing = false; render(); }
     }
     _ativarNotificacoesPush = activate;
     // The daily panel is rebuilt on refresh and moved into the desktop home.
@@ -122,6 +202,6 @@
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void sync(); });
     window.addEventListener('online', () => { attemptedAt = 0; void sync(true); });
     if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('controllerchange', () => { void sync(true); });
-    window.TGPush = { sync, activate, render, getState: () => ({ status, registered: supported() && Notification.permission === 'granted' && checkedIdentity === identity() && status === 'ready', message: message() }) };
+    window.TGPush = { sync, activate, test: testPush, render, getState: () => ({ status, failure, registered: supported() && Notification.permission === 'granted' && checkedIdentity === identity() && status === 'ready', message: message() }) };
     void sync();
 })();

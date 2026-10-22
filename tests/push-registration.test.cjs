@@ -1,12 +1,12 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../tg-push.js'),'utf8');
-function setup({permission='granted',sub=true,upsertError=null,slow=false}={}) {
- const calls={get:0,subscribe:0,upserts:[],prompt:0,unsubscribe:0,alerts:[],sino:0},events={};
+function setup({permission='granted',sub=true,upsertError=null,slow=false,getError=null,subscribeError=null,configError=null}={}) {
+ const calls={get:0,subscribe:0,upserts:[],prompt:0,unsubscribe:0,alerts:[],sino:0,functions:[]},events={};
  let currentSub=sub===true?subscription():sub;
  let finish;
- const reg={pushManager:{async getSubscription(){calls.get++;if(slow)await new Promise(r=>finish=r);return currentSub},async subscribe(opts){calls.subscribe++;assert.equal(opts.userVisibleOnly,true);return currentSub=subscription()}}};
+ const reg={active:{},pushManager:{async getSubscription(){calls.get++;if(getError)throw getError;if(slow)await new Promise(r=>finish=r);return currentSub},async subscribe(opts){calls.subscribe++;if(subscribeError)throw subscribeError;c.Notification.permission='granted';assert.equal(opts.userVisibleOnly,true);return currentSub=subscription()}}};
  function subscription(){return {expirationTime:null,async unsubscribe(){calls.unsubscribe++;currentSub=null;return true},toJSON(){return {endpoint:'https://push.example/device',keys:{p256dh:'device-key',auth:'device-auth'}}}};}
- const supa={from(table){
+ const supa={functions:{async invoke(name,options){calls.functions.push({name,body:options.body});return options.body.acao==='config'?{data:{chave_publica:'public'},error:configError}:{data:{agendado:true}}}},from(table){
   assert.equal(table,'push_subscriptions');
   return {upsert(rows,opts){
    calls.upserts.push({rows,opts});
@@ -33,17 +33,17 @@ test('already permitted device restores a missing server registration without an
  const {c,calls}=setup();assert.equal(await c.TGPush.sync(),true);assert.equal(calls.prompt,0);assert.equal(calls.subscribe,0);assert.equal(calls.upserts.length,1);assert.equal(calls.upserts[0].rows[0].utilizador_id,'admin-1');assert.equal(calls.upserts[0].rows[0].admin_id,'admin-1');assert.equal(calls.upserts[0].opts.onConflict,'endpoint');assert(c.TGPush.getState().registered);
  await c.TGPush.sync();assert.equal(calls.upserts.length,1,'frequent renders do not write repeatedly');
 });
-test('granted permission without a local subscription creates one and saves it',async()=>{
- const {c,calls}=setup({sub:null});await c.TGPush.sync();assert.equal(calls.subscribe,1);assert.equal(calls.upserts.length,1);
+test('background sync never subscribes; a tap subscribes synchronously before any await',async()=>{
+ const {c,calls}=setup({sub:null});await c.TGPush.sync();assert.equal(calls.subscribe,0);assert.equal(calls.upserts.length,0);assert.equal(c.TGPush.getState().status,'needs_activation');const activated=c.TGPush.activate();assert.equal(calls.subscribe,1,'subscribe occurs before the click handler returns');await activated;assert.equal(calls.upserts.length,1);
 });
 test('expired subscriptions are renewed',async()=>{
  const s=setup({sub:null});await s.c.TGPush.sync();
  const expired={expirationTime:Date.now()-1000,async unsubscribe(){s.calls.unsubscribe++;return true},toJSON(){throw Error('expired subscription cannot be used')}};
  s.reg.pushManager.getSubscription=async()=>expired;
- await s.c.TGPush.sync(true);assert.equal(s.calls.unsubscribe,1);assert.equal(s.calls.subscribe,2);
+ await s.c.TGPush.sync(true);assert.equal(s.calls.unsubscribe,1);assert.equal(s.calls.subscribe,0);assert.equal(s.c.TGPush.getState().status,'needs_activation');await s.c.TGPush.activate();assert.equal(s.calls.subscribe,1);
 });
 test('permission is requested only after clicking Activate',async()=>{
- const {c,calls}=setup({permission:'default'});await c.TGPush.sync();assert.equal(calls.prompt,0);assert.equal(calls.upserts.length,0);await c._ativarNotificacoesPush();assert.equal(calls.prompt,1);assert.equal(calls.upserts.length,1);
+ const {c,calls}=setup({permission:'default'});await c.TGPush.sync();assert.equal(calls.prompt,0);assert.equal(calls.upserts.length,0);const activated=c._ativarNotificacoesPush();assert.equal(calls.subscribe,1);await activated;assert.equal(calls.prompt,0);assert.equal(calls.upserts.length,1);
 });
 test('denied permission is respected and reports the block',async()=>{
  const {c,calls}=setup({permission:'denied'});await c._ativarNotificacoesPush();assert.equal(calls.prompt,0);assert.equal(calls.subscribe,0);assert.equal(calls.upserts.length,0);assert.match(calls.alerts[0],/bloqueadas/);
@@ -59,4 +59,17 @@ test('switching accounts during registration does not save for the wrong user',a
 });
 test('online and resume reconnect; wrapper retains normal notification menu',async()=>{
  const {c,calls,events}=setup();await c.TGPush.sync();await events.online();await c.TGPush.sync();assert.equal(calls.upserts.length,2);c.atualizarSino();assert.equal(calls.sino,1);await events.visibilitychange();await c.TGPush.sync();assert.equal(calls.upserts.length,2);
+});
+
+test('configuration errors identify the stage even before permission is granted',async()=>{
+ const {c}=setup({permission:'default',configError:{name:'FunctionsFetchError'}});await c.TGPush.sync();assert.equal(c.TGPush.getState().failure,'config/FunctionsFetchError');assert.match(c.TGPush.getState().message,/config\/FunctionsFetchError/);
+});
+test('subscription errors are visible and a manual tap can recover without reading the subscription again',async()=>{
+ const {c,calls}=setup({getError:{name:'AbortError'}});await c.TGPush.sync();assert.equal(c.TGPush.getState().failure,'subscription/AbortError');await c.TGPush.activate();assert(c.TGPush.getState().registered);assert.equal(calls.get,1);
+});
+test('a rejected permission request never claims registration',async()=>{
+ const {c}=setup({permission:'default',subscribeError:{name:'NotAllowedError'}});await c.TGPush.sync();await c.TGPush.activate();assert.equal(c.TGPush.getState().registered,false);assert.match(c.TGPush.getState().message,/subscribe\/NotAllowedError/);
+});
+test('locked-screen test is scheduled by the server for the registered device only',async()=>{
+ const {c,calls}=setup();await c.TGPush.sync();assert.equal(calls.functions.filter(x=>x.body.acao==='teste').length,0);await c.TGPush.test();const request=calls.functions.at(-1);assert.equal(request.name,'testar-push');assert.deepEqual(Object.keys(request.body).sort(),['acao','endpoint']);assert.equal(request.body.endpoint,'https://push.example/device');assert.match(calls.alerts.at(-1),/10 segundos/);
 });

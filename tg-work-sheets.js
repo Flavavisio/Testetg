@@ -45,8 +45,16 @@
 
     function folhasVisiveis() {
         if (!usuarioLogado || ['superadmin', 'cliente'].includes(usuarioLogado.role)) return [];
-        return (dados.folhasObra || []).filter(f => f.adminId === _tenantId() &&
-            (podeValidar() || f.funcionarioId === usuarioLogado.id));
+        const tenant = _tenantId();
+        const pessoas = new Set([usuarioLogado.id]);
+        if (usuarioLogado.role === 'encarregado') {
+            const encarregado = tenantItem(dados.encarregados, usuarioLogado.id, tenant);
+            const atribuidos = new Set(encarregado?.funcionariosIds || []);
+            (dados.funcionarios || []).filter(f => f.adminId === tenant && atribuidos.has(f.id))
+                .forEach(f => pessoas.add(f.id));
+        }
+        return (dados.folhasObra || []).filter(f => f.adminId === tenant &&
+            (podeValidar() || pessoas.has(f.funcionarioId)));
     }
 
     function atualizarFiltros(linhas) {
@@ -124,6 +132,22 @@
             if (conta === identidade()) render();
         }
     }
+
+    // Also guard actions reached from another screen or a stale row after team changes.
+    const podeAbrir = id => usuarioLogado?.role === 'cliente' || folhasVisiveis().some(f => f.id === id);
+    for (const nome of ['abrirFolhaDetalhe', 'gerarPDFFolha']) {
+        const original = window[nome];
+        if (typeof original !== 'function') continue;
+        window[nome] = function (id, ...args) {
+            if (!podeAbrir(id)) { mostrarErro('Não tens acesso a esta folha de obra.'); return; }
+            return original.call(this, id, ...args);
+        };
+    }
+    const excluirOriginal = window.excluirEntidade;
+    if (typeof excluirOriginal === 'function') window.excluirEntidade = function (tipo, id, ...args) {
+        if (tipo === 'folha' && !podeAbrir(id)) { mostrarErro('Não tens acesso a esta folha de obra.'); return; }
+        return excluirOriginal.call(this, tipo, id, ...args);
+    };
 
     window.tgFolhasFiltrar = render;
     window.tgFolhasLimpar = () => { filtros.forEach(k => { const el = document.getElementById('folhasFiltro_' + k); if (el) el.value = ''; }); render(); };

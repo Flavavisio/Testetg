@@ -5565,6 +5565,9 @@
         }
         // Obras de Longa Duração — mesmo padrão dos outros separadores: lista, estado colorido,
         // clicar abre a obra, botão para criar uma nova já com o cliente escolhido.
+        function _obraAutosMedicaoDisponiveis(obra) {
+            return !!(obra?.temAutosMedicao && moduloCrmAtivo(dados.administradores?.find(a => a.id === obra.adminId)));
+        }
         function _wsObrasHtml(clienteId) {
             const obrasCliente = (dados.obras || []).filter(o => o.clienteId === clienteId).sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
             const locaisCliente = (dados.locais || []).filter(l => l.clienteId === clienteId);
@@ -5579,9 +5582,9 @@
             const linhas = obrasCliente.map(o => {
                 const corMap = { preparacao: '#475569', ativa: '#166534', suspensa: '#92400e', concluida: '#1e40af' };
                 const corTexto = corMap[o.estado] || corMap.preparacao;
-                return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f1f5f9;">
+                return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f1f5f9;">
                     <i class="fas fa-hard-hat" style="color:#94a3b8;width:18px;"></i>
-                    <div style="flex:1;min-width:0;">
+                    <div style="flex:1;min-width:160px;">
                         <div style="font-size:.86rem;font-weight:600;text-align:left;">${escapeHtmlSimples(o.nome || 'Obra')}</div>
                         <div style="font-size:.76rem;color:#64748b;text-align:left;">${escapeHtmlSimples(nomeLocal(o.localId))}${o.dataInicioPrevista ? ' · início ' + o.dataInicioPrevista.split('-').reverse().join('/') : ''}${o.dataFimPrevista ? ' · fim ' + o.dataFimPrevista.split('-').reverse().join('/') : ''}</div>
                     </div>
@@ -5589,6 +5592,7 @@
                         ${Object.entries(labels).map(([v, l]) => `<option value="${v}" ${o.estado === v || (!o.estado && v === 'preparacao') ? 'selected' : ''}>${l}</option>`).join('')}
                     </select>
                     <button class="btn btn-sm" style="background:#334155;color:#fff;" onclick="_wsSairPara('${clienteId}');abrirObraLongaDetalhe('${o.id}')" title="Ver Obra"><i class="fas fa-eye"></i> Ver Obra</button>
+                    ${_obraAutosMedicaoDisponiveis(o) ? `<button type="button" class="btn btn-sm btn-outline" onclick="_wsSairPara('${clienteId}');abrirObraLongaDetalhe('${o.id}','autos')" title="Autos de medição"><i class="fas fa-file-invoice-dollar"></i> Autos de medição</button>` : ''}
                     <button class="btn btn-sm" style="background:#0f766e;color:#fff;" onclick="_wsSairPara('${clienteId}');_obraEscolherRelatorio('${o.id}')" title="Relatório da obra"><i class="fas fa-file-lines"></i></button>
                 </div>`;
             }).join('');
@@ -15539,13 +15543,13 @@
             if (obra.estado === 'concluida') return '';
             return `<button type="button" class="btn btn-sm" style="background:#16a34a;color:#fff;" onclick="event.stopPropagation();obraLongaPicarEntrada('${obra.id}')"><i class="fas fa-fingerprint"></i> Entrada</button>`;
         }
-        function abrirObraLongaDetalhe(obraId) {
+        function abrirObraLongaDetalhe(obraId, abaInicial = 'folhas') {
             const obra = (dados.obras || []).find(o => o.id === obraId); if (!obra) return;
-            _verificarAvisoDocsObra(obra).then(() => {
-                _abrirObraLongaDetalheReal(obraId);
+            return _verificarAvisoDocsObra(obra).then(() => {
+                _abrirObraLongaDetalheReal(obraId, abaInicial);
             });
         }
-        function _abrirObraLongaDetalheReal(obraId) {
+        function _abrirObraLongaDetalheReal(obraId, abaInicial = 'folhas') {
             const obra = (dados.obras || []).find(o => o.id === obraId); if (!obra) return;
             document.getElementById('modalGenericoOverlay').dataset.obraAtual = obraId;
             document.getElementById('modalGenericoOverlay').classList.add('open');
@@ -15579,7 +15583,7 @@
                     <button type="button" class="btn btn-sm" id="verObraBtnFolhas" onclick="_verObraMostrar('${obraId}','folhas')" style="flex:1;min-width:100px;background:#0ea5e9;color:#fff;"><i class="fas fa-clipboard-list"></i> Folhas de obra</button>
                     <button type="button" class="btn btn-sm" id="verObraBtnMateriais" onclick="_verObraMostrar('${obraId}','materiais')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-boxes-stacked"></i> Materiais</button>
                     <button type="button" class="btn btn-sm" id="verObraBtnDocumentos" onclick="_verObraMostrar('${obraId}','documentos')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-folder-open"></i> Documentos</button>
-                    ${(obra.temAutosMedicao && moduloCrmAtivo(dados.administradores?.find(a => a.id === obra.adminId))) ? `<button type="button" class="btn btn-sm" id="verObraBtnAutos" onclick="_verObraMostrar('${obraId}','autos')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-file-invoice-dollar"></i> Auto de Medição</button>` : ''}
+                    ${_obraAutosMedicaoDisponiveis(obra) ? `<button type="button" class="btn btn-sm" id="verObraBtnAutos" onclick="_verObraMostrar('${obraId}','autos')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-file-invoice-dollar"></i> Auto de Medição</button>` : ''}
                     ${(obrasAvancadoAtivo(dados.administradores?.find(a => a.id === obra.adminId)) && (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin')) ? `<button type="button" class="btn btn-sm" id="verObraBtnFinanceiro" onclick="_verObraMostrar('${obraId}','financeiro')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-sack-dollar"></i> Financeiro</button>` : ''}
                     ${obrasAvancadoAtivo(dados.administradores?.find(a => a.id === obra.adminId)) ? `<button type="button" class="btn btn-sm" id="verObraBtnMarcos" onclick="_verObraMostrar('${obraId}','marcos')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-list-check"></i> Marcos</button>` : ''}
                     ${obrasAvancadoAtivo(dados.administradores?.find(a => a.id === obra.adminId)) ? `<button type="button" class="btn btn-sm" id="verObraBtnChecklist" onclick="_verObraMostrar('${obraId}','checklist')" style="flex:1;min-width:100px;background:#f1f5f9;color:#334155;"><i class="fas fa-shield-halved"></i> Checklist</button>` : ''}
@@ -15589,7 +15593,7 @@
             document.getElementById('modalGenericoForm').onsubmit = function (ev) { ev.preventDefault(); _fecharModalGenerico(); };
             const _bg = document.querySelector('#modalGenericoOverlay .modal-actions .btn-success'); if (_bg) { _bg.style.display = ''; _bg.innerHTML = '<i class="fas fa-check"></i> Finalizar'; }
             document.getElementById('modalGenericoOverlay').classList.add('open', 'modal-veros');
-            _verObraMostrar(obraId, 'folhas');
+            _verObraMostrar(obraId, abaInicial);
         }
         // Pasta atual aberta na aba Documentos de cada obra (id da pasta, ou null = raiz)
         let _verObraPastaAtual = null;
@@ -15711,7 +15715,7 @@
             }
             if (aba === 'autos') {
                 const _obraAtual = dados.obras?.find(o => o.id === obraId);
-                if (!_obraAtual || !moduloCrmAtivo(dados.administradores?.find(a => a.id === _obraAtual.adminId))) { aba = 'folhas'; }
+                if (!_obraAutosMedicaoDisponiveis(_obraAtual)) { aba = 'folhas'; }
                 else { _renderizarAutosMedicao(obraId); return; }
             }
             // folhas (padrão)

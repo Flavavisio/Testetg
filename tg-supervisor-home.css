@@ -1,0 +1,14 @@
+.tgs-counts{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 8px;font-size:.78rem;color:#475569}
+.tgs-counts span{padding:5px 9px;background:#f1f5f9;border-radius:8px}
+.tgs-team-list{display:flex;flex-direction:column}
+.tgs-person{align-items:flex-start;min-height:42px}
+.tgs-person .tgm-equipa-dot{margin-top:6px}
+.tgs-person .tgm-equipa-nome,.tgs-person .tgm-equipa-estado{white-space:normal;overflow-wrap:anywhere}
+.tgs-person .tgm-equipa-estado{max-width:46%}
+.tgs-note{margin:10px 0 0;color:#64748b;font-size:.72rem}
+.tgs-os{width:100%;font:inherit;text-align:left;background:transparent;border:0;cursor:pointer}
+.tgs-os:focus-visible{outline:2px solid #0284c7;outline-offset:2px}
+.tgs-assigned{display:block;margin-top:4px;font-size:.75rem;color:#64748b;overflow-wrap:anywhere}
+body.dark-mode .tgs-counts,body.dark-mode .tgs-note,body.dark-mode .tgs-assigned{color:#cbd5e1}
+body.dark-mode .tgs-counts span{background:#243247}
+body.dark-mode .tgs-person .tgm-equipa-estado{color:#e2e8f0!important}

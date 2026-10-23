@@ -7223,7 +7223,7 @@
             const feriados = new Set(feriadosNacionais(ano));
             const admin = dados.administradores?.find(a => a.id === adminId);
             const feriadoMun = feriadoMunicipal(ano, admin?.concelho);
-            const pessoas = [
+            const pessoas = usuarioLogado.role === 'encarregado' ? (window.TGSupervisorHome?.people(adminId, true) || []) : [
                 ...(dados.funcionarios || []).filter(f => f.adminId === adminId && f.role !== 'admin' && f.role !== 'superadmin').map(f => ({ id: f.id, nome: f.nome })),
                 ...(dados.encarregados || []).filter(e => e.adminId === adminId).map(e => ({ id: e.id, nome: e.nome }))
             ];
@@ -7297,7 +7297,7 @@
             const feriados = new Set(feriadosNacionais(ano));
             const admin = dados.administradores?.find(a => a.id === adminId);
             const feriadoMun = feriadoMunicipal(ano, admin?.concelho);
-            const pessoas = [
+            const pessoas = usuarioLogado.role === 'encarregado' ? (window.TGSupervisorHome?.people(adminId, true) || []) : [
                 ...(dados.funcionarios || []).filter(f => f.adminId === adminId && f.role !== 'admin' && f.role !== 'superadmin').map(f => ({ id: f.id, nome: f.nome })),
                 ...(dados.encarregados || []).filter(e => e.adminId === adminId).map(e => ({ id: e.id, nome: e.nome }))
             ];
@@ -8045,6 +8045,7 @@
             const escolhido = usuarioLogado.role === 'superadmin' ? (obterConfig()?.layout || 'aurora') : (a?.layout || 'aurora');
             // Foco and Nexus retain the employee's operational home and bottom navigation.
             if (usuarioLogado.role === 'funcionario' && ['foco', 'aurora'].includes(escolhido)) return 'cards';
+            if (usuarioLogado.role === 'encarregado' && window.innerWidth <= 900) return 'cards';
             // Nexus keeps its adaptive shell on phones; existing layouts retain their behavior.
             return window.innerWidth <= 900 && escolhido !== 'aurora' ? 'cards' : escolhido;
         }
@@ -15265,6 +15266,7 @@
                 </div>
                 ${['admin', 'subadmin'].includes(usuarioLogado.role) ? _htmlPainelAdminHoje(adminId, hoje) : ''}
                 ${['admin', 'subadmin'].includes(usuarioLogado.role) ? _htmlResumoEquipaHoje(adminId, hoje) : ''}
+                ${usuarioLogado.role === 'encarregado' ? (window.TGSupervisorHome?.html(adminId, hoje) || '') : ''}
                 ${_expressoMeuDia ? '' : `<div class="tgm-panel tgm-panel--obras">
                     <div class="tgm-eyebrow">Em curso</div>
                     <div class="tgm-title tgm-title--sm"><i class="fas fa-hard-hat"></i> Obras Ativas</div>
@@ -15394,18 +15396,18 @@
         // Painel do admin em "O Meu Dia" — alertas do dia, estado da equipa em tempo real,
         // ações rápidas e resumo financeiro. Pensado para gerir, não para trabalho de campo.
         // Estado de presença partilhado pelos dois painéis; apenas consulta as picagens.
-        function _estadoPresencaPessoa(funcionarioId, hoje) {
-            const emOS = (dados.ponto || []).find(x => x.funcionarioId === funcionarioId && x.servicoId && x.data === hoje && x.entrada && !x.saida);
+        function _estadoPresencaPessoa(funcionarioId, hoje, registos = dados, nomeCliente = obterNomeCliente) {
+            const emOS = (registos.ponto || []).find(x => x.funcionarioId === funcionarioId && x.servicoId && x.data === hoje && x.entrada && !x.saida);
             if (emOS) {
-                const os = dados.servicos?.find(s => s.id === emOS.servicoId);
-                return { label: 'Em OS — ' + (obterNomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9', ativo: true };
+                const os = registos.servicos?.find(s => s.id === emOS.servicoId);
+                return { label: 'Em OS — ' + (nomeCliente(os?.clienteId) || '—'), cor: '#0ea5e9', ativo: true };
             }
-            const emObra = (dados.obraPontoLonga || []).find(x => x.funcionarioId === funcionarioId && x.data === hoje && x.entrada && !x.saida);
+            const emObra = (registos.obraPontoLonga || []).find(x => x.funcionarioId === funcionarioId && x.data === hoje && x.entrada && !x.saida);
             if (emObra) {
-                const obra = dados.obras?.find(o => o.id === emObra.obraId);
+                const obra = registos.obras?.find(o => o.id === emObra.obraId);
                 return { label: 'Em Obra — ' + (obra?.nome || '—'), cor: '#0ea5e9', ativo: true };
             }
-            const geral = (dados.ponto || []).filter(x => x.funcionarioId === funcionarioId && !x.servicoId && !x.obraId && x.data === hoje && x.entrada)
+            const geral = (registos.ponto || []).filter(x => x.funcionarioId === funcionarioId && !x.servicoId && !x.obraId && x.data === hoje && x.entrada)
                 .sort((a, b) => String(b.entrada).localeCompare(String(a.entrada)) || String(b.dataCriacao || b.id || '').localeCompare(String(a.dataCriacao || a.id || '')))[0];
             if (geral && !geral.saida) return { label: 'Em serviço', cor: '#16a34a', ativo: true };
             if (geral) return { label: 'Terminou o dia', cor: '#f97316', ativo: false };

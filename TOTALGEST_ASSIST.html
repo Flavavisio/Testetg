@@ -490,8 +490,18 @@
             const adminRec = dados.administradores?.find(a => a.id === adminId);
             return [
                 ...(adminRec ? [{ id: adminRec.id, nome: adminRec.nome + ' (Admin)' }] : []),
-                ...getFuncionariosByAdmin(adminId)
+                ..._equipaParaAtribuir(adminId)
             ];
+        }
+        function _equipaParaAtribuir(adminId) {
+            // Encarregados live in a separate collection. Reconcile by ID, never by name.
+            const equipa = new Map();
+            for (const pessoa of [...getFuncionariosByAdmin(adminId), ...(dados.encarregados || []).filter(e => e.adminId === adminId)]) {
+                if (!pessoa.id || pessoa.id === adminId || ['admin', 'superadmin'].includes(pessoa.role)) continue;
+                equipa.set(pessoa.id, pessoa);
+            }
+            return [...equipa.values()].filter(p => !p.suspenso && p.ativo !== false)
+                .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base' }));
         }
         function obterNomeFuncionario(id) {
             if (!id) return '—';
@@ -883,13 +893,8 @@
             const inicio = new Date(data + 'T' + hora + ':00');
             if (!Number.isFinite(inicio.getTime())) return alert('Data ou hora inválida.');
             const fim = new Date(inicio.getTime() + duracao * 60000);
-            const pessoa = _pessoasParaAtribuir(tid);
-            const tecnicos = pessoa.filter(p => (dados.funcionarios || []).some(f => f.id === p.id && !f.suspenso && f.ativo !== false))
-                .map(p => {
-                    const f = dados.funcionarios.find(f => f.id === p.id);
-                    return { id:p.id, name:p.nome, tenantId:tid, active:true,
-                        skills:Array.isArray(f.competencias) ? f.competencias : [] };
-                });
+            const tecnicos = _equipaParaAtribuir(tid).map(p => ({ id:p.id, name:p.nome, tenantId:tid, active:true,
+                skills:Array.isArray(p.competencias) ? p.competencias : [] }));
             const compromissos = (dados.servicos || []).filter(os => os.adminId === tid && os.data && os.hora)
                 .flatMap(os => {
                     const d = new Date(os.data + 'T' + os.hora + ':00');
@@ -1106,7 +1111,7 @@
             const tid = _tenantId();
             const cliente = a.clienteId ? dados.clientes?.find(c => c.id === a.clienteId) : null;
             const clientesTenant = (dados.clientes || []).filter(c => c.adminId === tid);
-            const funcionariosTenant = (dados.funcionarios || []).filter(f => f.adminId === tid && !f.suspenso);
+            const funcionariosTenant = _equipaParaAtribuir(tid);
             document.getElementById('modalGenericoTitulo').innerHTML = '<i class="fas fa-hard-hat"></i> Criar OS a partir da assistência';
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="form-group"><label>Cliente</label>
@@ -1118,11 +1123,11 @@
                 <div class="form-group"><label>Descrição</label><textarea id="assistOsDescricao" rows="3">${escapeHtmlSimples((a.assunto || '') + (a.descricao ? ' — ' + a.descricao : ''))}</textarea></div>
                 <div class="form-group"><label>Duração prevista (minutos)</label><input type="number" id="assistOsDuracao" min="15" max="720" value="90"></div>
                 <div class="form-group"><button type="button" class="btn btn-outline" onclick="_tgAssistSugestao('os')">Sugerir técnico para esta OS</button><small class="help-text">Apenas preenche a seleção, sem guardar nem notificar.</small></div>
-                <div class="form-group ff-span2"><label>Funcionários atribuídos</label>
+                <div class="form-group ff-span2"><label>Funcionários e encarregados atribuídos</label>
                     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
                         ${funcionariosTenant.map(f => `<label style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:20px;cursor:pointer;font-size:.85rem;">
                             <input type="checkbox" class="assist-os-func-chk" value="${f.id}" ${a.atribuidoId === f.id ? 'checked' : ''} style="width:auto;"> ${escapeHtmlSimples(f.nome)}
-                        </label>`).join('') || '<span class="help-text">Sem funcionários disponíveis.</span>'}
+                        </label>`).join('') || '<span class="help-text">Sem funcionários ou encarregados disponíveis.</span>'}
                     </div>
                 </div>
             `;

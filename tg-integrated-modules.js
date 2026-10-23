@@ -3,7 +3,7 @@
     'use strict';
     const modules = {
         crm: { title: 'CRM Comercial', page: 'TOTALGEST_CRM.html', roles: ['admin','subadmin','vendedor'] },
-        assistencias: { title: 'Assistências', page: 'TOTALGEST_ASSIST.html', roles: ['admin','subadmin'] }
+        assistencias: { title: 'Assistências', page: 'TOTALGEST_ASSIST.html', version: '1.0.1-encarregados', roles: ['admin','subadmin'] }
     };
     const frames = new Map();
     let pending = null;
@@ -34,7 +34,7 @@
             back.textContent = 'Voltar ao início'; back.addEventListener('click', () => irParaInicio());
             head.append(title, back); section.appendChild(head); document.body.appendChild(section);
         }
-        const params = new URLSearchParams({embedded:'1', v:'1.0.0'});
+        const params = new URLSearchParams({embedded:'1', v:mod.version || '1.0.0'});
         if (name === 'assistencias' && pending?.name === name && pending.id) params.set('criarOS', pending.id);
         pending = null;
         const src = mod.page + '?' + params;

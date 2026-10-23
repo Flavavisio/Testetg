@@ -33,7 +33,7 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  `});await page.evaluate(()=>{
  supa.rpc=(name,p)=>({async single(){requests++;await new Promise(r=>setTimeout(r,70));if(failSave)return {error:{message:'Rede indisponível'}};const f=server.find(f=>f.id===p.p_folha_id);f.validada=p.p_validada;return {data:{id:f.id,validada:f.validada,validada_por:'auth-admin',validada_em:'2026-10-23T10:00:00Z'}};}});
  });await page.addScriptTag({content:fs.readFileSync('tg-work-sheets.js','utf8')});await page.evaluate(()=>renderizarFolhas());
- const rows=page.locator('#tabelaFolhas tr');assert.equal(await rows.count(),5);
+ const rows=page.locator('#tabelaFolhas tr');assert.equal(await rows.count(),4);
  assert.equal(await page.locator('[data-folha-id="f3"] td').nth(3).innerText(),'Admin');
  assert.match(await page.locator('[data-folha-id="f4"]').innerText(),/Beta.*Armazém/s);
  assert.match(await page.locator('[data-folha-id="f5"]').innerText(),/Álvaro & Filhos.*Sede/s);
@@ -44,15 +44,17 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  await page.selectOption('#folhasFiltro_obra','o1');assert.equal(await rows.count(),2);
  await page.selectOption('#folhasFiltro_tecnico','t1');assert.equal(await rows.count(),1);
  await page.selectOption('#folhasFiltro_validacao','validada');assert.equal(await rows.count(),0);
- await page.getByRole('button',{name:'Limpar filtros'}).click();assert.equal(await rows.count(),5);
+ await page.getByRole('button',{name:'Limpar filtros'}).click();assert.equal(await rows.count(),4);
  const validate=()=>page.locator('[data-folha-validacao="f1"]');
  assert.equal(await validate().innerText(),'Não validada');await validate().click();
  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='f1').validada===true);
+ await page.locator('#folhasGrupo_concluidas').click();
  assert.equal(await validate().innerText(),'Validada');
  // A refresh from persistent server state keeps the validation.
  await page.evaluate(()=>{dados.folhasObra=JSON.parse(JSON.stringify(server));renderizarFolhas();});
  assert.equal(await validate().innerText(),'Validada');await validate().click();
  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='f1').validada===false);
+ await page.locator('#folhasGrupo_obras').click();
  assert.equal(await validate().innerText(),'Não validada');
  await page.evaluate(()=>failSave=true);await validate().click();await page.waitForFunction(()=>msgs.length===1);
  assert.equal(await validate().innerText(),'Não validada');
@@ -60,7 +62,7 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  assert.equal(await rows.count(),2);assert.equal(await page.locator('[data-folha-validacao]').count(),0);
  const previousRequests=await page.evaluate(()=>requests);await page.evaluate(()=>tgFolhasValidar('f1'));assert.equal(await page.evaluate(()=>requests),previousRequests);
  await page.evaluate(()=>{usuarioLogado={id:'sub',adminId:'tenant',role:'subadmin'};failSave=false;renderizarFolhas();});
- assert.equal(await rows.count(),5);assert.equal(await page.locator('[data-folha-validacao]').count(),5);
+ assert.equal(await rows.count(),4);assert.equal(await page.locator('[data-folha-validacao]').count(),4);
  await page.evaluate(()=>{usuarioLogado={id:'other',role:'admin'};renderizarFolhas();});
  assert.equal(await rows.count(),1);assert(!await page.locator('#folhasFiltro_cliente').innerText().then(s=>s.includes('Álvaro')));
  await page.evaluate(()=>{usuarioLogado={id:'tenant',role:'admin'};renderizarFolhas();});

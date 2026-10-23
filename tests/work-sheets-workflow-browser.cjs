@@ -22,7 +22,7 @@ const source = fs.readFileSync('tg-work-sheets.js', 'utf8');
      {id:'a',adminId:'tenant',obraId:'w1',funcionarioId:'t1',horasTrabalhadas:2,data:'2026-10-20',descricao:'Trabalho A'},
      {id:'b',adminId:'tenant',obraId:'w1',funcionarioId:'t2',horasTrabalhadas:3,data:'2026-10-21',validada:true},
      {id:'c',adminId:'tenant',servicoId:'os1',funcionarioId:'t1',horasTrabalhadas:4,data:'2026-10-22'},
-     {id:'d',adminId:'tenant',servicoId:'os2',funcionarioId:'t1',horasTrabalhadas:2,data:'2026-10-19'},
+     {id:'d',adminId:'tenant',validada:true,servicoId:'os2',funcionarioId:'t1',horasTrabalhadas:2,data:'2026-10-19'},
      {id:'e',adminId:'tenant',obraId:'w2',funcionarioId:'t2',horasTrabalhadas:3,data:'2026-10-18'},
      {id:'f',adminId:'tenant',servicoId:'os3',funcionarioId:'t1',horasTrabalhadas:1,data:'2026-10-17'},
      {id:'g',adminId:'tenant',obraDescricao:'Folha avulsa',funcionarioId:'t1',data:'2026-10-16'},
@@ -74,42 +74,74 @@ const source = fs.readFileSync('tg-work-sheets.js', 'utf8');
   await page.waitForFunction(() => document.getElementById('folhasGrupoInfo_concluidas').textContent.includes('por faturar'));
   const rows = () => page.locator('#tabelaFolhas tr');
   const rowIds = async () => (await rows().evaluateAll(rs => rs.map(r => r.dataset.folhaId))).sort();
-  assert.deepEqual(await rowIds(), ['a','b','c','f','g']);
+  // Only validated sheets enter the completed group, even if parents are already done.
+  assert.deepEqual(await rowIds(), ['a','c','e','f','g']);
   assert.equal(await page.locator('#folhasGrupoNumero_obras').innerText(), '5');
-  assert.equal(await page.locator('#folhasGrupoNumero_os').innerText(), '1');
-  assert.equal(await page.locator('#folhasGrupoNumero_concluidas').innerText(), '3');
+  assert.equal(await page.locator('#folhasGrupoNumero_os').innerText(), '2');
+  assert.equal(await page.locator('#folhasGrupoNumero_concluidas').innerText(), '2');
   assert.match(await page.locator('[data-folha-id="g"]').innerText(), /Sem Obra\/OS associada/);
-  // The open OS cannot be validated, including a direct call from a stale row.
+  assert.equal(await page.locator('[data-folha-id="e"]').count(),1); // finished work, not validated
+  const beforeUnvalidatedBilling=await page.evaluate(()=>calls.filter(c=>c.mode==='insert').length);
+  await page.evaluate(()=>tgFolhasFaturar('e'));
+  assert.equal(await page.evaluate(()=>calls.filter(c=>c.mode==='insert').length),beforeUnvalidatedBilling);
+  await page.locator('#folhasGrupo_concluidas').click();assert.deepEqual(await rowIds(),['b']);
+  assert.equal(await page.locator('[data-folha-faturacao="b"]').count(),0); // validated, work still open
+  await page.locator('#folhasTab_faturadas').click();assert.deepEqual(await rowIds(),['d']);
+  await page.evaluate(()=>{dados.folhasObra.find(f=>f.id==='d').validada=false;renderizarFolhas();});
+  assert.deepEqual(await rowIds(),[]); // even the paid tab only lists validated sheets
+  await page.evaluate(()=>{dados.folhasObra.find(f=>f.id==='d').validada=true;renderizarFolhas();});
+  await page.locator('#folhasGrupo_obras').click();
   assert.equal(await page.locator('[data-folha-validacao="c"]').isDisabled(),true);
   const beforeValidation=await page.evaluate(()=>calls.filter(c=>c.mode==='rpc').length);
   await page.evaluate(()=>tgFolhasValidar('c'));
   assert.equal(await page.evaluate(()=>calls.filter(c=>c.mode==='rpc').length),beforeValidation);
   assert.match(await page.evaluate(()=>mensagens.at(-1)),/Termina a OS/);
-  // A finished OS in an unfinished work can be validated but cannot be billed.
+  assert.equal(await page.locator('[data-folha-validacao="f"]').isDisabled(),true);
   await page.evaluate(()=>{dados.servicos.find(s=>s.id==='os1').status='concluído';dados.obras.find(o=>o.id==='w1').valor=5000;renderizarFolhas();});
-  assert.match(await page.locator('[data-folha-id="c"]').innerText(),/OS terminada · Obra em curso/);
-  assert.equal(await page.locator('[data-folha-validacao="c"]').isDisabled(),false);
+  const totalHours=await page.evaluate(()=>dados.folhasObra.reduce((n,f)=>n+(Number(f.horasTrabalhadas)||0),0));
   await page.locator('[data-folha-validacao="c"]').click();
   await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='c').validada===true);
-  assert.deepEqual(await rowIds(),['a','b','c','f','g']);
-  assert.equal(await page.locator('[data-folha-id="c"] [data-folha-faturacao]').count(),0);
-  assert.equal(await page.evaluate(()=>dados.obras.find(o=>o.id==='w1').valor),5000);
+  assert.deepEqual(await rowIds(),['a','e','f','g']);
+  assert.match(await page.locator('#folhasFaturacaoFeedback').innerText(),/movida para Concluídas/);
+  await page.locator('#folhasGrupo_concluidas').click();assert.deepEqual(await rowIds(),['b','c']);
+  assert.match(await page.locator('[data-folha-id="c"]').innerText(),/OS terminada · Obra em curso/);
+  assert.match(await page.locator('[data-folha-id="c"]').innerText(),/Faturação disponível após concluir a obra/);
+  assert.equal(await page.locator('[data-folha-faturacao="c"]').count(),0);
   const nBilling=await page.evaluate(()=>calls.filter(c=>c.mode==='insert').length);
   await page.evaluate(()=>tgFolhasFaturar('c'));
   assert.equal(await page.evaluate(()=>calls.filter(c=>c.mode==='insert').length),nBilling);
-  await page.screenshot({path:(process.env.QA_OUTPUT || '/tmp')+'/folhas-obra-em-curso-os-terminada.png',fullPage:true});
-  // A finished work does not validate an OS which is still open.
-  assert.equal(await page.locator('[data-folha-validacao="f"]').isDisabled(),true);
-  await page.locator('#folhasGrupo_os').click();assert.deepEqual(await rowIds(), ['i']);
-  assert.equal(await page.locator('[data-folha-id="i"] [data-folha-faturacao]').count(),0);
+  await page.screenshot({path:(process.env.QA_OUTPUT || '/tmp')+'/folhas-validadas-obra-em-curso.png',fullPage:true});
+  // Reversing validation moves just that sheet back, without changing hours or parent state.
+  await page.locator('[data-folha-validacao="c"]').click();
+  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='c').validada===false);
+  assert.deepEqual(await rowIds(),['b']);
+  await page.locator('#folhasGrupo_obras').click();assert.deepEqual(await rowIds(),['a','c','e','f','g']);
+  await page.locator('[data-folha-validacao="c"]').click();
+  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='c').validada===true);
+  await page.evaluate(()=>{dados.obras.find(o=>o.id==='w1').estado='concluida';renderizarFolhas();});
+  assert.deepEqual(await rowIds(),['a','e','f','g']); // finishing work alone moves nothing
+  await page.locator('[data-folha-validacao="a"]').click();
+  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='a').validada===true);
+  assert.deepEqual(await rowIds(),['e','f','g']);
+  assert.equal(await page.evaluate(()=>dados.folhasObra.reduce((n,f)=>n+(Number(f.horasTrabalhadas)||0),0)),totalHours);
+  assert.equal(await page.evaluate(()=>dados.obras.find(o=>o.id==='w1').valor),5000);
+  await page.locator('#folhasGrupo_os').click();assert.deepEqual(await rowIds(),['h','i']);
   assert.equal(await page.locator('[data-folha-validacao="i"]').isDisabled(),true);
-  await page.locator('#folhasGrupo_concluidas').click();assert.deepEqual(await rowIds(), ['e','h']);
-  assert.match(await page.locator('[data-folha-id="h"]').innerText(), /Cliente Alfa.*OS antiga/s);
+  assert.match(await page.locator('[data-folha-id="h"]').innerText(),/Cliente Alfa.*OS antiga/s);
+  await page.locator('[data-folha-validacao="h"]').click();
+  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='h').validada===true);
+  assert.deepEqual(await rowIds(),['i']);
+  await page.locator('#folhasGrupo_obras').click();
+  await page.locator('[data-folha-validacao="e"]').click();
+  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='e').validada===true);
+  assert.deepEqual(await rowIds(),['f','g']);
+  await page.locator('#folhasGrupo_concluidas').click();assert.deepEqual(await rowIds(),['a','b','c','e','h']);
+  assert.equal(await page.evaluate(()=>[...document.querySelectorAll('#tabelaFolhas tr')].every(r=>dados.folhasObra.find(f=>f.id===r.dataset.folhaId).validada===true)),true);
   await page.locator('[data-folha-faturacao="e"]').click();
-  await page.waitForFunction(() => historyRows.some(r => r.folha_id==='e' && r.faturada));
-  assert.deepEqual(await rowIds(), ['h']);
-  await page.locator('#folhasTab_faturadas').click();assert.deepEqual(await rowIds(), ['d','e']);
-  await page.evaluate(() => tgFolhasAtualizar());assert.deepEqual(await rowIds(), ['d','e']);
+  await page.waitForFunction(()=>historyRows.some(r=>r.folha_id==='e'&&r.faturada));
+  assert.deepEqual(await rowIds(),['a','b','c','h']);
+  await page.locator('#folhasTab_faturadas').click();assert.deepEqual(await rowIds(),['d','e']);
+  await page.evaluate(()=>tgFolhasAtualizar());assert.deepEqual(await rowIds(),['d','e']);
   await page.evaluate(() => {usuarioLogado={id:'sub',adminId:'tenant',role:'subadmin'};renderizarFolhas();});
   await page.waitForFunction(() => document.getElementById('folhasGrupoInfo_concluidas').textContent.includes('por faturar'));
   await page.locator('#folhasGrupo_concluidas').click();await page.locator('#folhasTab_faturadas').click();
@@ -127,8 +159,7 @@ const source = fs.readFileSync('tg-work-sheets.js', 'utf8');
   await page.evaluate(() => motivo='Correção da marcação');await page.locator('[data-folha-faturacao="d"]').click();
   await page.waitForFunction(() => historyRows.filter(r=>r.folha_id==='d').at(-1).faturada===false);
   assert.deepEqual(await rowIds(), ['e','h']);assert.match(await page.locator('#folhasFaturacaoFeedback').innerText(), /Correção da marcação/);
-  // Completion is derived from the parent, never a sheet validation/paid flag.
-  await page.evaluate(() => {dados.obras.find(o=>o.id==='w1').estado='concluida';renderizarFolhas();});
+  // The two remaining work sheets are unvalidated; no completed row is unvalidated.
   assert.equal(await page.locator('#folhasGrupoNumero_obras').innerText(), '2');
   assert.equal(await page.locator('#folhasGrupoNumero_os').innerText(), '1');
   await page.locator('#folhasTab_por_faturar').click();assert.deepEqual(await rowIds(), ['a','b','c','d']);
@@ -156,6 +187,6 @@ const source = fs.readFileSync('tg-work-sheets.js', 'utf8');
   assert.equal(await rows().count(),0);assert.match(await page.locator('#folhasEstadoAviso').innerText(),/Não foi possível/);
   assert.equal(await page.locator('[data-folha-faturacao]').count(),0);
   assert.deepEqual(errors,[]);
-  console.log('PASS: grupos, estados dos pais, OS antigas, avulsas, filtros, faturação persistente, reversão com motivo, subadmin/funcionário, falhas de rede, ecrã pequeno e modo escuro.');
+  console.log('PASS: só validadas em Concluídas, movimento/reversão individual, conclusão sem validação mantém origem, faturação bloqueada em obra aberta, permissões, filtros, rede, mobile/dia/noite.');
  } finally { await browser.close(); }
 })().catch(e => {console.error(e);process.exitCode=1;});

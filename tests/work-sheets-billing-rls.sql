@@ -10,7 +10,7 @@ select f.admin_id, f.id as folha_id,
     (select f2.id from public.folhas_obra f2
      left join public.servicos s2 on s2.id=f2.servico_id and s2.admin_id=f2.admin_id
      left join public.obras o2 on o2.id=coalesce(f2.obra_id,s2.obra_id) and o2.admin_id=f2.admin_id
-     where f2.admin_id=f.admin_id and f2.id<>f.id and (f2.servico_id is null or s2.status='concluído')
+     where f2.admin_id=f.admin_id and f2.validada is true and f2.id<>f.id and (f2.servico_id is null or s2.status='concluído')
        and (coalesce(f2.obra_id,s2.obra_id) is null or o2.estado='concluida')
        and (f2.servico_id is not null or f2.obra_id is not null)
        and coalesce(s2.status,'') not like 'cancelad%' and coalesce(o2.estado,'') not like 'cancelad%'
@@ -24,7 +24,7 @@ select f.admin_id, f.id as folha_id,
 from public.folhas_obra f
 left join public.servicos s on s.id=f.servico_id and s.admin_id=f.admin_id
 left join public.obras o on o.id=coalesce(f.obra_id,s.obra_id) and o.admin_id=f.admin_id
-where (f.servico_id is null or s.status='concluído')
+where f.validada is true and (f.servico_id is null or s.status='concluído')
   and (coalesce(f.obra_id,s.obra_id) is null or o.estado='concluida')
   and (f.servico_id is not null or f.obra_id is not null)
   and coalesce(s.status,'') not like 'cancelad%' and coalesce(o.estado,'') not like 'cancelad%'

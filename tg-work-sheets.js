@@ -21,14 +21,18 @@
         const osTerminada = finalizado(os?.status), obraTerminada = finalizado(obra?.estado);
         const cancelada = /cancelad/.test(normalizarEstado(os?.status)) || /cancelad/.test(normalizarEstado(obra?.estado));
         const incerta = !!((f.servicoId && !os) || ((f.obraId || os?.obraId) && !obra));
-        // An OS belonging to a work stays with that work until both are finished.
+        // Validation moves the sheet; completion only controls eligibility for billing.
         const terminada = !incerta && !cancelada && (temObra ? obraTerminada && (!f.servicoId || osTerminada) : osTerminada);
         const bloqueioValidacao = incerta ? 'Ligação à Obra/OS por confirmar.' :
             f.servicoId && !osTerminada ? (cancelada ? 'A OS está cancelada.' : 'Termina a OS para disponibilizar a validação.') : '';
         const nota = f.servicoId && temObra && !incerta && !cancelada
             ? `${osTerminada ? 'OS terminada' : 'OS em curso'} · ${obraTerminada ? 'Obra concluída' : 'Obra em curso'}` : '';
-        return { grupo: terminada ? 'concluidas' : temObra ? 'obras' : f.servicoId ? 'os' : 'obras', os, obra,
-            incerta, cancelada, bloqueioValidacao, nota, semLigacao: !f.servicoId && !f.obraId };
+        const bloqueioFaturacao = incerta ? 'Ligação à Obra/OS por confirmar.' : cancelada ? 'Obra/OS cancelada.' :
+            temObra && !obraTerminada ? 'Faturação disponível após concluir a obra.' :
+            f.servicoId && !osTerminada ? 'Faturação disponível após terminar a OS.' :
+            !temObra && !f.servicoId ? 'Associa uma obra ou OS para disponibilizar a faturação.' : '';
+        return { grupo: f.validada === true ? 'concluidas' : temObra ? 'obras' : f.servicoId ? 'os' : 'obras', os, obra,
+            terminada, incerta, cancelada, bloqueioValidacao, bloqueioFaturacao, nota, semLigacao: !f.servicoId && !f.obraId };
     }
     const estadoFolha = f => estados.get(f.id) || { faturada: false, versao: 0 };
     const assinaturaEstado = folhas => JSON.stringify([identidade(), folhas.map(f => [f.id, f.servicoId, f.obraId])]);
@@ -185,9 +189,9 @@
             const bloqueio = !validada && sit.bloqueioValidacao;
             const tituloValidacao = bloqueio || (validada ? 'Marcar como não validada' : 'Validar esta folha');
             const fat = estadoFolha(f);
-            const botaoFaturacao = grupo === 'concluidas' && faturacaoPronta && !sit.incerta && !sit.cancelada && podeValidar()
+            const botaoFaturacao = grupo === 'concluidas' && faturacaoPronta && !sit.incerta && !sit.cancelada && podeValidar() && (fat.faturada || sit.terminada)
                 ? (fat.faturada && usuarioLogado.role !== 'admin' ? '<span class="folhas-so-admin">Só o administrador pode voltar a Por faturar</span>' : `<button type="button" class="btn btn-sm btn-outline" data-folha-faturacao="${idAttr}" ${pendentes.has(f.id) ? 'disabled' : ''} onclick="${acao('tgFolhasFaturar')}"><i class="fas ${fat.faturada ? 'fa-rotate-left' : 'fa-file-invoice'}"></i> ${pendentes.has(f.id) ? 'A guardar…' : fat.faturada ? 'Voltar a por faturar' : 'Marcar como faturada'}</button>`)
-                : '';
+                : grupo === 'concluidas' && !fat.faturada && sit.bloqueioFaturacao ? `<small class="folhas-ligacao">${escapeHtmlSimples(sit.bloqueioFaturacao)}</small>` : '';
             const nota = sit.cancelada ? 'Obra/OS cancelada' : sit.incerta ? 'Ligação por confirmar' : sit.semLigacao ? 'Sem Obra/OS associada' : sit.nota;
             const origem = sit.os ? `OS ${sit.os.numeroRegisto || sit.os.id}` : sit.obra ? 'Obra' : '';
             return `<tr data-folha-id="${idAttr}">
@@ -244,6 +248,7 @@
         if (!f || !podeValidar() || !faturacaoPronta || pendentes.has(id)) return;
         const sit = situacao(f), antes = estadoFolha(f);
         if (sit.grupo !== 'concluidas' || sit.incerta || sit.cancelada || (antes.faturada && usuarioLogado.role !== 'admin')) return;
+        if (!antes.faturada && !sit.terminada) { mostrarErro(sit.bloqueioFaturacao); return; }
         if (!navigator.onLine) { mostrarErro('É necessária ligação à Internet para alterar a faturação.'); return; }
         let motivo = '';
         if (antes.faturada) {
@@ -292,6 +297,8 @@
             const atual = (dados.folhasObra || []).find(x => x.id === id && x.adminId === tenant);
             if (atual) Object.assign(atual, { validada: data.validada, validadaPor: data.validada_por, validadaEm: data.validada_em });
             _guardarCacheLocal();
+            const feedback = document.getElementById('folhasFaturacaoFeedback');
+            if (feedback) feedback.textContent = data.validada ? 'Folha validada e movida para Concluídas / terminadas.' : 'Folha reposta no separador de origem como Não validada.';
         } catch (e) {
             if (conta === identidade()) mostrarErro('Não foi possível confirmar a validação. Atualiza a lista e volta a tentar.');
         } finally {

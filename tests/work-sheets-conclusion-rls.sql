@@ -31,6 +31,7 @@ from teste_tg_flow_actors a cross join (values
     ('independent','__teste_tg_flow_os_independent',null),
     ('closed_open','__teste_tg_flow_os_closed_open',null),
     ('closed_done','__teste_tg_flow_os_closed_done',null),
+    ('closed_unvalidated','__teste_tg_flow_os_closed_done',null),
     ('cancelled','__teste_tg_flow_os_cancelled',null)) v(key,os,work);
 grant select on teste_tg_flow_actors to authenticated;
 set local role authenticated;
@@ -46,7 +47,7 @@ begin
             raise exception 'Validation unexpectedly allowed: %',k;
         exception when invalid_parameter_value then null; end;
     end loop;
-    foreach k in array array['done','direct','independent'] loop
+    foreach k in array array['done','direct','independent','closed_done'] loop
         select * into r from public.tg_teste_validar_folha('__teste_tg_flow_sheet_'||k,true,false);
         if not r.validada or r.validada_por<>a.actor or r.validada_em is null then
             raise exception 'Validation/audit not confirmed: %',k;
@@ -67,6 +68,13 @@ begin
             raise exception 'Billing unexpectedly allowed: %',k;
         exception when invalid_parameter_value then null; end;
     end loop;
+    begin
+        insert into public.tg_teste_folhas_faturacao(admin_id,folha_id,versao,faturada)
+        values(a.tenant,'__teste_tg_flow_sheet_closed_unvalidated',1,true);
+        raise exception 'Unvalidated sheet billing unexpectedly allowed';
+    exception when invalid_parameter_value then
+        if sqlerrm not like 'Valida a folha%' then raise; end if;
+    end;
     foreach k in array array['independent','closed_done'] loop
         insert into public.tg_teste_folhas_faturacao(admin_id,folha_id,versao,faturada)
         values(a.tenant,'__teste_tg_flow_sheet_'||k,1,true);
@@ -92,11 +100,11 @@ begin
     values(a.tenant,'__teste_tg_flow_sheet_independent',2,false,'Teste de reversão');
     select * into r from public.tg_teste_validar_folha('__teste_tg_flow_sheet_done',false,true);
     if r.validada or r.validada_por is not null or r.validada_em is not null then raise exception 'Validation reversal failed'; end if;
-    if (select sum(horas_trabalhadas) from public.folhas_obra where id like '__teste_tg_flow_sheet_%')<>16 then
+    if (select sum(horas_trabalhadas) from public.folhas_obra where id like '__teste_tg_flow_sheet_%')<>18 then
         raise exception 'Hours changed during validation/billing';
     end if;
 end;
 $test$;
 reset role;
-select 'PASS: conclusão da OS, precedência da obra, validação, faturação, auditoria, concorrência e permissões; 8 folhas sintéticas, tudo revertido.' as resultado;
+select 'PASS: conclusão da OS, precedência da obra, validação, faturação, auditoria, concorrência e permissões; 9 folhas sintéticas, tudo revertido.' as resultado;
 rollback;

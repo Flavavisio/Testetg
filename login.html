@@ -1363,19 +1363,19 @@
                 <span class="folhas-grupo-titulo"><i class="fas fa-hard-hat" aria-hidden="true"></i> Obras em curso</span>
                 <span class="folhas-grupo-valor"><strong id="folhasGrupoNumero_obras">0</strong> <small>folhas de obra</small></span>
                 <span class="folhas-grupo-info" id="folhasGrupoInfo_obras">0 obras · 0 h registadas</span>
-                <span class="folhas-grupo-abrir">Obras por concluir <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="folhas-grupo-abrir">Folhas de obras por validar <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
             </button>
             <button type="button" id="folhasGrupo_os" class="folhas-grupo" aria-pressed="false" onclick="tgFolhasGrupo('os')">
                 <span class="folhas-grupo-titulo"><i class="fas fa-screwdriver-wrench" aria-hidden="true"></i> OS em curso</span>
                 <span class="folhas-grupo-valor"><strong id="folhasGrupoNumero_os">0</strong> <small>folhas de obra</small></span>
                 <span class="folhas-grupo-info" id="folhasGrupoInfo_os">0 OS · 0 h registadas</span>
-                <span class="folhas-grupo-abrir">Ordens de serviço por concluir <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="folhas-grupo-abrir">Folhas de OS por validar <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
             </button>
             <button type="button" id="folhasGrupo_concluidas" class="folhas-grupo" aria-pressed="false" onclick="tgFolhasGrupo('concluidas')">
                 <span class="folhas-grupo-titulo"><i class="fas fa-box-archive" aria-hidden="true"></i> Concluídas / terminadas</span>
                 <span class="folhas-grupo-valor"><strong id="folhasGrupoNumero_concluidas">0</strong> <small>folhas de obra</small></span>
                 <span class="folhas-grupo-info" id="folhasGrupoInfo_concluidas">Faturação por confirmar</span>
-                <span class="folhas-grupo-abrir">Consultar e gerir faturação <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                <span class="folhas-grupo-abrir">Folhas validadas · Gerir faturação <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
             </button>
         </div>
         <div class="folhas-indicadores-nota">Indicadores das folhas carregadas e visíveis para o teu utilizador.</div>
@@ -1405,7 +1405,7 @@
         </div>
         <p id="emptyFolhas" class="text-muted text-center mt-10" style="display:none;">Nenhuma folha de obra.</p>
         </div>
-        <p class="folhas-indicadores-nota">As folhas de uma OS só podem ser validadas depois de terminar a OS. Se pertencerem a uma obra, aguardam também a conclusão da obra para passar a Concluídas / terminadas. Validar não marca como faturado; as horas contam sempre para a obra. Só o administrador pode repor uma folha faturada em Por faturar.</p>
+        <p class="folhas-indicadores-nota">Só as folhas validadas aparecem em Concluídas / terminadas. As restantes ficam nos separadores de origem, mesmo após concluir a obra ou OS. A OS tem de estar terminada para validar as suas folhas. A faturação aguarda a conclusão da obra ou OS; as horas contam sempre. Só o administrador pode repor uma folha faturada em Por faturar.</p>
     </div>
 
     <div id="secao-requisicoes" class="section-container">
@@ -2388,7 +2388,7 @@
 <script src="app-principal.js?v=push-row-20261022"></script>
 <script src="tg-push.js?v=1.2.3"></script>
 <link rel="stylesheet" href="tg-work-sheets.css?v=2.1.0-teste">
-<script src="tg-work-sheets.js?v=2.1.0-teste"></script>
+<script src="tg-work-sheets.js?v=2.2.0-teste"></script>
 <link rel="stylesheet" href="tg-integrated-modules.css?v=1.1.0">
 <script src="tg-integrated-modules.js?v=1.0.2"></script>
 <script src="tg-os-planning-ui.js?v=1.0.0"></script>

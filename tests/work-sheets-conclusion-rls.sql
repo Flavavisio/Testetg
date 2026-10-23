@@ -56,7 +56,7 @@ begin
     begin
         perform * from public.tg_teste_validar_folha('__teste_tg_flow_sheet_done',true,false);
         raise exception 'Stale validation unexpectedly allowed';
-    exception when serialization_failure then null; end;
+    exception when sqlstate 'PT409' then null; end;
     begin
         perform * from public.tg_teste_validar_folha('__teste_tg_flow_missing',true,false);
         raise exception 'Missing or foreign sheet unexpectedly allowed';
@@ -79,6 +79,12 @@ begin
         insert into public.tg_teste_folhas_faturacao(admin_id,folha_id,versao,faturada)
         values(a.tenant,'__teste_tg_flow_sheet_'||k,1,true);
     end loop;
+    -- A stale billing version returns an HTTP conflict, never a retryable 40001.
+    begin
+        insert into public.tg_teste_folhas_faturacao(admin_id,folha_id,versao,faturada,motivo)
+        values(a.tenant,'__teste_tg_flow_sheet_independent',1,false,'Versão desatualizada');
+        raise exception 'Stale billing unexpectedly allowed';
+    exception when sqlstate 'PT409' then null; end;
     perform set_config('request.jwt.claim.sub',a.sub_actor::text,true);
     perform set_config('request.jwt.claims',json_build_object('sub',a.sub_actor::text,'role','authenticated')::text,true);
     select * into r from public.tg_teste_validar_folha('__teste_tg_flow_sheet_done2',true,false);

@@ -114,7 +114,7 @@ begin
         insert into public.tg_teste_folhas_faturacao(admin_id,folha_id,versao,faturada)
         values(c.admin_id,c.folha_id,2,true);
         raise exception 'Stale concurrent write unexpectedly allowed';
-    exception when serialization_failure then null; end;
+    exception when sqlstate 'PT409' then null; end;
 end;
 $test$;
 reset role;

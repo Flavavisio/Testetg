@@ -41,13 +41,13 @@ begin
     select * into a from teste_tg_flow_actors;
     perform set_config('request.jwt.claim.sub', a.actor::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub',a.actor::text,'role','authenticated')::text,true);
-    foreach k in array array['open','closed_open','cancelled'] loop
+    foreach k in array array['cancelled'] loop
         begin
             perform * from public.tg_teste_validar_folha('__teste_tg_flow_sheet_'||k,true,false);
             raise exception 'Validation unexpectedly allowed: %',k;
         exception when invalid_parameter_value then null; end;
     end loop;
-    foreach k in array array['done','direct','independent','closed_done'] loop
+    foreach k in array array['open','closed_open','done','direct','independent','closed_done'] loop
         select * into r from public.tg_teste_validar_folha('__teste_tg_flow_sheet_'||k,true,false);
         if not r.validada or r.validada_por<>a.actor or r.validada_em is null then
             raise exception 'Validation/audit not confirmed: %',k;
@@ -106,5 +106,5 @@ begin
 end;
 $test$;
 reset role;
-select 'PASS: conclusão da OS, precedência da obra, validação, faturação, auditoria, concorrência e permissões; 9 folhas sintéticas, tudo revertido.' as resultado;
+select 'PASS: validação com OS em curso, faturação após conclusão, auditoria, concorrência e permissões; 9 folhas sintéticas, tudo revertido.' as resultado;
 rollback;

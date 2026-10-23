@@ -24,7 +24,7 @@
         // Validation moves the sheet; completion only controls eligibility for billing.
         const terminada = !incerta && !cancelada && (temObra ? obraTerminada && (!f.servicoId || osTerminada) : osTerminada);
         const bloqueioValidacao = incerta ? 'Ligação à Obra/OS por confirmar.' :
-            f.servicoId && !osTerminada ? (cancelada ? 'A OS está cancelada.' : 'Termina a OS para disponibilizar a validação.') : '';
+            f.servicoId && !osTerminada && cancelada ? 'A OS está cancelada.' : '';
         const nota = f.servicoId && temObra && !incerta && !cancelada
             ? `${osTerminada ? 'OS terminada' : 'OS em curso'} · ${obraTerminada ? 'Obra concluída' : 'Obra em curso'}` : '';
         const bloqueioFaturacao = incerta ? 'Ligação à Obra/OS por confirmar.' : cancelada ? 'Obra/OS cancelada.' :

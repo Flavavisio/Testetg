@@ -11,17 +11,24 @@
     let grupo = 'obras', faturacao = 'por_faturar', contaEstado = '', chaveEstado = '', carga = null;
     let estados = new Map(), osHistoricas = new Map(), obrasHistoricas = new Map();
     let faturacaoPronta = false, erroEstado = '', avisoLigacoes = '';
-    const finalizado = estado => ['concluido', 'concluida', 'terminado', 'terminada', 'cancelado', 'cancelada']
-        .includes(String(estado || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim());
+    const normalizarEstado = estado => String(estado || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const finalizado = estado => ['concluido', 'concluida', 'terminado', 'terminada'].includes(normalizarEstado(estado));
     const osDaFolha = f => tenantItem(dados.servicos, f.servicoId, f.adminId) || osHistoricas.get(f.servicoId);
     const obraDaFolha = f => tenantItem(dados.obras, f.obraId || osDaFolha(f)?.obraId, f.adminId) || obrasHistoricas.get(f.obraId || osDaFolha(f)?.obraId);
     function situacao(f) {
         const os = osDaFolha(f), obra = obraDaFolha(f);
-        const terminada = finalizado(os?.status) || finalizado(obra?.estado);
-        const cancelada = /cancelad/.test(String(os?.status || '')) || /cancelad/.test(String(obra?.estado || ''));
+        const temObra = !!(f.obraId || os?.obraId);
+        const osTerminada = finalizado(os?.status), obraTerminada = finalizado(obra?.estado);
+        const cancelada = /cancelad/.test(normalizarEstado(os?.status)) || /cancelad/.test(normalizarEstado(obra?.estado));
         const incerta = !!((f.servicoId && !os) || ((f.obraId || os?.obraId) && !obra));
-        return { grupo: terminada ? 'concluidas' : f.servicoId ? 'os' : 'obras', os, obra,
-            incerta, cancelada, semLigacao: !f.servicoId && !f.obraId };
+        // An OS belonging to a work stays with that work until both are finished.
+        const terminada = !incerta && !cancelada && (temObra ? obraTerminada && (!f.servicoId || osTerminada) : osTerminada);
+        const bloqueioValidacao = incerta ? 'Ligação à Obra/OS por confirmar.' :
+            f.servicoId && !osTerminada ? (cancelada ? 'A OS está cancelada.' : 'Termina a OS para disponibilizar a validação.') : '';
+        const nota = f.servicoId && temObra && !incerta && !cancelada
+            ? `${osTerminada ? 'OS terminada' : 'OS em curso'} · ${obraTerminada ? 'Obra concluída' : 'Obra em curso'}` : '';
+        return { grupo: terminada ? 'concluidas' : temObra ? 'obras' : f.servicoId ? 'os' : 'obras', os, obra,
+            incerta, cancelada, bloqueioValidacao, nota, semLigacao: !f.servicoId && !f.obraId };
     }
     const estadoFolha = f => estados.get(f.id) || { faturada: false, versao: 0 };
     const assinaturaEstado = folhas => JSON.stringify([identidade(), folhas.map(f => [f.id, f.servicoId, f.obraId])]);
@@ -175,11 +182,13 @@
             const validada = f.validada === true;
             const acao = nome => escapeHtmlSimples(`${nome}(${JSON.stringify(f.id)})`);
             const estado = validada ? 'Validada' : 'Não validada';
+            const bloqueio = !validada && sit.bloqueioValidacao;
+            const tituloValidacao = bloqueio || (validada ? 'Marcar como não validada' : 'Validar esta folha');
             const fat = estadoFolha(f);
             const botaoFaturacao = grupo === 'concluidas' && faturacaoPronta && !sit.incerta && !sit.cancelada && podeValidar()
                 ? (fat.faturada && usuarioLogado.role !== 'admin' ? '<span class="folhas-so-admin">Só o administrador pode voltar a Por faturar</span>' : `<button type="button" class="btn btn-sm btn-outline" data-folha-faturacao="${idAttr}" ${pendentes.has(f.id) ? 'disabled' : ''} onclick="${acao('tgFolhasFaturar')}"><i class="fas ${fat.faturada ? 'fa-rotate-left' : 'fa-file-invoice'}"></i> ${pendentes.has(f.id) ? 'A guardar…' : fat.faturada ? 'Voltar a por faturar' : 'Marcar como faturada'}</button>`)
                 : '';
-            const nota = sit.cancelada ? 'Obra/OS cancelada' : sit.incerta ? 'Ligação por confirmar' : sit.semLigacao ? 'Sem Obra/OS associada' : '';
+            const nota = sit.cancelada ? 'Obra/OS cancelada' : sit.incerta ? 'Ligação por confirmar' : sit.semLigacao ? 'Sem Obra/OS associada' : sit.nota;
             const origem = sit.os ? `OS ${sit.os.numeroRegisto || sit.os.id}` : sit.obra ? 'Obra' : '';
             return `<tr data-folha-id="${idAttr}">
                 ${['cliente', 'instalacao', 'obra', 'tecnico'].map(k => `<td>${escapeHtmlSimples(ctx[k].nome)}${k === 'obra' ? `<small class="folhas-ligacao">${escapeHtmlSimples(nota || origem)}</small>` : ''}</td>`).join('')}
@@ -187,7 +196,7 @@
                 <td>${Number(f.horasTrabalhadas) || 0}</td><td>${escapeHtmlSimples(f.data || '—')}</td>
                 <td><div class="acoes" style="flex-wrap:wrap;">
                     <button type="button" class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="${acao('abrirFolhaDetalhe')}" title="Abrir e gerar PDF" aria-label="Abrir folha"><i class="fas fa-eye"></i></button>
-                    ${podeValidar() ? `<button type="button" class="btn btn-sm ${validada ? 'btn-success' : 'btn-outline'}" data-folha-validacao="${idAttr}" aria-pressed="${validada}" ${pendentes.has(f.id) ? 'disabled' : ''} onclick="${acao('tgFolhasValidar')}" title="${validada ? 'Marcar como não validada' : 'Validar esta folha'}"><i class="fas ${validada ? 'fa-circle-check' : 'fa-circle'}"></i> ${pendentes.has(f.id) ? 'A guardar…' : estado}</button>` : `<span class="badge">${estado}</span>`}
+                    ${podeValidar() ? `<span class="folhas-validacao"><button type="button" class="btn btn-sm ${validada ? 'btn-success' : 'btn-outline'}" data-folha-validacao="${idAttr}" aria-pressed="${validada}" ${pendentes.has(f.id) || bloqueio ? 'disabled' : ''} onclick="${acao('tgFolhasValidar')}" title="${escapeHtmlSimples(tituloValidacao)}"><i class="fas ${validada ? 'fa-circle-check' : 'fa-circle'}"></i> ${pendentes.has(f.id) ? 'A guardar…' : estado}</button>${bloqueio ? `<small class="folhas-ligacao">${escapeHtmlSimples(bloqueio)}</small>` : ''}</span>` : `<span class="badge">${estado}</span>`}
                     ${botaoFaturacao}
                     ${usuarioLogado?.role !== 'funcionario' ? `<button type="button" class="btn btn-sm btn-danger" onclick="${escapeHtmlSimples(`excluirEntidade('folha',${JSON.stringify(f.id)})`)}" title="Eliminar folha"><i class="fas fa-trash"></i></button>` : ''}
                 </div></td></tr>`;
@@ -269,13 +278,15 @@
         const f = folhasVisiveis().find(x => x.id === id);
         if (!podeValidar() || !f || pendentes.has(id)) return;
         const conta = identidade(), tenant = _tenantId(), antes = f.validada === true;
+        const bloqueio = !antes && situacao(f).bloqueioValidacao;
+        if (bloqueio) { mostrarErro(bloqueio); return; }
         if (!navigator.onLine) { mostrarErro('É necessária ligação à Internet para confirmar a validação.'); return; }
         pendentes.add(id); render();
         try {
-            // Atualiza só a validação. O servidor verifica o papel/empresa e carimba o autor/data.
-            const { data, error } = await supa.from('folhas_obra').update({ validada: !antes })
-                .eq('id', id).eq('admin_id', tenant).eq('validada', antes)
-                .select('id,validada,validada_por,validada_em').single();
+            // Test-only endpoint checks the current OS state under lock. Production keeps its existing flow.
+            const { data, error } = await supa.rpc('tg_teste_validar_folha', {
+                p_folha_id: id, p_validada: !antes, p_antes: antes
+            }).single();
             if (conta !== identidade()) return;
             if (error || !data || data.validada !== !antes) throw error || new Error('Validação não confirmada.');
             const atual = (dados.folhasObra || []).find(x => x.id === id && x.adminId === tenant);

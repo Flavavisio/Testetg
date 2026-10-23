@@ -1,5 +1,8 @@
 #secao-folhas .acoes .btn { min-height:32px; }
 #secao-folhas .acoes [data-folha-validacao] { white-space:nowrap; }
+#secao-folhas .folhas-validacao { display:inline-flex;flex-direction:column;align-items:flex-start;max-width:230px; }
+#secao-folhas [data-folha-validacao]:disabled { opacity:1;cursor:not-allowed;background:#e2e8f0;color:#475569;border-color:#94a3b8; }
+body.dark-mode #secao-folhas [data-folha-validacao]:disabled { background:#334155;color:#e2e8f0;border-color:#64748b; }
 #secao-folhas .table-wrapper { max-width:100%; }
 #secao-folhas .folhas-grupos { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:8px 0 10px; }
 #secao-folhas .folhas-grupo { display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0;min-height:210px;padding:22px;text-align:left;border:1px solid #cbd5e1;border-radius:14px;background:#fff;color:#16354a;font:inherit;cursor:pointer; }

@@ -16,7 +16,7 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  funcionarios:[{id:'t1',adminId:'tenant',nome:'Ana'},{id:'t2',adminId:'tenant',nome:'Zé'}],encarregados:[],
  obras:[{id:'o1',adminId:'tenant',clienteId:'c1',localId:'l1',nome:'Renovação CCTV'}],
  contratos:[{id:'ct',adminId:'tenant',clienteId:'c2',localId:'l2'}],
- servicos:[{id:'os1',adminId:'tenant',clienteId:'c1',localId:'l1',obraId:'o1',descricao:'Visita técnica'}],
+ servicos:[{id:'os1',adminId:'tenant',clienteId:'c1',localId:'l1',obraId:'o1',descricao:'Visita técnica',status:'concluído'}],
  folhasObra:[
  {id:'f1',adminId:'tenant',servicoId:'os1',funcionarioId:'t1',descricao:'Câmaras instaladas',data:'2026-10-22',horasTrabalhadas:4},
  {id:'f2',adminId:'tenant',clienteId:'c2',localId:'l2',funcionarioId:'t2',obraDescricao:'Projeto intrusão',descricao:'Sensores instalados',data:'2026-10-21',validada:true},
@@ -30,19 +30,21 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  window._guardarCacheLocal=()=>{};window.failSave=false;window.requests=0;window.msgs=[];window.mostrarErro=m=>msgs.push(m);
  window.server=JSON.parse(JSON.stringify(dados.folhasObra));
  window.supa={from:()=>({select:()=>{const q={eq:()=>q,in:async()=>({data:[]})};return q;},update:patch=>{requests++;let id;const q={eq:(k,v)=>{if(k==='id')id=v;return q;},select:()=>q,single:async()=>{await new Promise(r=>setTimeout(r,70));if(failSave)return {error:{message:'Rede indisponível'}};const f=server.find(f=>f.id===id);Object.assign(f,patch);return {data:{id,validada:f.validada,validada_por:'auth-admin',validada_em:'2026-10-22T08:00:00Z'}};}};return q;}})};
- `});await page.addScriptTag({content:fs.readFileSync('tg-work-sheets.js','utf8')});await page.evaluate(()=>renderizarFolhas());
- const rows=page.locator('#tabelaFolhas tr');assert.equal(await rows.count(),4);
+ `});await page.evaluate(()=>{
+ supa.rpc=(name,p)=>({async single(){requests++;await new Promise(r=>setTimeout(r,70));if(failSave)return {error:{message:'Rede indisponível'}};const f=server.find(f=>f.id===p.p_folha_id);f.validada=p.p_validada;return {data:{id:f.id,validada:f.validada,validada_por:'auth-admin',validada_em:'2026-10-23T10:00:00Z'}};}});
+ });await page.addScriptTag({content:fs.readFileSync('tg-work-sheets.js','utf8')});await page.evaluate(()=>renderizarFolhas());
+ const rows=page.locator('#tabelaFolhas tr');assert.equal(await rows.count(),5);
  assert.equal(await page.locator('[data-folha-id="f3"] td').nth(3).innerText(),'Admin');
  assert.match(await page.locator('[data-folha-id="f4"]').innerText(),/Beta.*Armazém/s);
  assert.match(await page.locator('[data-folha-id="f5"]').innerText(),/Álvaro & Filhos.*Sede/s);
- await page.getByRole('button',{name:/OS em curso/}).click();
+
  assert.match(await rows.first().innerText(),/Álvaro & Filhos.*Loja Centro.*Renovação CCTV.*Ana/s);
- await page.selectOption('#folhasFiltro_cliente','c1');assert.equal(await rows.count(),1);
- await page.selectOption('#folhasFiltro_instalacao','l1');assert.equal(await rows.count(),1);
- await page.selectOption('#folhasFiltro_obra','o1');assert.equal(await rows.count(),1);
+ await page.selectOption('#folhasFiltro_cliente','c1');assert.equal(await rows.count(),3);
+ await page.selectOption('#folhasFiltro_instalacao','l1');assert.equal(await rows.count(),2);
+ await page.selectOption('#folhasFiltro_obra','o1');assert.equal(await rows.count(),2);
  await page.selectOption('#folhasFiltro_tecnico','t1');assert.equal(await rows.count(),1);
  await page.selectOption('#folhasFiltro_validacao','validada');assert.equal(await rows.count(),0);
- await page.getByRole('button',{name:'Limpar filtros'}).click();assert.equal(await rows.count(),1);
+ await page.getByRole('button',{name:'Limpar filtros'}).click();assert.equal(await rows.count(),5);
  const validate=()=>page.locator('[data-folha-validacao="f1"]');
  assert.equal(await validate().innerText(),'Não validada');await validate().click();
  await page.waitForFunction(()=>dados.folhasObra.find(f=>f.id==='f1').validada===true);
@@ -55,10 +57,10 @@ assert(!map.split('to:')[1].includes('validada')); // ordinary writes cannot ove
  await page.evaluate(()=>failSave=true);await validate().click();await page.waitForFunction(()=>msgs.length===1);
  assert.equal(await validate().innerText(),'Não validada');
  await page.evaluate(()=>{usuarioLogado={id:'t1',adminId:'tenant',role:'funcionario'};renderizarFolhas();});
- assert.equal(await rows.count(),1);assert.equal(await page.locator('[data-folha-validacao]').count(),0);
+ assert.equal(await rows.count(),2);assert.equal(await page.locator('[data-folha-validacao]').count(),0);
  const previousRequests=await page.evaluate(()=>requests);await page.evaluate(()=>tgFolhasValidar('f1'));assert.equal(await page.evaluate(()=>requests),previousRequests);
  await page.evaluate(()=>{usuarioLogado={id:'sub',adminId:'tenant',role:'subadmin'};failSave=false;renderizarFolhas();});
- assert.equal(await rows.count(),4);assert.equal(await page.locator('[data-folha-validacao]').count(),4);
+ assert.equal(await rows.count(),5);assert.equal(await page.locator('[data-folha-validacao]').count(),5);
  await page.evaluate(()=>{usuarioLogado={id:'other',role:'admin'};renderizarFolhas();});
  assert.equal(await rows.count(),1);assert(!await page.locator('#folhasFiltro_cliente').innerText().then(s=>s.includes('Álvaro')));
  await page.evaluate(()=>{usuarioLogado={id:'tenant',role:'admin'};renderizarFolhas();});

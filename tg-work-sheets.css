@@ -1,6 +1,41 @@
 #secao-folhas .acoes .btn { min-height:32px; }
 #secao-folhas .acoes [data-folha-validacao] { white-space:nowrap; }
 #secao-folhas .table-wrapper { max-width:100%; }
+#secao-folhas .folhas-grupos { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:8px 0 10px; }
+#secao-folhas .folhas-grupo { display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0;min-height:210px;padding:22px;text-align:left;border:1px solid #cbd5e1;border-radius:14px;background:#fff;color:#16354a;font:inherit;cursor:pointer; }
+#secao-folhas .folhas-grupo:hover { border-color:#3495b7; }
+#secao-folhas .folhas-grupo[aria-pressed="true"] { border-color:#087b9d;box-shadow:inset 0 0 0 1px #087b9d;background:#edf9fd; }
+#secao-folhas .folhas-grupo-titulo { display:flex;gap:10px;align-items:center;font-weight:700; }
+#secao-folhas .folhas-grupo-titulo i { color:#087b9d; }
+#secao-folhas .folhas-grupo-valor { display:flex;gap:8px;align-items:baseline;flex-wrap:wrap; }
+#secao-folhas .folhas-grupo-valor strong { font-size:2.3rem;line-height:1;font-variant-numeric:tabular-nums; }
+#secao-folhas .folhas-grupo-valor small { font-size:.8rem;color:#475569; }
+#secao-folhas .folhas-grupo-info { color:#475569;font-size:.82rem; }
+#secao-folhas .folhas-grupo-abrir { display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;font-size:.8rem;color:#086b88; }
+#secao-folhas .folhas-lista-cabecalho { display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 14px; }
+#secao-folhas .folhas-lista-cabecalho h3 { margin:0; }
+#secao-folhas .folhas-faturacao-tabs { display:flex;gap:8px;flex-wrap:wrap;margin:0 0 15px; }
+#secao-folhas .folhas-faturacao-tabs .active { background:#087b9d;color:#fff;border-color:#087b9d; }
+#secao-folhas .folhas-faturacao-tabs span { margin-left:8px;font-variant-numeric:tabular-nums; }
+#secao-folhas .folhas-indicadores-nota,#secao-folhas .folhas-ligacao,#secao-folhas .folhas-so-admin { font-size:.78rem;color:#475569; }
+#secao-folhas .folhas-indicadores-nota { margin:10px 0; }
+#secao-folhas .folhas-ligacao { display:block;margin-top:5px; }
+#secao-folhas .folhas-so-admin { max-width:200px; }
+#secao-folhas .folhas-estado-aviso { padding:10px 12px;border-radius:7px;background:#fff2da;color:#794500; }
+#secao-folhas .folhas-faturacao-feedback { font-size:.82rem;color:#14613e;margin:12px 0 20px;line-height:1.5;overflow-wrap:anywhere; }
+#secao-folhas .folhas-faturacao-feedback:empty { display:none; }
+#secao-folhas [hidden] { display:none!important; }
+body.dark-mode #secao-folhas .folhas-grupo { background:#1a2436;color:#e2e8f0;border-color:#52647e; }
+body.dark-mode #secao-folhas .folhas-grupo[aria-pressed="true"] { background:#183b4d;border-color:#70cce7;box-shadow:inset 0 0 0 1px #70cce7; }
+body.dark-mode #secao-folhas .folhas-grupo-titulo i,body.dark-mode #secao-folhas .folhas-grupo-abrir { color:#8adbf0; }
+body.dark-mode #secao-folhas .folhas-grupo-info,body.dark-mode #secao-folhas .folhas-grupo-valor small,body.dark-mode #secao-folhas .folhas-indicadores-nota,body.dark-mode #secao-folhas .folhas-ligacao,body.dark-mode #secao-folhas .folhas-so-admin { color:#bdcce0; }
+body.dark-mode #secao-folhas .folhas-faturacao-tabs .active { background:#166d8a;color:#fff; }
+body.dark-mode #secao-folhas .folhas-estado-aviso { background:#48381d;color:#ffda9c; }
+body.dark-mode #secao-folhas .folhas-faturacao-feedback { color:#9ce3ba; }
+@media(max-width:850px) {
+    #secao-folhas .folhas-grupos { grid-template-columns:1fr; }
+    #secao-folhas .folhas-grupo { min-height:0;padding:18px;gap:10px; }
+}
 body.dark-mode #secao-folhas .btn-outline { color:#dbeafe; border-color:#7da7c7; }
 body.dark-mode #secao-folhas .btn-outline:hover { color:#fff; background:#334155; }
 body.dark-mode #secao-folhas select { background:#243247; color:#e2e8f0; border-color:#64748b; }

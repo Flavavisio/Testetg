@@ -19,7 +19,7 @@
     const esc = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let opener = null, selection = 0, scope = '', observerPending = false;
     function allowed(card) {
-        return card && !card.classList.contains('hidden-card') && !card.classList.contains('card-bloqueado') && !card.hidden && card.style.display !== 'none';
+        return card && !card.hasAttribute('data-tgn-secondary') && !card.classList.contains('hidden-card') && !card.classList.contains('card-bloqueado') && !card.hidden && card.style.display !== 'none';
     }
     function entries() {
         if (!active() || (typeof _licencaValidaTenant === 'function' && !_licencaValidaTenant())) return [];

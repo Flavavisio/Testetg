@@ -5,7 +5,7 @@ const main=fs.readFileSync('app-principal.js','utf8'),parsed=new JSDOM(fs.readFi
 const fn=name=>{const match=main.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'));assert(match,name);return match[0]};
 for(const file of ['index.html','login.html']){
  const html=fs.readFileSync(file,'utf8'),worker=fs.readFileSync('sw.js','utf8');
- for(const resource of ['tg-navigation.js?v=1.0.0-teste','tg-navigation.css?v=1.0.0-teste','tg-nexus.js?v=1.1.2-teste-nav']){assert(html.includes(resource),file+' '+resource);assert(worker.includes(resource),resource+' offline cache');}
+ for(const resource of ['tg-navigation.js?v=1.0.1-teste','tg-navigation.css?v=1.0.0-teste','tg-nexus.js?v=1.1.2-teste-nav']){assert(html.includes(resource),file+' '+resource);assert(worker.includes(resource),resource+' offline cache');}
  assert(html.indexOf('tg-navigation.js?v=')>html.indexOf('tg-nexus.js?v='),'Adapter installs after existing modules');
 }
 const names=['ajustarVisibilidadeCards','_ehPerfilMobile','_dispositivoEhMobile','construirSidebar','_focoAlternarGrupo','_montarMenuInferiorMobile','_fecharSecaoAbertaMobile','_abrirGrupoMobile','_voltarMeuDia','_abrirDashboardCentralMobile','abrirObraLongaDetalhe','_abrirObraLongaDetalheReal','_verObraMostrar'];
@@ -44,28 +44,30 @@ ${['agenda-obras','calendario-equipa','agenda','servicos','clientes','folhas','d
  function _renderizarAutosMedicao(id){document.getElementById('verObraConteudo').textContent='Autos '+id}function _renderizarDocumentosObra(){}function _fecharModalGenerico(){document.getElementById('modalGenericoOverlay').classList.remove('open')}
  function _verRelatorioEspecialidadeSnapshot(id){calls.push('report:'+id)}function abrirVerOS(id){calls.push('os:'+id)}function _voltarAoMenuAnterior(){_voltarMeuDia()}
  ${names.map(fn).join('\n')}
- window.resetUser=function(role){usuarioLogado={id:role==='admin'?'a':role==='encarregado'?'enc':role==='funcionario'?'e':role==='subadmin'?'sa':role,adminId:'a',role};ajustarVisibilidadeCards();_montarMenuInferiorMobile();construirSidebar();TGNavigation.refresh();};
+ window.resetUser=function(role){usuarioLogado={id:role==='admin'?'a':role==='encarregado'?'enc':role==='funcionario'?'e':role==='subadmin'?'sa':role,adminId:'a',role};ajustarVisibilidadeCards();_montarMenuInferiorMobile();construirSidebar();window.TGNavigation?.refresh();};
  `});
  await page.addScriptTag({url:'https://nav.test/tg-nexus.js'});
+ const baseline=await page.evaluate(()=>{
+  window.menuSnapshot=()=>({mobile:_ehPerfilMobile(),sidebar:_layoutUsaSidebarShell(),
+    groups:[...document.querySelectorAll('#cardsGrid .grupo-cards')].map(g=>[g.dataset.grupo,g.querySelector('h3')?.textContent.trim(),[...g.querySelectorAll('.card-principal')].map(c=>[c.dataset.card,c.querySelector('h3')?.textContent,c.getAttribute('onclick'),c.classList.contains('hidden-card')])]),
+    bottom:document.getElementById('menuInferiorMobile').style.display==='none'?[]:[...document.querySelectorAll('#menuInferiorMobile .menu-inf-item')].map(el=>[el.id,el.textContent.trim()])});
+  const result={};for(const role of ['admin','subadmin','encarregado','funcionario','vendedor','vigilante','superadmin','cliente'])for(const option of ['cards','sidebar','foco','aurora']){layout=option;resetUser(role);result[role+':'+option]=menuSnapshot();}
+  window.savedClientCard=document.querySelector('[data-card="clientes"]');return result;
+ });
  await page.addScriptTag({url:'https://nav.test/tg-navigation.js'});
  const originalCount=await page.locator('#cardsGrid .card-principal[data-card]').count();
- await page.evaluate(()=>resetUser('admin'));
- assert.equal(await page.locator('[data-grupo="gestao"]').count(),0);
- for(const [id,group] of [['assistencias','operacoes'],['folhas','operacoes'],['frota','equipa'],['requisicoes','armazem'],['relatorios-personalizados','configuracoes']])assert.equal(await page.locator('#cardsGrid [data-card="'+id+'"]').evaluate(el=>el.closest('.grupo-cards').dataset.grupo),group);
- assert.equal(await page.locator('#menuInferiorMobile [data-tgn-nav]').count(),5);
- await page.getByRole('button',{name:'Mais',exact:true}).click();
- assert(await page.locator('.tgn-more-title').isVisible());await page.locator('[data-tgn-menu-group="comercial"]>summary').click();assert(await page.locator('[data-tgn-card="clientes"]').isVisible());
- await page.locator('[data-tgn-card="crm"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'crm');
- await page.locator('[data-tgn-nav="alerts"]').click();assert(await page.locator('#secao-tgn-alertas').isVisible());assert.match(await page.locator('#secao-tgn-alertas').innerText(),/Sem alertas/);const alertCalls=await page.evaluate(()=>calls.length);await page.evaluate(()=>{TGNavigation.refresh();TGNavigation.refresh()});assert.equal(await page.evaluate(()=>calls.length),alertCalls,'Background refresh must not navigate again');
- await page.locator('[data-tgn-nav="agenda"]').click();
- assert.equal(await page.locator('#secao-agenda-obras .tgn-calendar-tabs button').count(),3);
- await page.locator('#secao-agenda-obras [data-tgn-calendar="agenda"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'agenda');
- await page.locator('[data-tgn-nav="more"]').click();await page.evaluate(()=>document.querySelectorAll('.tgn-more details').forEach(el=>el.open=false));await page.screenshot({path:'/tmp/testetg-navigation-mobile.png',fullPage:true,animations:'disabled'});
- for(const role of ['subadmin','encarregado','funcionario','vendedor','vigilante','supervisor_vigilantes']){
-  await page.evaluate(role=>resetUser(role),role);assert.equal(await page.locator('#menuInferiorMobile [data-tgn-nav]').count(),5,role);
-  await page.locator('[data-tgn-nav="more"]').click();
-  for(const id of ['superadmin','licencas','analytics','online-admins'])assert.equal(await page.locator('#painelGrupoMobileConteudo [data-tgn-card="'+id+'"]').count(),0,role+' '+id);
+ for(const role of ['admin','subadmin','encarregado','funcionario','vendedor','vigilante','superadmin','cliente'])for(const option of ['cards','sidebar','foco','aurora']){
+  await page.evaluate(({role,option})=>{layout=option;resetUser(role)}, {role,option});
+  assert.deepEqual(await page.evaluate(()=>menuSnapshot()),baseline[role+':'+option],role+' '+option+' keeps the original phone navigation');
+  assert.equal(await page.locator('#menuInferiorMobile [data-tgn-nav]').count(),0);
+  assert.equal(await page.locator('#tgnHeaderSettings').isVisible(),false);
  }
+ await page.evaluate(()=>{layout='cards';resetUser('admin')});
+ await page.locator('#menuInf_comercial').click();
+ await page.locator('#painelGrupoMobileConteudo a[href="TOTALGEST_CRM.html"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'crm');
+ await page.locator('#menuInf_gestao').click();await page.locator('#painelGrupoMobileConteudo').getByText('Agenda de Obras',{exact:true}).click();
+ assert.equal(await page.evaluate(()=>calls.at(-1)),'agenda-obras');assert.equal(await page.locator('.tgn-calendar-tabs').count(),0);
+ await page.locator('#menuInfHome').click();await page.screenshot({path:'/tmp/testetg-navigation-mobile-original.png',fullPage:true,animations:'disabled'});
  await page.evaluate(()=>resetUser('funcionario'));
  let scope=await page.evaluate(()=>{const c=TGNavigation.workContext('w');return {os:c.os.map(x=>x.id),reports:c.reports.map(x=>x.id),foreign:TGNavigation.workContext('foreign')};});
  assert.deepEqual(scope,{os:['mine'],reports:['r'],foreign:null});
@@ -83,18 +85,35 @@ ${['agenda-obras','calendario-equipa','agenda','servicos','clientes','folhas','d
  for(const option of ['cards','sidebar','foco','aurora']){
   await page.evaluate(option=>{layout=option;resetUser('admin')},option);
   assert.equal(await page.locator('#menuInferiorMobile').isVisible(),false,option);
+  assert.equal(await page.locator('[data-grupo="gestao"]').count(),0);
+  for(const [id,group] of [['assistencias','operacoes'],['folhas','operacoes'],['frota','equipa'],['requisicoes','armazem'],['relatorios-personalizados','configuracoes']])assert.equal(await page.locator('#cardsGrid [data-card="'+id+'"]').evaluate(el=>el.closest('.grupo-cards').dataset.grupo),group);
   assert.equal(await page.locator('#cardsGrid .card-principal[data-card]').count(),originalCount);
   for(let i=0;i<3;i++)await page.evaluate(()=>TGNavigation.refresh());
   assert.equal(await page.locator('#tgSidebarNav [data-tgn-settings]').count(),1,option);
  }
  await page.evaluate(()=>{TGNexus.refresh();TGNexus.open()});assert.equal(await page.locator('#nexusResults [data-nx-open="agenda"],#nexusResults [data-nx-open="calendario-equipa"]').count(),0);assert.equal(await page.locator('#nexusResults [data-nx-open="agenda-obras"]').count(),1);await page.evaluate(()=>TGNexus.close());
  await page.locator('#tgnHeaderSettings').click();assert(await page.locator('#tgnSettings').isVisible());await page.screenshot({path:'/tmp/testetg-settings-desktop.png',fullPage:true,animations:'disabled'});await page.locator('[data-tgn-close]').click();
+ await page.evaluate(()=>TGNavigation.agenda());assert.equal(await page.locator('#secao-agenda-obras .tgn-calendar-tabs button').count(),3);
+ await page.locator('#secao-agenda-obras [data-tgn-calendar="agenda"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'agenda');
  await page.evaluate(()=>{moduleFlags.Crm=false;resetUser('admin')});assert.equal(await page.evaluate(()=>TGNavigation.entries('comercial').some(el=>el.dataset.card==='crm')),false);
+ // Desktop operational profiles retain the reorganized navigation, including its five shortcuts.
+ await page.evaluate(()=>resetUser('funcionario'));assert.equal(await page.locator('#menuInferiorMobile [data-tgn-nav]').count(),5);
+ await page.locator('[data-tgn-nav="alerts"]').click();assert(await page.locator('#secao-tgn-alertas').isVisible());const alertCalls=await page.evaluate(()=>calls.length);await page.evaluate(()=>TGNavigation.refresh());assert.equal(await page.evaluate(()=>calls.length),alertCalls);
+ await page.locator('[data-tgn-nav="more"]').click();assert(await page.locator('.tgn-more-title').isVisible());
+ // Repeated breakpoint changes restore the same source nodes, actions and drafts.
+ await page.evaluate(()=>{moduleFlags.Crm=true;resetUser('admin');abrirSecao('servicos');const input=document.createElement('input');input.id='draft';input.value='Rascunho preservado';document.getElementById('secao-servicos').append(input);});
+ for(const width of [390,1440,768,1440,390,1440]){
+  await page.setViewportSize({width,height:900});await page.waitForTimeout(180);
+  assert.equal(await page.locator('#cardsGrid .card-principal[data-card]').count(),originalCount);
+  assert.equal(await page.evaluate(()=>savedClientCard===document.querySelector('[data-card="clientes"]')),true);
+  assert.equal(await page.locator('#draft').inputValue(),'Rascunho preservado');
+  assert.equal(await page.locator('[data-grupo="gestao"]').count(),width<=900?1:0);
+ }
  await page.evaluate(()=>{licensed=false;resetUser('funcionario')});assert(await page.locator('[data-tgn-nav="agenda"]').isDisabled());assert.equal(await page.evaluate(()=>TGNavigation.openCard('servicos')),false);
  await page.evaluate(()=>{licensed=true;resetUser('superadmin')});assert.equal(await page.locator('#cardsGrid [data-card="reports"]').evaluate(el=>el.classList.contains('hidden-card')),false);assert.equal(await page.locator('#cardsGrid [data-card="reports"] h3').innerText(),'Visão Global');
  await page.evaluate(()=>resetUser('cliente'));assert.equal(await page.locator('#menuInferiorMobile').isVisible(),false);assert.equal(await page.locator('#tgnHeaderSettings').isVisible(),false);
  assert.deepEqual(errors,[]);
- console.log('PASS: task groups, five mobile tabs, three calendar views, four desktop layouts, role/module/license gates, own/assigned work scope, shared work tabs, preserved cards/actions and repeated refreshes.');
+ console.log('PASS: original phone navigation matches the unmodified app for eight roles and four layouts; desktop grouping, search, calendars and scoped work tabs retained; breakpoint changes preserve nodes, actions and drafts.');
  await context.close();
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -20,42 +20,78 @@
         ['sistema','Administração do Sistema','fa-shield-halved',['superadmin','reports','analytics','licencas','licencas-vencer','pedidos-renovacao','licencas-distribuidor','historico-licencas','uso-cards','online-admins','contactos']]
     ];
     const calendars = [['agenda-obras','Planeamento'],['calendario-equipa','Equipa'],['agenda','Prazos e vencimentos']];
-    const originalCards = new Map();
+    const originalCards = new Map(), originalGroups = [];
+    const legacyMobile = () => innerWidth <= 900;
+    const originalVisibility = window.ajustarVisibilidadeCards;
+    let groupedMode = null, originalReportsTitle = '', pendingLayoutRefresh = false;
     let identity = '', current = 'home', returnToMore = false, moreGroup = '', refreshing = false;
     function regroup() {
         const parent = document.querySelector('#cardsGrid .dashboard-grupos');
         if (!parent) return;
-        if (!parent.dataset.tgnReady) {
-            const sourceCards = [...parent.querySelectorAll('.card-principal[data-card]')];
-            sourceCards.forEach(el => originalCards.set(el.dataset.card, {el, title:el.querySelector('h3')?.textContent || '', onclick:el.getAttribute('onclick')}));
-            const destinations = new Map();
-            groups.forEach(([key,title,icon]) => {
-                const section = document.createElement('div'); section.className = 'grupo-cards'; section.dataset.grupo = key;
-                section.innerHTML = `<div class="grupo-header"><h3><i class="fas ${icon}" aria-hidden="true"></i> ${title}</h3><div class="linha"></div></div><div class="grupo-grid"></div>`;
-                destinations.set(key,section);
+        if (!originalGroups.length) {
+            parent.querySelectorAll('.grupo-cards').forEach(section => {
+                const cards=[...section.querySelectorAll('.card-principal[data-card]')];
+                originalGroups.push({section,cards});
+                cards.forEach(el=>originalCards.set(el.dataset.card,{el,title:el.querySelector('h3')?.textContent||'',onclick:el.getAttribute('onclick')}));
             });
-            const placed = new Set();
-            groups.forEach(([key,,,ids]) => ids.forEach(id => {const item=originalCards.get(id)?.el;if(item){destinations.get(key).querySelector('.grupo-grid').append(item);placed.add(item);}}));
-            sourceCards.filter(el=>!placed.has(el)).forEach(el=>destinations.get('configuracoes').querySelector('.grupo-grid').append(el));
-            parent.replaceChildren(...destinations.values()); parent.dataset.tgnReady = '1';
+            originalReportsTitle=$('secao-reports')?.querySelector('.section-header h2')?.textContent || '';
         }
-        calendars.forEach(([id]) => {
-            const original = originalCards.get(id); if (!original) return;
-            original.el.removeAttribute('data-tgn-secondary');
-            if (original.el.querySelector('h3')) original.el.querySelector('h3').textContent = original.title;
-            if (original.onclick) original.el.setAttribute('onclick', original.onclick);
+        const mode=legacyMobile()?'mobile':'desktop', previous=groupedMode;
+        originalCards.forEach(({el,title,onclick})=>{
+            el.removeAttribute('data-tgn-secondary');
+            if(el.querySelector('h3'))el.querySelector('h3').textContent=title;
+            if(onclick!==null)el.setAttribute('onclick',onclick);else el.removeAttribute('onclick');
         });
-        const selected = calendars.find(([id]) => permitted(card(id)))?.[0];
-        calendars.forEach(([id]) => {
-            const el = card(id); if (!el) return;
-            if (id !== selected) el.setAttribute('data-tgn-secondary','');
+        if(mode!==groupedMode){
+            if(mode==='mobile'){
+                originalGroups.forEach(({section,cards})=>{
+                    const grid=section.querySelector('.grupo-grid');cards.forEach(el=>grid.append(el));
+                    section.hidden=false;section.style.display='';
+                });
+                parent.replaceChildren(...originalGroups.map(item=>item.section));
+            }else{
+                const destinations=new Map(),placed=new Set();
+                groups.forEach(([key,title,icon])=>{
+                    const section=document.createElement('div');section.className='grupo-cards';section.dataset.grupo=key;
+                    section.innerHTML=`<div class="grupo-header"><h3><i class="fas ${icon}" aria-hidden="true"></i> ${title}</h3><div class="linha"></div></div><div class="grupo-grid"></div>`;
+                    destinations.set(key,section);
+                });
+                groups.forEach(([key,,,ids])=>ids.forEach(id=>{const el=originalCards.get(id)?.el;if(el){destinations.get(key).querySelector('.grupo-grid').append(el);placed.add(el);}}));
+                originalCards.forEach(({el})=>{if(!placed.has(el))destinations.get('configuracoes').querySelector('.grupo-grid').append(el);});
+                parent.replaceChildren(...destinations.values());
+            }
+            groupedMode=mode;
+            if(active()&&typeof originalVisibility==='function')originalVisibility();
+            $('tgnSettings')?.close();returnToMore=false;moreGroup='';
+            if(previous!==null&&active()&&!pendingLayoutRefresh){
+                pendingLayoutRefresh=true;
+                queueMicrotask(()=>{
+                    pendingLayoutRefresh=false;
+                    if(!active())return;
+                    if(!document.querySelector('.section-container.active')&&$('painelGrupoMobile')?.style.display==='block')_voltarMeuDia();
+                    construirSidebar();_montarMenuInferiorMobile();
+                });
+            }
+        }
+        const heading=$('secao-reports')?.querySelector('.section-header h2');
+        if(mode==='mobile'){
+            parent.querySelectorAll('.grupo-cards').forEach(section=>section.hidden=false);
+            if(heading)heading.textContent=originalReportsTitle;
+            return;
+        }
+        const selected=calendars.find(([id])=>permitted(card(id)))?.[0];
+        calendars.forEach(([id])=>{
+            const el=card(id);if(!el)return;
+            if(id!==selected)el.setAttribute('data-tgn-secondary','');
             else {el.querySelector('h3').textContent='Agenda';el.setAttribute('onclick','return TGNavigation.agenda()');}
         });
-        const models = card('relatorios-personalizados'); if(models?.querySelector('h3'))models.querySelector('h3').textContent='Modelos de relatório';
-        const reports = card('reports');
-        if (reports) {reports.toggleAttribute('data-tgn-secondary',user()?.role !== 'superadmin');reports.querySelector('h3').textContent='Visão Global';}
-        parent.querySelectorAll('.grupo-cards').forEach(group => {group.hidden=![...group.querySelectorAll('.card-principal')].some(visible);});
-        const title = $('secao-reports')?.querySelector('.section-header h2'); if(title)title.textContent='Visão Global';
+        const models=card('relatorios-personalizados');if(models?.querySelector('h3'))models.querySelector('h3').textContent='Modelos de relatório';
+        const reports=card('reports');if(reports){
+            if(user()?.role==='superadmin')reports.classList.remove('hidden-card');
+            reports.toggleAttribute('data-tgn-secondary',user()?.role!=='superadmin');reports.querySelector('h3').textContent='Visão Global';
+        }
+        parent.querySelectorAll('.grupo-cards').forEach(group=>{group.hidden=![...group.querySelectorAll('.card-principal')].some(visible);});
+        if(heading)heading.textContent='Visão Global';
     }
     function entries(key) {return [...document.querySelectorAll(`#cardsGrid .grupo-cards[data-grupo="${key}"] .card-principal`)].filter(visible);}
     function openCard(id) {
@@ -78,14 +114,14 @@
         });
     }
     function settings() {
-        if (!active()) return;
+        if (!active() || legacyMobile()) return;
         let dialog=$('tgnSettings');
         if(!dialog){dialog=document.createElement('dialog');dialog.id='tgnSettings';dialog.className='tgn-menu-dialog';dialog.setAttribute('aria-labelledby','tgnSettingsTitle');dialog.innerHTML='<header><h2 id="tgnSettingsTitle">Configurações e ajuda</h2><button type="button" data-tgn-close aria-label="Fechar configurações">×</button></header><div class="tgn-settings-content"></div>';document.body.append(dialog);dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});}
         sectionList(dialog.querySelector('.tgn-settings-content'),['configuracoes']);if(!dialog.open)dialog.showModal();
     }
     function mark(name) {current=name;document.querySelectorAll('#menuInferiorMobile [data-tgn-nav]').forEach(el=>{el.classList.toggle('ativo',el.dataset.tgnNav===name);el.setAttribute('aria-current',el.dataset.tgnNav===name?'page':'false');});}
     function more() {
-        if(!active())return;
+        if(!active()||legacyMobile())return;
         _fecharSecaoAbertaMobile();const panel=$('painelGrupoMobile'),content=$('painelGrupoMobileConteudo');if(!panel||!content)return;
         if($('omeudia'))$('omeudia').style.display='none';if($('tgHome'))$('tgHome').style.display='none';if($('cardsGrid'))$('cardsGrid').style.display='';
         if(typeof _ultimoGrupoMobileAberto!=='undefined')_ultimoGrupoMobileAberto=null;
@@ -103,6 +139,7 @@
         abrirSecao(target[0]);mark('agenda');return false;
     }
     function calendarTabs() {
+        if(legacyMobile()){document.querySelectorAll('.tgn-calendar-tabs').forEach(el=>el.remove());return;}
         calendars.forEach(([id])=>{
             const section=$('secao-'+id);if(!section)return;
             let nav=section.querySelector('.tgn-calendar-tabs');
@@ -123,11 +160,12 @@
     }
     function mobile() {
         const nav=$('menuInferiorMobile');if(!nav)return;
-        if(!active()||!_ehPerfilMobile()){nav.classList.remove('tgn-mobile');return;}
+        if(!active()||legacyMobile()||!_ehPerfilMobile()){nav.classList.remove('tgn-mobile');return;}
         const items=[['home','fa-sun','O Meu Dia',true],['agenda','fa-calendar-days','Agenda',calendars.some(([id])=>permitted(card(id)))],['work','fa-briefcase','Trabalhos',entries('operacoes').length>0],['alerts','fa-bell','Alertas',true],['more','fa-bars','Mais',true]];
         nav.classList.add('tgn-mobile');nav.innerHTML=items.map(([id,icon,label,enabled])=>`<button type="button" class="menu-inf-item" data-tgn-nav="${id}" ${id==='home'?'id="menuInfHome"':''} ${enabled?'':'disabled'}><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span></button>`).join('');mark(current);
     }
     function decorateSidebar() {
+        if(legacyMobile())return;
         const nav=$('tgSidebarNav');if(!nav)return;
         nav.querySelectorAll('[data-tgn-settings]').forEach(el=>el.remove());
         nav.querySelectorAll('[data-secao]').forEach(el=>{const source=card(el.dataset.secao);if(source?.hasAttribute('data-tgn-secondary')||source?.closest('[data-grupo="configuracoes"]'))el.remove();});
@@ -141,10 +179,10 @@
         try {
             const key=user()?JSON.stringify([user().id,user().adminId,user().role]):'';
             if(key!==identity){identity=key;current='home';returnToMore=false;moreGroup='';$('tgnSettings')?.close();$('secao-tgn-alertas')?.remove();$('painelGrupoMobileConteudo')?.replaceChildren();if($('painelGrupoMobile'))$('painelGrupoMobile').style.display='none';}
-            document.body.classList.toggle('tgn-navigation',active());regroup();calendarTabs();decorateSidebar();mobile();
+            document.body.classList.toggle('tgn-navigation',active()&&!legacyMobile());regroup();calendarTabs();decorateSidebar();mobile();
             let gear=$('tgnHeaderSettings');
             if(!gear&&$('headerExtras')){gear=document.createElement('button');gear.id='tgnHeaderSettings';gear.type='button';gear.className='btn-sino';gear.dataset.tgnSettings='';gear.title='Configurações e ajuda';gear.setAttribute('aria-label','Configurações e ajuda');gear.innerHTML='<i class="fas fa-gear" aria-hidden="true"></i>';$('headerExtras').append(gear);}
-            if(gear)gear.hidden=!active();
+            if(gear)gear.hidden=!active()||legacyMobile();
             if(current==='alerts'&&$('secao-tgn-alertas')?.classList.contains('active'))alerts(false);
         } finally {refreshing=false;}
     }
@@ -199,19 +237,18 @@
     }
     function wrap(name, callback) {const original=window[name];if(typeof original==='function')window[name]=function(...args){return callback.call(this,original,args);};}
     // Install after the existing navigation adapters; retain their handlers and permission checks.
-    wrap('_ehPerfilMobile',function(original,args){if(active()&&user().role!=='superadmin'&&innerWidth<=900)return true;return original.apply(this,args);});
-    wrap('_layoutUsaSidebarShell',function(original,args){if(active()&&user().role!=='superadmin'&&innerWidth<=900)return false;return original.apply(this,args);});
-    wrap('ajustarVisibilidadeCards',function(original,args){const result=original.apply(this,args);if(user()?.role==='superadmin')card('reports')?.classList.remove('hidden-card');regroup();return result;});
+    wrap('ajustarVisibilidadeCards',function(original,args){const result=original.apply(this,args);if(!legacyMobile()&&user()?.role==='superadmin')card('reports')?.classList.remove('hidden-card');regroup();return result;});
     wrap('construirSidebar',function(original,args){regroup();const result=original.apply(this,args);decorateSidebar();return result;});
     wrap('_montarMenuInferiorMobile',function(original,args){regroup();const result=original.apply(this,args);mobile();return result;});
     wrap('abrirSecao',function(original,args){const result=original.apply(this,args);calendarTabs();if(calendars.some(([id])=>id===args[0]))mark('agenda');else if(args[0]!=='tgn-alertas')mark(entries('operacoes').some(el=>el.dataset.card===args[0])?'work':'more');return result;});
     wrap('_abrirGrupoMobile',function(original,args){
         const result=original.apply(this,args),content=$('painelGrupoMobileConteudo');
+        if(legacyMobile())return result;
         if(content){content.classList.remove('tgn-more');sectionList(content,[args[0]]);}
         mark(args[0]==='operacoes'?'work':'more');return result;
     });
     wrap('_voltarMeuDia',function(original,args){returnToMore=false;const result=original.apply(this,args);mark('home');return result;});
-    wrap('_voltarAoMenuAnterior',function(original,args){if(returnToMore&&_ehPerfilMobile())return more();return original.apply(this,args);});
+    wrap('_voltarAoMenuAnterior',function(original,args){if(!legacyMobile()&&returnToMore&&_ehPerfilMobile())return more();return original.apply(this,args);});
     wrap('abrirObraLongaDetalhe',function(original,args){if(args.length<2)args.push('resumo');return original.apply(this,args);});
     wrap('_abrirObraLongaDetalheReal',function(original,args){const initial=args[1]||'resumo';const result=original.call(this,args[0],['resumo','os','relatorios'].includes(initial)?'folhas':initial);enhanceWork(args[0],initial);return result;});
     wrap('_verObraMostrar',function(original,args){if(['resumo','os','relatorios'].includes(args[1])&&workTab(args[0],args[1]))return;document.querySelectorAll('[data-tgn-work-tab]').forEach(button=>{button.style.background='#f1f5f9';button.style.color='#334155';button.setAttribute('aria-pressed','false');});const result=original.apply(this,args);workSelection(args[1]);return result;});

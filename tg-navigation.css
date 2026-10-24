@@ -1,0 +1,49 @@
+/* Teste TG navigation: a single task hierarchy across cards, sidebar and mobile. */
+.tgn-navigation .grupo-cards[hidden],.tgn-navigation .card-principal[data-tgn-secondary],
+.tgn-navigation #cardsGrid .grupo-cards[data-grupo="configuracoes"]{display:none!important}
+.tgn-navigation #menuInferiorMobile.tgn-mobile{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;gap:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tgn-mobile .menu-inf-item{min-width:0;width:100%;border:0;background:transparent;font:inherit;cursor:pointer;padding:9px 3px;gap:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:inherit}
+.tgn-mobile .menu-inf-item span{font-size:11px;white-space:nowrap}
+.tgn-mobile .menu-inf-item i{font-size:18px}
+.tgn-mobile .menu-inf-item:disabled{opacity:.35;cursor:default}
+.tgn-mobile .menu-inf-item.ativo{color:#e85a15;background:#fff4ed}
+.tgn-mobile .menu-inf-item:focus-visible,.tgn-calendar-tabs button:focus-visible,.tgn-tile:focus-visible{outline:3px solid #1a5f7a;outline-offset:-3px}
+.tgn-calendar-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;padding:5px;border:1px solid #dbe4ee;background:#f4f7fb;border-radius:12px}
+.tgn-calendar-tabs button{flex:1;min-width:120px;border:0;border-radius:8px;padding:11px 14px;background:transparent;color:#334155;font:inherit;font-size:14px;cursor:pointer}
+.tgn-calendar-tabs button.ativo{background:#1a5f7a;color:white;font-weight:700}
+.tgn-menu-dialog{box-sizing:border-box;width:min(760px,94vw);max-height:88dvh;border:1px solid #dbe4ee;border-radius:18px;padding:24px;margin:auto;color:#152a52;background:#fff;box-shadow:0 20px 70px #0b1f3a40}
+.tgn-menu-dialog::backdrop{background:#0b1f3a80;backdrop-filter:blur(3px)}
+.tgn-menu-dialog>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.tgn-menu-dialog>header button{font-size:28px;border:0;background:transparent;color:inherit;cursor:pointer;min-width:44px;min-height:44px}
+.tgn-menu-section{margin-bottom:24px;min-width:0}.tgn-menu-section>h3{font-size:16px;margin:0 0 10px;color:inherit}
+.tgn-menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:10px}
+.tgn-tile{display:flex;align-items:center;gap:12px;text-align:left;width:100%;box-sizing:border-box;min-width:0;min-height:64px;padding:14px;border:1px solid #dbe4ee;background:#fff;border-radius:12px;color:#152a52;font:inherit;cursor:pointer}
+.tgn-tile:hover{border-color:#1a5f7a;background:#f4f8fb}.tgn-tile>span:nth-child(2){flex:1;min-width:0}
+.tgn-tile strong{display:block;font-size:14px;overflow-wrap:anywhere}.tgn-tile small{display:block;font-size:12px;line-height:1.4;color:#64748b;overflow-wrap:anywhere;margin-top:3px}
+.tgn-tile-icon{display:grid;place-items:center;flex:0 0 36px;height:36px;background:#eef4f8;border-radius:10px;color:#1a5f7a}
+#painelGrupoMobileConteudo.tgn-more{display:block}.tgn-more-title{margin-bottom:22px}.tgn-more-title h2{font-size:24px;margin:0 0 5px}.tgn-more-title p{color:#64748b;margin:0 0 12px}
+.tgn-settings-button{border:0;background:transparent;text-align:left;width:100%;font:inherit;cursor:pointer}
+.tgn-alert-content{max-width:1000px}.tgn-alert-content>div{margin-bottom:16px}
+body.dark-mode .tgn-tile,body.dark-mode .tgn-menu-dialog{background:#17243a;color:#e2e8f0;border-color:#34445d}
+body.dark-mode .tgn-tile:hover,body.dark-mode .tgn-calendar-tabs{background:#20324c;border-color:#34445d}
+body.dark-mode .tgn-calendar-tabs button{color:#e2e8f0}body.dark-mode .tgn-calendar-tabs button.ativo{background:#1a5f7a}
+body.dark-mode .tgn-tile small,body.dark-mode .tgn-more-title p{color:#b5c3d7}
+body.dark-mode .tgn-mobile .menu-inf-item.ativo{color:#ffad7f;background:#3d2a24}
+@media(max-width:600px){.tgn-menu-dialog{padding:16px}.tgn-calendar-tabs button{padding:10px 7px;font-size:13px;min-width:80px}.tgn-menu-grid{grid-template-columns:1fr}}
+.tgn-work-tabs{display:flex;flex-wrap:wrap;gap:8px}.tgn-work-tabs>button{flex:1;min-width:95px;min-height:40px}
+.tgn-work-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}.tgn-work-kpis>div{background:#f1f6fa;border:1px solid #dbe4ee;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:5px}.tgn-work-kpis strong{font-size:24px;color:#1a5f7a}.tgn-work-kpis span{font-size:12px;color:#52647a}.tgn-work-list{display:grid;gap:10px;margin-top:14px}
+body.dark-mode .tgn-work-kpis>div{background:#20324c;border-color:#34445d}body.dark-mode .tgn-work-kpis strong{color:#8cd8e7}body.dark-mode .tgn-work-kpis span{color:#b5c3d7}
+@media(max-width:500px){.tgn-work-kpis{gap:6px}.tgn-work-kpis>div{padding:10px}.tgn-work-kpis strong{font-size:20px}}
+#tgnHeaderSettings[hidden]{display:none!important}
+.tgn-more .tgn-menu-section{border:1px solid #dbe4ee;border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}
+.tgn-more .tgn-menu-section>summary{cursor:pointer;padding:16px;text-align:left;color:#152a52;font-weight:700;font-size:15px;min-height:54px;box-sizing:border-box}
+.tgn-group-count{float:right;font-size:12px;font-weight:400;color:#64748b;margin-left:10px}.tgn-more .tgn-menu-grid{padding:0 10px 10px}
+.tgn-more-title{text-align:left}.tgn-work-options{margin:0 0 16px;border:1px solid #dbe4ee;border-radius:10px;padding:10px 12px}
+.tgn-work-options>summary{font-size:13px;font-weight:600;cursor:pointer;color:#475569}.tgn-work-extra{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tgn-work-extra>button{flex:1;min-width:110px}
+body.dark-mode .tgn-more .tgn-menu-section{background:#17243a;border-color:#34445d}body.dark-mode .tgn-more .tgn-menu-section>summary{color:#e2e8f0}body.dark-mode .tgn-group-count{color:#b5c3d7}body.dark-mode .tgn-work-options{border-color:#34445d}body.dark-mode .tgn-work-options>summary{color:#b5c3d7}
+@media(max-width:600px){.tgn-work-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.tgn-work-tabs>button{min-width:0;min-height:45px;padding:8px 6px;font-size:12px;justify-content:center}.tgn-work-tabs>button i{display:none}.tgn-more .tgn-menu-section>summary{font-size:14px}}
+.tgn-work-tabs>button[aria-pressed="true"],.tgn-work-extra>button[aria-pressed="true"]{background:#1a5f7a!important;color:#fff!important}
+.tgn-work-tabs>button[aria-pressed="false"]{background:#f1f5f9!important;color:#334155!important}
+body.dark-mode .tgn-work-tabs>button[aria-pressed="false"]{background:#20324c!important;color:#e2e8f0!important}
+.tgn-work-tabs>button{transition:none!important}

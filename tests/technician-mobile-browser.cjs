@@ -4,11 +4,11 @@ const main=fs.readFileSync('app-principal.js','utf8'),doc=new JSDOM(fs.readFileS
 const fn=name=>{const m=main.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'));assert(m,name);return m[0];};
 for(const file of ['index.html','login.html']){
  const html=fs.readFileSync(file,'utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const resource of ['tg-technician.js?v=1.1.0-teste','tg-technician.css?v=1.1.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
+ for(const resource of ['tg-technician.js?v=1.2.0-teste','tg-technician.css?v=1.2.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
  assert(html.indexOf('tg-technician.js?v=')>html.indexOf('tg-navigation.js?v='));
 }
 const fixture=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tg-navigation.css"><link rel="stylesheet" href="tg-technician.css"></head><body>
-<header class="header"><h1>Total Gest</h1><div id="headerExtras"></div></header><aside id="tgSidebar"><nav id="tgSidebarNav"></nav></aside>
+${doc.querySelector('header.header').outerHTML}<aside id="tgSidebar"><nav id="tgSidebarNav"></nav></aside>
 ${doc.querySelector('#cardsGrid').outerHTML}<div id="tgHome"><div id="homeAgendaWrap"></div></div><nav id="menuInferiorMobile"></nav>
 ${['servicos','ponto','folhas','agenda-obras'].map(id=>`<section class="section-container" id="secao-${id}"><div class="section-header"><h2>${id}</h2></div></section>`).join('')}
 ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGenericoOverlay').outerHTML}</body></html>`;
@@ -32,22 +32,41 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  function obterNomeCliente(id){return dados.clientes.find(c=>c.id===id)?.nome||''}
  function construirSidebar(){}function _mostrarInicioConteudo(){document.body.classList.toggle('com-sidebar',_layoutUsaSidebarShell());document.getElementById('tgHome').style.display=_layoutUsaSidebarShell()?'block':'none'}function renderizarOMeuDia(){document.getElementById('omeudia').innerHTML='<div class="native-home">O Meu Dia original</div>'}function _voltarAoMenuAnterior(){_voltarMeuDia()}
  function abrirSecao(id){calls.push('section:'+id);document.querySelectorAll('.section-container.active').forEach(el=>el.classList.remove('active'));document.getElementById('secao-'+id)?.classList.add('active');document.getElementById('omeudia').style.display='none';document.getElementById('painelGrupoMobile').style.display='none'}
- function picarPonto(){calls.push('general-clock')}function picarPontoOS(id,type){calls.push('os:'+id+':'+type)}function obraLongaPicarEntrada(id){calls.push('obra:'+id+':entrada')}function obraLongaPicarSaida(id){calls.push('obra:'+id+':saida')}function abrirVerOS(id){calls.push('details:'+id)}function _verOsMostrar(id,tab){calls.push('tab:'+id+':'+tab)}function abrirObraLongaDetalhe(id,tab){calls.push('work:'+id+':'+tab)}function abrirEditarPerfil(){calls.push('profile')}
+ function mostrarErro(text){calls.push('error:'+text)}function _fecharModalGenerico(){document.getElementById('modalGenericoOverlay').classList.remove('open')}function picarPonto(){calls.push('general-clock')}function picarPontoOS(id,type){calls.push('os:'+id+':'+type)}function obraLongaPicarEntrada(id){calls.push('obra:'+id+':entrada')}function obraLongaPicarSaida(id){calls.push('obra:'+id+':saida')}function abrirVerOS(id){calls.push('details:'+id)}function _verOsMostrar(id,tab){calls.push('tab:'+id+':'+tab)}function abrirObraLongaDetalhe(id,tab){calls.push('work:'+id+':'+tab)}function abrirEditarPerfil(){calls.push('profile')}
  function _osMapaInfo(){return {url:'https://maps.google.com/?q=Lisboa'}}function _registarKmViagemOS(id){calls.push('travel:'+id)}function _quemEsteveNaOSHTML(){return ''}function _quemEsteveNaObraHTML(){return ''}function _especialidadesEfetuadasTexto(){return ''}function _horasPicadasOS(){return 1.5}function _horasPicadasObra(){return 2}function _horasBloqueadasHTML(prefix,value){return '<input id="'+prefix+'_horas" type="number" value="'+value+'" readonly>'}function _consumoFolhaArtigo(){return 0}
  function salvarFormulario(event){event.preventDefault();saved.push({job:document.getElementById('fo_servico_id').value,work:document.getElementById('fo_obra').value,description:document.getElementById('fo_descricao').value,materials:document.getElementById('fo_materiais').value,hours:document.getElementById('fo_horas').value});}
  function fecharModal(){document.getElementById('modalOverlay').classList.remove('open')}function _wsTentarVoltar(){}
  ${['ajustarVisibilidadeCards','_dispositivoEhMobile','_ehPerfilMobile','_montarMenuInferiorMobile','_fecharSecaoAbertaMobile','_abrirGrupoMobile','_voltarMeuDia','criarFolhaDaOS','criarFolhaDaObra','_foEscolherMateriais','renderPlanoConsumoFolha','inicializarAssinatura','_assinaturaAjustarTamanho','ativarAssinatura','_estadoPresencaPessoa','_obraLongaPontoAberto','_obraLongaPontoAbertoQualquer'].map(fn).join('\n')}
- function resetUser(role){usuarioLogado={id:role==='funcionario'?'e':role==='encarregado'?'enc':role==='admin'?'a':role,adminId:role==='admin'?undefined:'a',role,nome:'João Silva'};ajustarVisibilidadeCards();_montarMenuInferiorMobile();window.TGNavigation?.refresh();window.TGTechnician?.refresh();}
+ function resetUser(role){usuarioLogado={id:role==='funcionario'?'e':role==='encarregado'?'enc':role==='admin'?'a':role,adminId:role==='admin'?undefined:'a',role,nome:'João Silva'};document.getElementById('btnLogin').style.display='none';document.getElementById('userDisplay').textContent='João';ajustarVisibilidadeCards();_montarMenuInferiorMobile();window.TGNavigation?.refresh();window.TGTechnician?.refresh();}
  `});
  await page.addScriptTag({url:'https://technician.test/tg-navigation.js'});
  await page.addScriptTag({url:'https://technician.test/tg-supervisor-home.js'});
  await page.addScriptTag({url:'https://technician.test/tg-technician.js'});
  await page.evaluate(()=>resetUser('funcionario'));
- assert.deepEqual(await page.locator('#menuInferiorMobile [data-tgt-nav]').allTextContents(),['Hoje','Trabalhos','Registos','Mais']);
+ assert.deepEqual(await page.locator('#menuInferiorMobile [data-tgt-nav]').allTextContents(),['Hoje','Trabalhos','Obras','Perfil']);
  assert.equal(await page.locator('.tgt-steps').count(),0,'Day design has no intervention timeline');
- await page.locator('[data-tgt-nav=records]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'section:folhas');await page.locator('[data-tgt-nav=home]').click();
- assert.deepEqual(await page.evaluate(()=>TGTechnician.jobs().map(j=>j.id).sort()),['later','mine','w']);
+ await page.locator('.tgt-record-card').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'section:folhas');await page.locator('[data-tgt-nav=home]').click();
+ assert.deepEqual(await page.evaluate(()=>TGTechnician.jobs().map(j=>j.id).sort()),['mine','w']);
  assert(!await page.locator('.tgt-home').innerText().then(s=>s.includes('outra empresa')));
+ assert(!await page.locator('.tgt-home').innerText().then(s=>s.includes('Trabalho de amanhã')));
+ await page.evaluate(()=>{
+  dados.servicos.push(...[
+   {id:'finished',hora:'08:30',descricao:'Verificação já concluída',status:'concluído'},
+   {id:'second',hora:'11:30',descricao:'Reparação de fuga',status:'pendente'},
+   {id:'third',hora:'14:30',descricao:'Manutenção preventiva',status:'pendente'}
+  ].map(job=>({...job,adminId:'a',clienteId:'c',funcionarioId:'e',data:getDataHoje()})));
+  renderizarOMeuDia();
+ });
+ assert.equal(await page.locator('.tgt-today-list .tgt-job[data-tgt-kind=obra]').count(),0,'Active works have a separate menu');
+ assert.equal(await page.locator('.tgt-today-list .tgt-job').count(),4,'All four services are shown, including the completed one, without duplicating their parent work');
+ assert.deepEqual(await page.locator('.tgt-today-list .tgt-job-time').allTextContents(),['08:30','10:00','11:30','14:30']);
+ assert.match(await page.locator('.tgt-job[data-tgt-id=finished]').innerText(),/Concluído/);
+ await page.locator('.tgt-job[data-tgt-id=finished]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'details:finished');
+ await page.evaluate(()=>{window.callCountBefore=calls.length;picarPontoOS('later','entrada')});
+ assert.match(await page.evaluate(()=>calls.at(-1)),/^error:Só podes iniciar/);assert(!await page.evaluate(()=>calls.slice(callCountBefore).includes('os:later:entrada')));
+ await page.evaluate(()=>{dados.obras.push({id:'future-work',adminId:'a',nome:'Obra futura',estado:'ativa',responsaveisIds:['e'],dataInicioPrevista:'2026-10-26'});obraLongaPicarEntrada('future-work')});
+ assert.match(await page.evaluate(()=>calls.at(-1)),/^error:Só podes iniciar/);
+
  assert.equal(await page.locator('.tgt-draft-card').count(),0,'No invented unfinished sheet or report');
  await page.evaluate(()=>{dados.relatoriosEspecialidade=[{id:'own-draft',adminId:'a',servicoId:'mine',tecnicoId:'e',tipo:'RCCTV',rascunho:true},{id:'foreign-draft',adminId:'b',servicoId:'mine',tecnicoId:'e',tipo:'FOREIGN',rascunho:true}];dados.folhasObra=[{id:'own-sheet',adminId:'a',funcionarioId:'e',validada:false},{id:'other-sheet',adminId:'a',funcionarioId:'team'}];renderizarOMeuDia()});
  assert.match(await page.locator('.tgt-draft-card').innerText(),/RCCTV em rascunho/);assert.equal(await page.locator('.tgt-draft-card').count(),1);
@@ -63,6 +82,8 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  await page.locator('.tgt-focus [data-tgt-action="start"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'os:mine:entrada');
  await page.evaluate(()=>{dados.ponto.push({id:'session',adminId:'a',funcionarioId:'e',servicoId:'mine',data:getDataHoje(),entrada:'10:00'});renderizarOMeuDia()});
  await page.locator('.tgt-focus [data-tgt-action="photos"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:fotos');
+ await page.locator('.tgt-focus [data-tgt-action="notes"]').click();assert.match(await page.locator('#modalGenericoCampos').innerText(),/Entrada pela receção/);await page.evaluate(()=>_fecharModalGenerico());
+ await page.locator('.tgt-focus [data-tgt-action="materials"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:materiais');
  await page.locator('.tgt-focus [data-tgt-action="exit"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'os:mine:saida');
  await page.screenshot({path:'/tmp/testetg-technician-active.png',fullPage:true});
  // The wizard uses the real OS and work sheet constructors, original field nodes and save handler.
@@ -97,10 +118,17 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
   assert.equal(await page.locator('.tgt-wizard').count(),width<=900?1:0);
  }
  await page.evaluate(()=>fecharModal());await page.waitForTimeout(20);
- await page.locator('[data-tgt-nav="jobs"]').click();assert.match(await page.locator('#painelGrupoMobileConteudo').innerText(),/Trabalho de amanhã/);
- const callsBefore=await page.evaluate(()=>calls.length);await page.evaluate(()=>{renderizarOMeuDia();document.dispatchEvent(new Event('tg:interface-updated'))});assert.equal(await page.evaluate(()=>calls.length),callsBefore);assert(!await page.locator('#omeudia').isVisible());
+ await page.locator('[data-tgt-nav="jobs"]').click();assert(!await page.locator('#painelGrupoMobileConteudo').innerText().then(s=>s.includes('Trabalho de amanhã')));assert.equal(await page.locator('#painelGrupoMobileConteudo .tgt-job').count(),4);
+ await page.evaluate(()=>{dados.servicos.push({id:'friday',adminId:'a',clienteId:'c',descricao:'Consulta de sexta-feira',funcionarioId:'e',data:'2026-10-23',hora:'15:00',status:'pendente'});TGTechnician.refresh()});
+ assert.equal(await page.locator('.tgt-week-days [role=tab]').count(),7);
+ await page.locator('[data-tgt-day="2026-10-23"]').click();assert.match(await page.locator('.tgt-week-note').innerText(),/Só consulta/);
+ assert.equal(await page.locator('#painelGrupoMobileConteudo [data-tgt-action=start]').count(),0);
+ await page.screenshot({path:'/tmp/testetg-technician-week.png',fullPage:true});await page.locator('[data-tgt-action=weekly-details][data-tgt-id=friday]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'details:friday');
+ await page.evaluate(()=>picarPontoOS('friday','entrada'));assert.match(await page.evaluate(()=>calls.at(-1)),/^error:Só podes iniciar/);
+ assert.equal(await page.evaluate(()=>getDataHoje()),'2026-10-25');
+ const callsBefore=await page.evaluate(()=>calls.length);await page.evaluate(()=>{renderizarOMeuDia();document.dispatchEvent(new Event('tg:interface-updated'))});assert.equal(await page.locator('[data-tgt-day="2026-10-23"]').getAttribute('aria-selected'),'true');assert.equal(await page.evaluate(()=>calls.length),callsBefore);assert(!await page.locator('#omeudia').isVisible());
  await page.locator('[data-tgt-nav="more"]').click();await page.locator('[data-tgt-action="profile"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'profile');
- assert(await page.locator('[data-tgt-card="folhas"]').count());
+ assert(await page.locator('[data-tgt-action="sheets"]').count());
  // Manager roles and all desktop menus retain their earlier navigation.
  for(const role of ['admin','subadmin','vendedor','vigilante','cliente']){await page.evaluate(role=>resetUser(role),role);assert.equal(await page.locator('[data-tgt-nav]').count(),0,role);assert.equal(await page.evaluate(()=>TGTechnician.enabled()),false);}
  await page.evaluate(()=>{layout='aurora';resetUser('encarregado')});assert.equal(await page.evaluate(()=>TGTechnician.enabled()),true);assert.equal(await page.evaluate(()=>_layoutUsaSidebarShell()),false);
@@ -110,8 +138,17 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  await page.evaluate(()=>{licensed=true;moduleFlags.Armazem=false;resetUser('funcionario')});assert(!await page.evaluate(()=>TGTechnician.jobs().some(j=>j.kind==='obra')));
  await page.evaluate(()=>{moduleFlags.Armazem=true;isExpress=true;resetUser('funcionario')});assert.equal(await page.locator('[data-tgt-nav]').count(),0,'Express keeps its existing no-clock workflow');
  await page.evaluate(()=>{isExpress=false;layout='cards';resetUser('funcionario');dados.ponto=dados.ponto.filter(p=>!p.servicoId);dados.obraPontoLonga=[{id:'old',adminId:'a',funcionarioId:'e',obraId:'w',data:'2026-10-24',entrada:'23:50'}];renderizarOMeuDia()});
- assert.match(await page.locator('.tgt-focus').innerText(),/23:50/);
+ assert.equal(await page.locator('.tgt-home .tgt-focus[data-tgt-kind=obra]').count(),0);
+ await page.locator('[data-tgt-nav=works]').click();assert.match(await page.locator('#painelGrupoMobileConteudo .tgt-focus').innerText(),/23:50/);await page.screenshot({path:'/tmp/testetg-technician-works.png',fullPage:true});
  assert.equal(await page.evaluate(()=>_obraLongaPontoAberto('w')?.id),'old','Native exit lookup can reach the clock highlighted after midnight');
+ await page.evaluate(()=>{dados.ponto.push({id:'old-os-clock',adminId:'a',funcionarioId:'e',servicoId:'friday',data:'2026-10-23',entrada:'23:55'});_voltarMeuDia()});
+ assert(!await page.locator('.tgt-home .tgt-today-list').innerText().then(text=>text.includes('Consulta de sexta-feira')));
+ assert(!await page.locator('.tgt-home .tgt-focus').innerText().then(text=>text.includes('Consulta de sexta-feira')));
+ await page.locator('[data-tgt-nav=jobs]').click();assert.match(await page.locator('#painelGrupoMobileConteudo .tgt-focus').innerText(),/23:55/);
+ assert.equal(await page.locator('#painelGrupoMobileConteudo .tgt-focus [data-tgt-action=start]').count(),0,'Prior-day clock exposes exit only');
+ await page.locator('#painelGrupoMobileConteudo .tgt-focus [data-tgt-action=exit]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'os:friday:saida');
+ await page.evaluate(()=>{dados.ponto=dados.ponto.filter(p=>p.id!=='old-os-clock')});
+ await page.evaluate(()=>{abrirSecao('agenda-obras')});assert.match(await page.locator('#painelGrupoMobileConteudo').innerText(),/Agenda da semana/);await page.locator('[data-tgt-nav=home]').click();
  // Responsive light/dark layouts and focus size in actual native sheet fields.
  for(const width of [320,390,768]){
   await page.setViewportSize({width,height:1000});await page.waitForTimeout(300);
@@ -122,7 +159,7 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  }
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(300);await page.evaluate(()=>document.body.classList.remove('dark-mode'));await page.screenshot({path:'/tmp/testetg-technician-home.png',fullPage:true});
  await page.evaluate(()=>criarFolhaDaOS('mine'));assert.equal(await page.locator('#fo_descricao').evaluate(el=>getComputedStyle(el).fontSize),'16px');
- assert.deepEqual(errors,[]);console.log('PASS: native action routing; self/team/tenant/license scopes; real sheet constructors, step validation, materials, submit delegation; no lost input or signature on back/refresh/resize; management and Express fallbacks; 320/390/768px light/dark.');
+ assert.deepEqual(errors,[]);console.log('PASS: four scheduled services including completed; today-only clock guards; separate active works and interactive read-only weekly agenda and notes; native action routing; self/team/tenant/license scopes; real sheet constructors, step validation, materials, submit delegation; no lost input or signature on back/refresh/resize; management and Express fallbacks; 320/390/768px light/dark.');
  await context.close();
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

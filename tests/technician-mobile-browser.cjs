@@ -4,14 +4,14 @@ const main=fs.readFileSync('app-principal.js','utf8'),doc=new JSDOM(fs.readFileS
 const fn=name=>{const m=main.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'));assert(m,name);return m[0];};
 for(const file of ['index.html','login.html']){
  const html=fs.readFileSync(file,'utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const resource of ['tg-technician.js?v=1.2.0-teste','tg-technician.css?v=1.2.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
+ for(const resource of ['tg-technician.js?v=1.2.1-teste','tg-technician.css?v=1.2.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
  assert(html.indexOf('tg-technician.js?v=')>html.indexOf('tg-navigation.js?v='));
 }
 const fixture=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tg-navigation.css"><link rel="stylesheet" href="tg-technician.css"></head><body>
 ${doc.querySelector('header.header').outerHTML}<aside id="tgSidebar"><nav id="tgSidebarNav"></nav></aside>
 ${doc.querySelector('#cardsGrid').outerHTML}<div id="tgHome"><div id="homeAgendaWrap"></div></div><nav id="menuInferiorMobile"></nav>
 ${['servicos','ponto','folhas','agenda-obras'].map(id=>`<section class="section-container" id="secao-${id}"><div class="section-header"><h2>${id}</h2></div></section>`).join('')}
-${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGenericoOverlay').outerHTML}</body></html>`;
+${doc.querySelector('#secao-pedidos').outerHTML}${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGenericoOverlay').outerHTML}</body></html>`;
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_BINARY,headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});
  try{
@@ -129,6 +129,11 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  const callsBefore=await page.evaluate(()=>calls.length);await page.evaluate(()=>{renderizarOMeuDia();document.dispatchEvent(new Event('tg:interface-updated'))});assert.equal(await page.locator('[data-tgt-day="2026-10-23"]').getAttribute('aria-selected'),'true');assert.equal(await page.evaluate(()=>calls.length),callsBefore);assert(!await page.locator('#omeudia').isVisible());
  await page.locator('[data-tgt-nav="more"]').click();await page.locator('[data-tgt-action="profile"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'profile');
  assert(await page.locator('[data-tgt-action="sheets"]').count());
+ await page.locator('[data-tgt-action="leave"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'section:pedidos');
+ assert(await page.locator('#secao-pedidos').getByRole('button',{name:'Marcar Férias',exact:true}).isVisible());
+ assert(await page.locator('#secao-pedidos').getByRole('button',{name:'Marcar Falta',exact:true}).isVisible());
+ assert.equal(await page.locator('[data-tgt-nav=more]').getAttribute('aria-current'),'page');
+ await page.locator('[data-tgt-nav=home]').click();
  // Manager roles and all desktop menus retain their earlier navigation.
  for(const role of ['admin','subadmin','vendedor','vigilante','cliente']){await page.evaluate(role=>resetUser(role),role);assert.equal(await page.locator('[data-tgt-nav]').count(),0,role);assert.equal(await page.evaluate(()=>TGTechnician.enabled()),false);}
  await page.evaluate(()=>{layout='aurora';resetUser('encarregado')});assert.equal(await page.evaluate(()=>TGTechnician.enabled()),true);assert.equal(await page.evaluate(()=>_layoutUsaSidebarShell()),false);

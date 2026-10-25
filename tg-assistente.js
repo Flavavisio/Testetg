@@ -148,12 +148,11 @@
   }
   function syncDock() {
     if (typeof document === 'undefined' || !document.body) return;
-    const docked = !!document.querySelector('.section-container.active');
+    const docked = !root.hidden && !!document.querySelector('.section-container.active');
     if (root.classList.contains('tg-docked') !== docked) root.classList.toggle('tg-docked', docked);
     if (document.body.classList.contains('tg-assistant-docked') !== docked) document.body.classList.toggle('tg-assistant-docked', docked);
   }
   function sync() {
-    syncDock();
     const u = user();
     const key = u ? [u.id, u.adminId, u.tenant_id, u.role].join(':') : '';
     const kiosk = typeof _quiosqueDeveEstarAtivo === 'function' && _quiosqueDeveEstarAtivo();
@@ -162,7 +161,8 @@
       toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Abrir assistente Teco');
       clearTimeout(replyTimer); clearTimeout(hintTimer); lastContext=''; lastAlertKey=''; mutedUntil=0; lastHintAt=0; hint.hidden=true; badge.hidden=true; root.querySelector('.tg-snooze').textContent='Silenciar 1 h'; input.disabled=false; root.querySelector('.tg-form button').disabled=false; input.value = ''; minimized = false; root.classList.remove('tg-compact'); welcome();
     }
-    root.hidden = !u || u.role === 'cliente' || !!kiosk;
+    root.hidden = !u || ['cliente', 'funcionario'].includes(u.role) || !!kiosk;
+    syncDock();
     if (root.hidden) { input.disabled=false;root.querySelector('.tg-form button').disabled=false;panel.hidden = true; opened = false; root.classList.remove('tg-is-open'); toggle.setAttribute('aria-expanded', 'false'); clearTimeout(imageTimer); clearTimeout(stateTimer); clearTimeout(replyTimer); hint.hidden=true; picture.removeAttribute('src'); }
     else { if (!picture.getAttribute('src')) animate(); if (opened) quickLinks(); refreshAlerts(); }
   }

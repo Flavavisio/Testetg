@@ -124,3 +124,58 @@ body.dark-mode .tgt-draft-card small{color:#f1d18e}
 .tgt-error{color:#b42318;background:#fff0eb;border-radius:8px;padding:12px;font-size:14px}
 .tgt-active #modalOverlay input:not([type=checkbox]):not([type=radio]),.tgt-active #modalOverlay select,.tgt-active #modalOverlay textarea{font-size:16px!important;transition-property:background-color,border-color,color,box-shadow!important}
 @media(max-width:400px){.tgt-focus{padding:15px 12px}.tgt-steps>li{gap:9px}.tgt-clock>.tgt-button{flex:0 0 auto}.tgt-clock>span{min-width:156px}.tgt-focus h3{font-size:18px}}
+
+/* The native request rows become phone cards, keeping their fields and action handlers. */
+.tgt-active:has(#secao-pedidos.active) #cardsGrid{padding-bottom:0!important;margin-bottom:12px!important}
+.tgt-active #secao-pedidos{background:transparent;box-shadow:none;border:0;padding:0;margin:0 0 90px;width:100%;min-width:0;box-sizing:border-box}
+.tgt-active #secao-pedidos .section-header{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;background:transparent;border:0;box-shadow:none;padding:0;margin:0 0 20px;color:var(--tgt-ink)}
+.tgt-active #secao-pedidos .section-header>.btn-voltar-mobile{grid-row:1;justify-self:start;margin:0!important;min-height:44px;background:var(--tgt-surface);color:var(--tgt-blue);border:1px solid var(--tgt-line)}
+.tgt-active #secao-pedidos .section-header>h2{grid-row:2;margin:0;font-size:23px;color:var(--tgt-ink);text-align:left}
+.tgt-active #secao-pedidos .section-header>div{grid-row:3;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:100%;min-width:0}
+.tgt-active #secao-pedidos .section-header>div>button{min-height:52px;margin:0;padding:12px 8px;font-size:14px;white-space:normal;justify-content:center;line-height:1.4;border-radius:12px}
+.tgt-active #secao-pedidos .section-header>div>button:first-child{background:var(--tgt-blue);color:var(--tgt-on-blue);border:1px solid var(--tgt-blue)}
+.tgt-active #secao-pedidos .section-header>div>button:last-child{background:var(--tgt-surface);color:var(--tgt-blue);border:1px solid var(--tgt-line)}
+.tgt-active #secao-pedidos .table-wrapper{overflow:visible;background:transparent;border:0;box-shadow:none;border-radius:0;max-width:100%;min-width:0}
+.tgt-active #secao-pedidos table,.tgt-active #secao-pedidos tbody{display:block!important;width:100%!important;min-width:0!important;max-width:100%;border:0;background:transparent;box-sizing:border-box}
+.tgt-active #secao-pedidos thead{position:absolute!important;width:1px!important;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tgt-active #tabelaPedidosFunc>tr{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 12px;width:100%;min-width:0;margin:0 0 14px;padding:17px;background:var(--tgt-surface)!important;color:var(--tgt-ink);border:1px solid var(--tgt-line);border-radius:14px;box-sizing:border-box;box-shadow:none}
+.tgt-active #tabelaPedidosFunc>tr>td{display:block;position:static!important;inset:auto!important;width:auto!important;min-width:0!important;max-width:100%;padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;white-space:normal!important;overflow-wrap:anywhere;text-align:left!important;color:var(--tgt-ink);font-size:14px;box-sizing:border-box}
+.tgt-active #tabelaPedidosFunc>tr>td:before{display:block;font-size:11px;font-weight:600;color:var(--tgt-muted);margin-bottom:5px}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(1){display:none}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(2){grid-column:1;grid-row:1}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(7){grid-column:2;grid-row:1;justify-self:end}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(3){grid-column:1;grid-row:2}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(4){grid-column:2;grid-row:2}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(3):before{content:'Data de início'}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(4):before{content:'Data de fim'}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(5){grid-column:1/-1;white-space:pre-wrap!important}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(5):before{content:'Observação'}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(6){grid-column:1/-1}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(6):before{content:'Documentos'}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(6):not(:has(a)){display:none}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(8){grid-column:1/-1;padding-top:12px!important;border-top:1px solid var(--tgt-line)!important}
+.tgt-active #tabelaPedidosFunc>tr>td:nth-child(8):not(:has(button)){display:none}
+.tgt-active #tabelaPedidosFunc .badge,.tgt-active #tabelaPedidosFunc [class*="badge-"]{display:inline-block;font-size:12px;line-height:1.4;white-space:normal;max-width:100%;padding:5px 8px;box-sizing:border-box}
+.tgt-active #tabelaPedidosFunc .acoes{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
+.tgt-active #tabelaPedidosFunc .acoes button{min-width:44px;min-height:44px;margin:0;padding:10px 12px;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.tgt-active #tabelaPedidosFunc .acoes button[title="Editar"]:after{content:'Editar'}
+.tgt-active #tabelaPedidosFunc .acoes button[title="Editar"]{color:var(--tgt-blue);background:var(--tgt-surface);border-color:var(--tgt-line)}
+.tgt-active #tabelaPedidosFunc .acoes button[title="Eliminar"]:after{content:'Eliminar'}
+.tgt-active #tabelaPedidosFunc .anexo-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 0;font-size:14px;color:var(--tgt-blue);overflow-wrap:anywhere}
+.tgt-active #emptyPedidosFunc{background:var(--tgt-surface);border:1px solid var(--tgt-line);border-radius:14px;padding:24px 16px;color:var(--tgt-muted);font-size:14px}
+
+.tgt-active #modalPedidoOverlay{padding:12px;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain}
+.tgt-active #modalPedidoOverlay .modal{width:100%;min-width:0;max-width:540px;max-height:calc(100dvh - 24px);padding:20px;box-sizing:border-box;overflow-y:auto;background:var(--tgt-surface);color:var(--tgt-ink);border:1px solid var(--tgt-line);border-radius:18px}
+.tgt-active #modalPedidoOverlay h3{color:var(--tgt-ink);font-size:20px;line-height:1.35;overflow-wrap:anywhere;margin-right:32px}
+.tgt-active #modalPedidoOverlay .form-group{min-width:0;margin-bottom:16px}
+.tgt-active #modalPedidoOverlay label{display:block;font-size:14px;line-height:1.45;color:var(--tgt-ink);text-align:left}
+.tgt-active #modalPedidoOverlay input:not([type=hidden]),.tgt-active #modalPedidoOverlay textarea,.tgt-active #modalPedidoOverlay select{display:block;width:100%;min-width:0!important;min-inline-size:0;max-width:100%;min-height:48px;font-size:16px!important;box-sizing:border-box;color:var(--tgt-ink);background:var(--tgt-surface);border-color:var(--tgt-line);transition-property:background-color,border-color,color,box-shadow!important}
+.tgt-active #modalPedidoOverlay textarea{min-height:110px;resize:vertical}
+.tgt-active #modalPedidoOverlay input[type=file]{overflow:hidden;font-size:14px!important;padding:10px 8px}
+.tgt-active #modalPedidoOverlay .form-group>div:has(#ped_btn_dia_inteiro){flex-wrap:wrap}
+.tgt-active #modalPedidoOverlay #ped_btn_dia_inteiro,.tgt-active #modalPedidoOverlay #ped_btn_horas{min-height:46px;min-width:115px;font-size:13px;white-space:normal;line-height:1.4;padding:10px 8px}
+.tgt-active #ped_horas_bloco{flex-wrap:wrap}
+.tgt-active #ped_horas_bloco>.form-group{min-width:110px}
+.tgt-active #modalPedidoOverlay .modal-actions{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;z-index:2;background:var(--tgt-surface);padding:12px 0 0;margin-top:18px;border-top:1px solid var(--tgt-line)}
+.tgt-active #modalPedidoOverlay .modal-actions button{min-width:0;min-height:48px;margin:0;font-size:14px;white-space:normal;justify-content:center;padding:10px 8px}
+@media(max-width:360px){.tgt-active #ped_horas_bloco>.form-group{flex-basis:100%!important}}

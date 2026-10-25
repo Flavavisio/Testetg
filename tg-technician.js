@@ -67,7 +67,7 @@
         nav.classList.add('tgt-nav');nav.style.display='grid';document.body.classList.add('tem-menu-inferior');
         if (!nav.querySelector('[data-tgt-nav]')) nav.innerHTML=[['home','house','Hoje'],['jobs','calendar-week','Trabalhos'],['works','helmet-safety','Obras'],['more','user','Perfil']].map(([key,ico,text])=>`<button type="button" class="menu-inf-item" data-tgt-nav="${key}"${key==='home'?' id="menuInfHome"':''}>${icon(ico)}<span>${text}</span></button>`).join('');
         document.body.classList.toggle('tgt-profile',view==='more');
-        mark(view==='home'?'home':view==='jobs'?'jobs':view==='works'?'works':view==='records'?'records':view==='more'||view==='group'?'more':'');
+        mark(view==='home'?'home':view==='jobs'?'jobs':view==='works'?'works':view==='records'?'records':['more','group','leave'].includes(view)?'more':'');
     }
     function prepareHome() {
         const grid=$('cardsGrid'),home=$('tgHome'),dia=$('omeudia');
@@ -181,7 +181,7 @@
     function more() {
         view='more';const content=panel('O meu perfil');if(!content)return;
         const actions=document.createElement('div');actions.className='tgt-shortcuts';
-        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
+        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('pedidos')?button(icon('umbrella-beach')+' Férias e faltas','leave'):'')+(permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
         if(permitted('ferramentas')){const b=document.createElement('button');b.type='button';b.className='tgt-button';b.dataset.tgtCard='ferramentas';b.textContent='Equipamentos e QR';actions.append(b);}
         content.append(actions);menu();
     }
@@ -288,7 +288,7 @@
     wrap('_montarMenuInferiorMobile',function(original,args){const result=original.apply(this,args);if(enabled()){document.body.classList.add('tgt-active');menu();}return result;});
     wrap('_voltarMeuDia',function(original,args){if(enabled())return home();return original.apply(this,args);});
     wrap('_abrirGrupoMobile',function(original,args){if(enabled()){view='group';prepareHome();}const result=original.apply(this,args);if(enabled())menu();return result;});
-    wrap('abrirSecao',function(original,args){if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':'section';const result=original.apply(this,args);if(enabled())menu();return result;});
+    wrap('abrirSecao',function(original,args){if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':args[0]==='pedidos'?'leave':'section';const result=original.apply(this,args);if(enabled())menu();return result;});
     for(const name of ['criarFolhaDaOS','criarFolhaDaObra'])wrap(name,function(original,args){wizards.forEach(removeWizard);const result=original.apply(this,args);installWizard();return result;});
     wrap('abrirModal',function(original,args){wizards.forEach(removeWizard);return original.apply(this,args);});
     document.addEventListener('submit',event=>{
@@ -311,6 +311,7 @@
         switch(control.dataset.tgtAction){
             case'jobs':weekDay=today();return navigate(workList);case'works':return navigate(worksList);case'profile':return abrirEditarPerfil();case'point':if(permitted('ponto'))abrirSecao('ponto');return;
             case'sheets':if(permitted('folhas'))abrirSecao('folhas');return;
+            case'leave':if(permitted('pedidos'))return navigate(()=>abrirSecao('pedidos'));return;
             case'clock':return picarPonto();
             case'wizard-back':if(wizard)setStep(wizard,Math.max(0,wizard.step-1));return;
             case'wizard-next':if(wizard&&validate(wizard,wizard.step))setStep(wizard,Math.min(2,wizard.step+1));return;

@@ -4,7 +4,7 @@ const main=fs.readFileSync('app-principal.js','utf8'),doc=new JSDOM(fs.readFileS
 const fn=name=>{const m=main.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'));assert(m,name);return m[0];};
 for(const file of ['index.html','login.html']){
  const html=fs.readFileSync(file,'utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const resource of ['tg-technician.js?v=1.0.0-teste','tg-technician.css?v=1.0.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
+ for(const resource of ['tg-technician.js?v=1.1.0-teste','tg-technician.css?v=1.1.0-teste']){assert(html.includes(resource));assert(sw.includes(resource));}
  assert(html.indexOf('tg-technician.js?v=')>html.indexOf('tg-navigation.js?v='));
 }
 const fixture=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tg-navigation.css"><link rel="stylesheet" href="tg-technician.css"></head><body>
@@ -43,9 +43,16 @@ ${doc.querySelector('#modalOverlay').outerHTML}${doc.querySelector('#modalGeneri
  await page.addScriptTag({url:'https://technician.test/tg-supervisor-home.js'});
  await page.addScriptTag({url:'https://technician.test/tg-technician.js'});
  await page.evaluate(()=>resetUser('funcionario'));
- assert.deepEqual(await page.locator('#menuInferiorMobile [data-tgt-nav]').allTextContents(),['Hoje','Trabalhos','Mais']);
+ assert.deepEqual(await page.locator('#menuInferiorMobile [data-tgt-nav]').allTextContents(),['Hoje','Trabalhos','Registos','Mais']);
+ assert.equal(await page.locator('.tgt-steps').count(),0,'Day design has no intervention timeline');
+ await page.locator('[data-tgt-nav=records]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'section:folhas');await page.locator('[data-tgt-nav=home]').click();
  assert.deepEqual(await page.evaluate(()=>TGTechnician.jobs().map(j=>j.id).sort()),['later','mine','w']);
  assert(!await page.locator('.tgt-home').innerText().then(s=>s.includes('outra empresa')));
+ assert.equal(await page.locator('.tgt-draft-card').count(),0,'No invented unfinished sheet or report');
+ await page.evaluate(()=>{dados.relatoriosEspecialidade=[{id:'own-draft',adminId:'a',servicoId:'mine',tecnicoId:'e',tipo:'RCCTV',rascunho:true},{id:'foreign-draft',adminId:'b',servicoId:'mine',tecnicoId:'e',tipo:'FOREIGN',rascunho:true}];dados.folhasObra=[{id:'own-sheet',adminId:'a',funcionarioId:'e',validada:false},{id:'other-sheet',adminId:'a',funcionarioId:'team'}];renderizarOMeuDia()});
+ assert.match(await page.locator('.tgt-draft-card').innerText(),/RCCTV em rascunho/);assert.equal(await page.locator('.tgt-draft-card').count(),1);
+ assert.match(await page.locator('.tgt-record-card').innerText(),/1 registo teu/);
+ await page.locator('.tgt-draft-card').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:relatorios');
  // A technician first clocks into the day; no optimistic job status is invented.
  await page.locator('.tgt-focus [data-tgt-action="start"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'general-clock');
  assert.equal(await page.evaluate(()=>dados.servicos[0].status),'pendente');

@@ -56,6 +56,7 @@
         return !!pause && (job.kind==='os'?pause.tipo==='os'&&pause.servicoId===job.id:pause.tipo==='obra'&&pause.obraId===job.id);
     }
     const express = () => expressAtivo(adminDoUtilizador());
+    const attendance = () => pontoAssiduidadeAtivo();
     function mark(name) {
         document.querySelectorAll('#menuInferiorMobile [data-tgt-nav]').forEach(el => {
             el.classList.toggle('ativo',el.dataset.tgtNav===name);
@@ -101,8 +102,8 @@
         const mapLink=map && /^https:\/\//i.test(map.url||'')?`<a class="tgt-button" href="${esc(map.url)}" target="_blank" rel="noopener"${job.kind==='os'?` data-tgt-travel="${esc(job.id)}"`:''}>${icon('route')} Navegar</a>`:'';
         const resume=resumingLunch(job);
         const status=open?'EM CURSO':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
-        const startLabel=open?'Registar saída':resume?'Regressar à intervenção':!clock?'Picar entrada no dia':'Iniciar intervenção';
-        const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';
+        const startLabel=open?'Registar saída':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
+        const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):attendance()&&!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';
         return `<section class="tgt-focus" aria-label="Intervenção em destaque"><div class="tgt-focus-head"><span class="tgt-badge">${status}${job.hour?' · '+esc(job.hour):''}</span><span>${esc(label(job))}</span></div><h3>${esc(job.title)}</h3><p class="tgt-client">${esc(job.client)}</p>
             ${job.address?`<div class="tgt-location">${icon('location-dot')}<span>${esc(job.address)}</span></div>`:''}
             ${job.row.observacoes?`<div class="tgt-access">${icon('circle-info')}<p>${esc(job.row.observacoes)}</p></div>`:''}
@@ -132,7 +133,7 @@
         const general=personalClock();
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
-        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p></header>${!express()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${button(general?'Ver ponto':'Picar entrada',general?'point':'clock')}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
+        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p></header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${button(general?'Ver ponto':'Picar entrada',general?'point':'clock')}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
         const finalHTML=oldSession?html.replace('</header>','</header>'+button('Entrada anterior por encerrar · Abrir Trabalhos','jobs')):html;
         if(dia.dataset.tgtHtml!==finalHTML){dia.innerHTML=finalHTML;dia.dataset.tgtHtml=finalHTML;}
         dia.style.display=view==='home'&&!document.querySelector('.section-container.active')?'block':'none';
@@ -181,7 +182,7 @@
     function more() {
         view='more';const content=panel('O meu perfil');if(!content)return;
         const actions=document.createElement('div');actions.className='tgt-shortcuts';
-        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('pedidos')?button(icon('umbrella-beach')+' Férias e faltas','leave'):'')+(permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
+        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('pedidos')?button(icon('umbrella-beach')+' Férias e faltas','leave'):'')+(attendance()&&permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
         if(permitted('ferramentas')){const b=document.createElement('button');b.type='button';b.className='tgt-button';b.dataset.tgtCard='ferramentas';b.textContent='Equipamentos e QR';actions.append(b);}
         content.append(actions);menu();
     }
@@ -324,7 +325,7 @@
             case'notes':return notes(job);
             case'reports':return details(job,'relatorios');
             case'materials':return details(job,'materiais');
-            case'start':if(completed(job))return;if(express()&&job.kind==='os')return criarFolhaDaOS(job.id);if(!personalClock()&&!resumingLunch(job))return picarPonto();if(job.open)return;return job.kind==='os'?picarPontoOS(job.id,'entrada'):obraLongaPicarEntrada(job.id);
+            case'start':if(completed(job))return;if(express()&&job.kind==='os')return criarFolhaDaOS(job.id);if(attendance()&&!personalClock()&&!resumingLunch(job))return picarPonto();if(job.open)return;return job.kind==='os'?picarPontoOS(job.id,'entrada'):obraLongaPicarEntrada(job.id);
             case'exit':if(!job.open)return;return job.kind==='os'?picarPontoOS(job.id,'saida'):obraLongaPicarSaida(job.id);
         }
     });

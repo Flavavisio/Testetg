@@ -262,7 +262,7 @@
         const M = {
             administradores: {
                 tabela: 'administradores',
-                from: r => ({ id: r.id, nome: r.nome, email: r.email, empresa: r.empresa || '', nif: r.nif || null, logo: r.logo || null, licencaFeedback: r.licenca_feedback || null, contratosPlano: r.contratos_plano || null, contratosExpiracao: isoToMs(r.contratos_expiracao), frotaPlano: r.frota_plano || null, frotaExpiracao: isoToMs(r.frota_expiracao), armazemPlano: r.armazem_plano || null, armazemExpiracao: isoToMs(r.armazem_expiracao), portalPlano: r.portal_plano || null, portalExpiracao: isoToMs(r.portal_expiracao), crmPlano: r.crm_plano || null, crmExpiracao: isoToMs(r.crm_expiracao), assistPlano: r.assist_plano || null, assistExpiracao: isoToMs(r.assist_expiracao), erpPlano: r.erp_plano || null, erpExpiracao: isoToMs(r.erp_expiracao), notificacoesPlano: r.notificacoes_plano || null, notificacoesExpiracao: isoToMs(r.notificacoes_expiracao), dadosBancarios: r.dados_bancarios || null, integracaoFaturacao: r.integracao_faturacao || null, ativo: r.ativo, mudarSenha: r.mudar_senha === true, ultimoLogin: isoToMs(r.ultimo_login), ultimaAtividade: isoToMs(r.ultima_atividade), mostrarEstadoOnline: r.mostrar_estado_online === true, layout: r.layout || null, tiposEquipamento: r.tipos_equipamento || [], logo: r.logo, notificarAprovacao: r.notificar_aprovacao === true, nomeFiscal: r.nome_fiscal || null, numeroRegistoPrevio: r.numero_registo_previo || null, dataRegistoPrevio: r.data_registo_previo || null, numeroAnepc: r.numero_anepc || null, dataAnepc: r.data_anepc || null, anepcValidade: r.anepc_validade || null, registoPrevioValidade: r.registo_previo_validade || null, corCorporativa: r.cor_corporativa || null, favoritos: Array.isArray(r.favoritos) ? r.favoritos : [], ivaPeriodicidade: r.iva_periodicidade || 'mensal', irsPeriodicidade: r.irs_periodicidade || 'semestral', painelTvAtivo: r.painel_tv_ativo === true, descricoesRapidasOS: Array.isArray(r.descricoes_rapidas_os) ? r.descricoes_rapidas_os : ['Instalação', 'Manutenção', 'Visita', 'Formação'], horaEntradaHabitual: r.hora_entrada_habitual || '09:00', toleranciaAtrasoMin: r.tolerancia_atraso_min != null ? r.tolerancia_atraso_min : 15, certificadoraLogo: r.certificadora_logo || null, ehDistribuidor: r.eh_distribuidor === true, distribuidorDesconto: r.distribuidor_desconto != null ? Number(r.distribuidor_desconto) : null, distribuidorId: r.distribuidor_id || null, precoDistribuidorCobrado: r.preco_distribuidor_cobrado != null ? Number(r.preco_distribuidor_cobrado) : null, distribuidorPagamentoPrazo: isoToMs(r.distribuidor_pagamento_prazo), precoFundador: r.preco_fundador === true, obrasAvancadoAtivo: r.obras_avancado_ativo === true, expressAtivo: r.express_ativo === true, obrasChecklistItens: Array.isArray(r.obras_checklist_itens) ? r.obras_checklist_itens : [], checklistEntradaItens: Array.isArray(r.checklist_entrada_itens) ? r.checklist_entrada_itens : [], osModoWizard: r.os_modo_wizard === true, contratoModoWizard: r.contrato_modo_wizard === true, kmPontoGeralAtivo: r.km_ponto_geral_ativo === true, kmPorOsAtivo: r.km_por_os_ativo === true, segurancaAtivo: r.seguranca_ativo === true, segurosAtivo: r.seguros_ativo === true, shstAtivo: r.shst_ativo === true, materiaisEntregaAtivo: r.materiais_entrega_ativo === true, packAtual: r.pack_atual || null, packEscalao: r.pack_escalao || null, packBlocos: r.pack_blocos || 0, areasNegocio: Array.isArray(r.areas_negocio) ? r.areas_negocio : null, onboardingComoTrabalha: Array.isArray(r.onboarding_como_trabalha) ? r.onboarding_como_trabalha : [], modulosAtivos: Array.isArray(r.modulos_ativos) ? r.modulos_ativos : null, onboardingAtividadeConcluido: r.onboarding_atividade_concluido === true, lembretePagamentoEm: isoToMs(r.lembrete_pagamento_em), concelho: r.concelho || null, contratosDemoDias: r.contratos_demo_dias || null, frotaDemoDias: r.frota_demo_dias || null, armazemDemoDias: r.armazem_demo_dias || null, crmDemoDias: r.crm_demo_dias || null, erpDemoDias: r.erp_demo_dias || null, rondasPlano: r.rondas_plano || null, rondasExpiracao: isoToMs(r.rondas_expiracao), rondasDemoDias: r.rondas_demo_dias || null, usoSecoes: r.uso_secoes ? (typeof r.uso_secoes === 'string' ? JSON.parse(r.uso_secoes) : r.uso_secoes) : {}, usoSecoesUltima: isoToMs(r.uso_secoes_ultima), ultimaSincronizacaoMoloniArtigos: isoToMs(r.ultima_sincronizacao_moloni_artigos), licencaFaseAvisada: r.licenca_fase_avisada || null, dataCriacao: isoToMs(r.data_criacao) }),
+                from: r => ({ testePontoAssiduidadeAtivo: r.teste_tg_ponto_assiduidade_ativo !== false, id: r.id, nome: r.nome, email: r.email, empresa: r.empresa || '', nif: r.nif || null, logo: r.logo || null, licencaFeedback: r.licenca_feedback || null, contratosPlano: r.contratos_plano || null, contratosExpiracao: isoToMs(r.contratos_expiracao), frotaPlano: r.frota_plano || null, frotaExpiracao: isoToMs(r.frota_expiracao), armazemPlano: r.armazem_plano || null, armazemExpiracao: isoToMs(r.armazem_expiracao), portalPlano: r.portal_plano || null, portalExpiracao: isoToMs(r.portal_expiracao), crmPlano: r.crm_plano || null, crmExpiracao: isoToMs(r.crm_expiracao), assistPlano: r.assist_plano || null, assistExpiracao: isoToMs(r.assist_expiracao), erpPlano: r.erp_plano || null, erpExpiracao: isoToMs(r.erp_expiracao), notificacoesPlano: r.notificacoes_plano || null, notificacoesExpiracao: isoToMs(r.notificacoes_expiracao), dadosBancarios: r.dados_bancarios || null, integracaoFaturacao: r.integracao_faturacao || null, ativo: r.ativo, mudarSenha: r.mudar_senha === true, ultimoLogin: isoToMs(r.ultimo_login), ultimaAtividade: isoToMs(r.ultima_atividade), mostrarEstadoOnline: r.mostrar_estado_online === true, layout: r.layout || null, tiposEquipamento: r.tipos_equipamento || [], logo: r.logo, notificarAprovacao: r.notificar_aprovacao === true, nomeFiscal: r.nome_fiscal || null, numeroRegistoPrevio: r.numero_registo_previo || null, dataRegistoPrevio: r.data_registo_previo || null, numeroAnepc: r.numero_anepc || null, dataAnepc: r.data_anepc || null, anepcValidade: r.anepc_validade || null, registoPrevioValidade: r.registo_previo_validade || null, corCorporativa: r.cor_corporativa || null, favoritos: Array.isArray(r.favoritos) ? r.favoritos : [], ivaPeriodicidade: r.iva_periodicidade || 'mensal', irsPeriodicidade: r.irs_periodicidade || 'semestral', painelTvAtivo: r.painel_tv_ativo === true, descricoesRapidasOS: Array.isArray(r.descricoes_rapidas_os) ? r.descricoes_rapidas_os : ['Instalação', 'Manutenção', 'Visita', 'Formação'], horaEntradaHabitual: r.hora_entrada_habitual || '09:00', toleranciaAtrasoMin: r.tolerancia_atraso_min != null ? r.tolerancia_atraso_min : 15, certificadoraLogo: r.certificadora_logo || null, ehDistribuidor: r.eh_distribuidor === true, distribuidorDesconto: r.distribuidor_desconto != null ? Number(r.distribuidor_desconto) : null, distribuidorId: r.distribuidor_id || null, precoDistribuidorCobrado: r.preco_distribuidor_cobrado != null ? Number(r.preco_distribuidor_cobrado) : null, distribuidorPagamentoPrazo: isoToMs(r.distribuidor_pagamento_prazo), precoFundador: r.preco_fundador === true, obrasAvancadoAtivo: r.obras_avancado_ativo === true, expressAtivo: r.express_ativo === true, obrasChecklistItens: Array.isArray(r.obras_checklist_itens) ? r.obras_checklist_itens : [], checklistEntradaItens: Array.isArray(r.checklist_entrada_itens) ? r.checklist_entrada_itens : [], osModoWizard: r.os_modo_wizard === true, contratoModoWizard: r.contrato_modo_wizard === true, kmPontoGeralAtivo: r.km_ponto_geral_ativo === true, kmPorOsAtivo: r.km_por_os_ativo === true, segurancaAtivo: r.seguranca_ativo === true, segurosAtivo: r.seguros_ativo === true, shstAtivo: r.shst_ativo === true, materiaisEntregaAtivo: r.materiais_entrega_ativo === true, packAtual: r.pack_atual || null, packEscalao: r.pack_escalao || null, packBlocos: r.pack_blocos || 0, areasNegocio: Array.isArray(r.areas_negocio) ? r.areas_negocio : null, onboardingComoTrabalha: Array.isArray(r.onboarding_como_trabalha) ? r.onboarding_como_trabalha : [], modulosAtivos: Array.isArray(r.modulos_ativos) ? r.modulos_ativos : null, onboardingAtividadeConcluido: r.onboarding_atividade_concluido === true, lembretePagamentoEm: isoToMs(r.lembrete_pagamento_em), concelho: r.concelho || null, contratosDemoDias: r.contratos_demo_dias || null, frotaDemoDias: r.frota_demo_dias || null, armazemDemoDias: r.armazem_demo_dias || null, crmDemoDias: r.crm_demo_dias || null, erpDemoDias: r.erp_demo_dias || null, rondasPlano: r.rondas_plano || null, rondasExpiracao: isoToMs(r.rondas_expiracao), rondasDemoDias: r.rondas_demo_dias || null, usoSecoes: r.uso_secoes ? (typeof r.uso_secoes === 'string' ? JSON.parse(r.uso_secoes) : r.uso_secoes) : {}, usoSecoesUltima: isoToMs(r.uso_secoes_ultima), ultimaSincronizacaoMoloniArtigos: isoToMs(r.ultima_sincronizacao_moloni_artigos), licencaFaseAvisada: r.licenca_fase_avisada || null, dataCriacao: isoToMs(r.data_criacao) }),
                 to:   o => ({ id: o.id, nome: o.nome, email: o.email, senha: o.senha, empresa: o.empresa || null, nif: o.nif || null, logo: o.logo || null, licenca_feedback: o.licencaFeedback || null, contratos_plano: o.contratosPlano || null, contratos_expiracao: msToISO(o.contratosExpiracao), frota_plano: o.frotaPlano || null, frota_expiracao: msToISO(o.frotaExpiracao), armazem_plano: o.armazemPlano || null, armazem_expiracao: msToISO(o.armazemExpiracao), portal_plano: o.portalPlano || null, portal_expiracao: msToISO(o.portalExpiracao), crm_plano: o.crmPlano || null, crm_expiracao: msToISO(o.crmExpiracao), assist_plano: o.assistPlano || null, assist_expiracao: msToISO(o.assistExpiracao), erp_plano: o.erpPlano || null, erp_expiracao: msToISO(o.erpExpiracao), notificacoes_plano: o.notificacoesPlano || null, notificacoes_expiracao: msToISO(o.notificacoesExpiracao), dados_bancarios: o.dadosBancarios || null, integracao_faturacao: o.integracaoFaturacao || null, ativo: o.ativo !== false, mudar_senha: o.mudarSenha === true, ultimo_login: o.ultimoLogin ? msToISO(o.ultimoLogin) : null, ultima_atividade: o.ultimaAtividade ? msToISO(o.ultimaAtividade) : null, mostrar_estado_online: o.mostrarEstadoOnline === true, layout: o.layout || null, tipos_equipamento: o.tiposEquipamento || [], logo: o.logo || null, notificar_aprovacao: o.notificarAprovacao === true, nome_fiscal: o.nomeFiscal || null, numero_registo_previo: o.numeroRegistoPrevio || null, data_registo_previo: o.dataRegistoPrevio || null, numero_anepc: o.numeroAnepc || null, data_anepc: o.dataAnepc || null, anepc_validade: o.anepcValidade || null, registo_previo_validade: o.registoPrevioValidade || null, cor_corporativa: o.corCorporativa || null, favoritos: o.favoritos || [], iva_periodicidade: o.ivaPeriodicidade || 'mensal', irs_periodicidade: o.irsPeriodicidade || 'semestral', painel_tv_ativo: o.painelTvAtivo === true, descricoes_rapidas_os: o.descricoesRapidasOS || null, hora_entrada_habitual: o.horaEntradaHabitual || '09:00', tolerancia_atraso_min: o.toleranciaAtrasoMin != null ? o.toleranciaAtrasoMin : 15, certificadora_logo: o.certificadoraLogo || null, eh_distribuidor: o.ehDistribuidor === true, distribuidor_desconto: o.distribuidorDesconto ?? null, distribuidor_id: o.distribuidorId || null, preco_distribuidor_cobrado: o.precoDistribuidorCobrado ?? null, distribuidor_pagamento_prazo: o.distribuidorPagamentoPrazo ? msToISO(o.distribuidorPagamentoPrazo) : null, preco_fundador: o.precoFundador === true, obras_avancado_ativo: o.obrasAvancadoAtivo === true, express_ativo: o.expressAtivo === true, obras_checklist_itens: o.obrasChecklistItens || [], checklist_entrada_itens: o.checklistEntradaItens || [], os_modo_wizard: o.osModoWizard === true, contrato_modo_wizard: o.contratoModoWizard === true, km_ponto_geral_ativo: o.kmPontoGeralAtivo === true, km_por_os_ativo: o.kmPorOsAtivo === true, seguranca_ativo: o.segurancaAtivo === true, seguros_ativo: o.segurosAtivo === true, shst_ativo: o.shstAtivo === true, materiais_entrega_ativo: o.materiaisEntregaAtivo === true, pack_atual: o.packAtual || null, pack_escalao: o.packEscalao || null, pack_blocos: o.packBlocos || 0, areas_negocio: o.areasNegocio || null, onboarding_como_trabalha: o.onboardingComoTrabalha || [], modulos_ativos: o.modulosAtivos || null, onboarding_atividade_concluido: o.onboardingAtividadeConcluido === true, lembrete_pagamento_em: o.lembretePagamentoEm ? msToISO(o.lembretePagamentoEm) : null, concelho: o.concelho || null, contratos_demo_dias: o.contratosDemoDias || null, frota_demo_dias: o.frotaDemoDias || null, armazem_demo_dias: o.armazemDemoDias || null, crm_demo_dias: o.crmDemoDias || null, erp_demo_dias: o.erpDemoDias || null, rondas_plano: o.rondasPlano || null, rondas_expiracao: msToISO(o.rondasExpiracao), rondas_demo_dias: o.rondasDemoDias || null, uso_secoes: JSON.stringify(o.usoSecoes || {}), uso_secoes_ultima: o.usoSecoesUltima ? msToISO(o.usoSecoesUltima) : null, ultima_sincronizacao_moloni_artigos: o.ultimaSincronizacaoMoloniArtigos ? msToISO(o.ultimaSincronizacaoMoloniArtigos) : null, licenca_fase_avisada: o.licencaFaseAvisada || null, data_criacao: msToISO(o.dataCriacao) })
             },
             funcionarios: {
@@ -2705,6 +2705,7 @@
         // próprio, o quiosque é o ÚNICO sítio onde a entrada/saída geral fica registada, por isso
         // tem de garantir isso sozinho, sem depender de a pessoa picar o ponto geral à parte.
         function _quiosqueGarantirEntradaGeral(pessoaId, adminId, hora, lat, lng, kmInicio) {
+            if (!pontoAssiduidadeAtivo(dados.administradores?.find(a => a.id === adminId))) return;
             dados.ponto = dados.ponto || [];
             const hoje = getDataHoje();
             const jaAberto = dados.ponto.find(r => r.funcionarioId === pessoaId && r.data === hoje && r.entrada && !r.saida);
@@ -2816,6 +2817,7 @@
             document.addEventListener('touchend', _kioskSlideUp);
         }
         function _quiosqueAgendaAbrirGeral() {
+            if (!pontoAssiduidadeAtivo()) return;
             const painel = document.getElementById('tgqPainel');
             const pessoas = _quiosqueAgendaPessoasEmpresa();
             painel.innerHTML = `
@@ -2895,6 +2897,7 @@
             if (!aberto) { window._kioskSlideCallback = () => _quiosqueAgendaGeralPicar('entrada'); _kioskSlideInit(); }
         }
         async function _quiosqueAgendaGeralPicar(acao) {
+            if (!pontoAssiduidadeAtivo()) return;
             const p = _quiosqueAgendaGeralPessoaSel; if (!p) return;
             const adminId = _tenantQuiosque();
             const admin = dados.administradores?.find(a => a.id === adminId);
@@ -2963,7 +2966,7 @@
                     <button type="button" onclick="_quiosqueAgendaNavegarDia(1)" style="width:48px;height:48px;border:none;border-radius:12px;background:#334155;color:#fff;font-size:1.1rem;cursor:pointer;flex-shrink:0;"><i class="fas fa-chevron-right"></i></button>
                 </div>
                 <div style="text-align:center;margin-bottom:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                    <button type="button" onclick="_quiosqueAgendaAbrirGeral()" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-power-off"></i> Entrada / Saída de Serviço</button>
+                    ${pontoAssiduidadeAtivo() ? `<button type="button" onclick="_quiosqueAgendaAbrirGeral()" style="background:#dc2626;border:1px solid #dc2626;color:#fff;padding:8px 18px;border-radius:100px;font-size:.82rem;font-weight:700;cursor:pointer;"><i class="fas fa-power-off"></i> Entrada / Saída de Serviço</button>` : ''}
                 </div>
                 <div style="display:grid;gap:14px;">
                     ${itens.length ? itens.map(it => {
@@ -3170,7 +3173,7 @@
             if (acao === 'entrada') {
                 // Obrigatório picar primeiro o Ponto Geral — sem isso, não entra em OS/Obra.
                 const geralAberto = (dados.ponto || []).find(r => r.funcionarioId === p.id && r.data === hoje && r.entrada && !r.saida);
-                if (!geralAberto) {
+                if (pontoAssiduidadeAtivo(dados.administradores?.find(a => a.id === adminId)) && !geralAberto) {
                     _quiosquePerguntarEntradaGeral(p.nome, async () => {
                         const locG = await _quiosqueObterLocalizacaoAgora();
                         _quiosqueGarantirEntradaGeral(p.id, adminId, hora, locG?.lat, locG?.lng);
@@ -3466,7 +3469,7 @@
             _quiosquePinAtual = ''; _quiosquePessoaSelecionada = null;
             document.getElementById('tgqPainel').style.display = 'none';
             document.getElementById('tgqGrid').style.display = 'grid';
-            document.getElementById('tgqSubtitulo').innerHTML = 'Toca no teu nome para picar o ponto<br><button type="button" onclick="_quiosqueFixaAbrirGeral()" style="margin-top:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 16px;border-radius:100px;font-size:.78rem;font-weight:600;cursor:pointer;"><i class="fas fa-clock"></i> Ponto Geral</button>';
+            document.getElementById('tgqSubtitulo').innerHTML = pontoAssiduidadeAtivo() ? 'Toca no teu nome para picar o ponto<br><button type="button" onclick="_quiosqueFixaAbrirGeral()" style="margin-top:8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 16px;border-radius:100px;font-size:.78rem;font-weight:600;cursor:pointer;"><i class="fas fa-clock"></i> Ponto Geral</button>' : 'Toca no teu nome para registar a entrada ou saída da obra';
             const pessoas = _quiosquePessoas();
             document.getElementById('tgqGrid').innerHTML = pessoas.length ? pessoas.map(p => `
                 <div class="tgq-pessoa" onclick="quiosquePessoaClick('${p.id}','${p._tipo}')">
@@ -3479,6 +3482,7 @@
         // de pessoas atribuídas a esta obra/aparelho (_quiosquePessoas) e volta ao grid da obra.
         let _quiosqueFixaGeralPessoaSel = null, _quiosqueFixaGeralPin = '';
         function _quiosqueFixaAbrirGeral() {
+            if (!pontoAssiduidadeAtivo()) return;
             document.getElementById('tgqGrid').style.display = 'none';
             const painel = document.getElementById('tgqPainel');
             painel.style.display = 'block';
@@ -3559,6 +3563,7 @@
             if (!aberto) { window._kioskSlideCallback = () => _quiosqueFixaGeralPicar('entrada'); _kioskSlideInit(); }
         }
         async function _quiosqueFixaGeralPicar(acao) {
+            if (!pontoAssiduidadeAtivo()) return;
             const p = _quiosqueFixaGeralPessoaSel; if (!p) return;
             const adminId = _tenantQuiosque();
             const admin = dados.administradores?.find(a => a.id === adminId);
@@ -3674,7 +3679,7 @@
             } else {
                 // Obrigatório picar primeiro o Ponto Geral — sem isso, não entra na obra.
                 const geralAberto = (dados.ponto || []).find(r => r.funcionarioId === p.id && r.data === hoje && r.entrada && !r.saida);
-                if (!geralAberto) {
+                if (pontoAssiduidadeAtivo(dados.administradores?.find(a => a.id === adminId)) && !geralAberto) {
                     _quiosquePerguntarEntradaGeral(p.nome, () => {
                         _quiosqueGarantirEntradaGeral(p.id, adminId, hora);
                         guardarDados(dados);
@@ -13496,7 +13501,7 @@
                 const hojeF = getDataHoje();
                 // No Express não há ponto nenhum — sem isto, "jaPicou" ficava sempre falso (nunca
                 // há picagem para encontrar) e o aviso "ainda não picaste" nunca desaparecia.
-                const jaPicou = expressAtivo(adminDoUtilizador()) ? true : (dados.ponto || []).some(p => p.funcionarioId === usuarioLogado.id && p.data === hojeF && p.entrada);
+                const jaPicou = !pontoAssiduidadeAtivo() ? true : (dados.ponto || []).some(p => p.funcionarioId === usuarioLogado.id && p.data === hojeF && p.entrada);
                 if (!jaPicou) {
                     cont.style.display = 'block';
                     cont.innerHTML = `<div class="home-card" style="border-left:4px solid #f59e0b;margin-bottom:10px;">
@@ -14614,7 +14619,8 @@
             // Igual às OS: normalmente é preciso o relógio de ponto geral já estar aberto para
             // poder entrar numa obra — exceto quando é mesmo o regresso do almoço a esta obra,
             // caso em que o geral reabre automaticamente a seguir, não é preciso ir picar à parte.
-            if (!voltaDeAlmoco && !pontoAbertoHoje()) { avisarPicarPontoPrimeiro(); return; }
+            if (pontoAssiduidadeAtivo() && !voltaDeAlmoco && !pontoAbertoHoje()) { avisarPicarPontoPrimeiro(); return; }
+            if ((dados.ponto || []).some(p => p.funcionarioId === usuarioLogado.id && p.servicoId && p.entrada && !p.saida)) { alert('Dá primeiro saída da OS em curso antes de entrares na obra.'); return; }
             abrirSliderConfirmacao('Confirmar entrada', 'Vais dar entrada na obra "' + obra.nome + '".', async () => {
                 if (_picandoEntradaObraLonga) return;
                 _picandoEntradaObraLonga = true;
@@ -14632,7 +14638,7 @@
                 // sem precisares de ir picar entrada à parte no Registo de Ponto. Numa entrada do
                 // zero (sem pausa pendente), continua a não contar como picagem geral, tal como
                 // sempre foi — só quem pica o ponto geral é que fica "em serviço".
-                if (voltaDeAlmoco) {
+                if (voltaDeAlmoco && pontoAssiduidadeAtivo()) {
                     dados.ponto = dados.ponto || [];
                     dados.ponto.push({ id: gerarId(), funcionarioId: usuarioLogado.id, adminId: _tenantIdAtual() || usuarioLogado.adminId || null, data: getDataHoje(), entrada: agora, saida: null, lat: loc ? loc.lat : null, lng: loc ? loc.lng : null });
                 }
@@ -14648,7 +14654,7 @@
                 if (_erroGravarEntrada) {
                     alert('⚠️ A entrada ficou registada no ecrã, mas ainda NÃO foi confirmada pelo servidor (' + (_erroGravarEntrada.message || 'falha de ligação') + '). A app vai continuar a tentar sozinha — verifica a tua ligação à internet. Se o aviso persistir, avisa o administrador.');
                 } else {
-                    alert('Entrada registada e confirmada na obra "' + obra.nome + '" ✓ às ' + agora + (loc ? ' (localização guardada)' : '') + (voltaDeAlmoco ? '\n\n🍽️ Regresso do almoço — o relógio de ponto geral também voltou a contar automaticamente.' : '\n\n(Esta entrada é só para controlo de horas da obra — não conta como picagem do relógio de ponto.)'));
+                    alert('Entrada registada e confirmada na obra "' + obra.nome + '" ✓ às ' + agora + (loc ? ' (localização guardada)' : '') + (voltaDeAlmoco && pontoAssiduidadeAtivo() ? '\n\n🍽️ Regresso do almoço — o relógio de ponto geral também voltou a contar automaticamente.' : '\n\n(Esta entrada é só para controlo de horas da obra — não conta como picagem do relógio de ponto.)'));
                 }
             });
         }
@@ -15049,7 +15055,7 @@
             const abertoGeral = (dados.ponto || []).find(p => !p.servicoId && !p.obraId && p.funcionarioId === meuId && p.data === hoje && p.entrada && !p.saida);
             // TotalGest Express não usa assiduidade nenhuma — nem geral, nem por OS — só
             // interessa saber que trabalho foi feito, não quanto tempo levou "a sério".
-            const pontoHtml = expressAtivo(adminDoUtilizador()) ? '' : (abertoGeral
+            const pontoHtml = !pontoAssiduidadeAtivo() ? '' : (abertoGeral
                 ? `<button type="button" class="btn tgm-btn-saida tgm-btn-ponto" onclick="picarPonto()"><i class="fas fa-stop-circle"></i> Saída <span class="tgm-mono">${abertoGeral.entrada}</span></button>`
                 : `<button type="button" class="btn tgm-btn-entrada tgm-btn-ponto" onclick="picarPonto()"><i class="fas fa-fingerprint"></i> Entrada</button>`);
 
@@ -15429,7 +15435,7 @@
             const pontoGeralAberto = id => (dados.ponto || []).some(p => p.funcionarioId === id && !p.servicoId && !p.obraId && p.data === hoje && p.entrada);
             // No Express não há ponto — sem isto, toda a equipa aparecia sempre como "ainda não
             // picou", já que nunca há nenhuma picagem para encontrar.
-            const semPontoAinda = (expressAtivo(admin) || agoraMin <= limiteMin) ? [] : equipa.filter(p => !pontoGeralAberto(p.id));
+            const semPontoAinda = (!pontoAssiduidadeAtivo(admin) || agoraMin <= limiteMin) ? [] : equipa.filter(p => !pontoGeralAberto(p.id));
 
             const osAtrasadas = (dados.servicos || []).filter(s => s.adminId === adminId && s.data === hoje && s.hora && s.status !== 'concluído' && s.status !== 'cancelado' && s.status !== 'em andamento' && s.hora < new Date().toTimeString().slice(0, 5));
             const feriasPendentes = (dados.pedidos || []).filter(p => p.adminId === adminId && ['pendente', 'pendente_aprov'].includes(p.status));
@@ -20546,7 +20552,7 @@
             // pessoa pode mesmo ainda estar a trabalhar) sem saída picada. Mais comum desde que o
             // Modo Quiosque passou a exigir o Ponto Geral picado à parte da OS/Obra.
             const hojeAid = getDataHoje();
-            const pontosEsquecidos = (dados.ponto || []).filter(p => p.adminId === aid && p.entrada && !p.saida && p.data && p.data < hojeAid).length;
+            const pontosEsquecidos = !pontoAssiduidadeAtivo() ? 0 : (dados.ponto || []).filter(p => p.adminId === aid && !p.servicoId && !p.obraId && p.entrada && !p.saida && p.data && p.data < hojeAid).length;
             if (pontosEsquecidos) itens.push({ icon: 'fa-clock', titulo: `${pontosEsquecidos} ${pontosEsquecidos === 1 ? 'Ponto Geral esquecido' : 'Pontos Gerais esquecidos'}`, sub: 'Entrada em aberto de dia(s) anterior(es), sem saída picada', secao: 'ponto', count: pontosEsquecidos });
             // Dias de férias transitados do ano anterior por gastar — avisa o admin para não
             // se perderem sem ninguém reparar.
@@ -20876,6 +20882,10 @@
             cards.forEach(card => {
                 const cardName = card.dataset.card;
 
+                if (['ponto', 'assiduidade'].includes(cardName) && !pontoAssiduidadeAtivo()) {
+                    card.classList.add('hidden-card');
+                    return;
+                }
                 if (cardName === 'quiosque') {
                     card.classList.toggle('hidden-card', !_podeAtivarQuiosque());
                     return;
@@ -28157,8 +28167,9 @@ async function salvarAdmin(e) {
                 // Normalmente é preciso o relógio de ponto geral já estar aberto para poder entrar
                 // numa OS — exceto quando é mesmo o regresso do almoço a esta OS, caso em que se
                 // reabre o geral automaticamente já a seguir, não é preciso ires lá picar à parte.
-                if (!voltaDeAlmocoOS && !pontoAbertoHoje()) { avisarPicarPontoPrimeiro(); return; }
-                const outraObraAberta = (dados.ponto || []).find(p => p.funcionarioId === usuarioLogado.id && p.data === hoje && p.servicoId && p.servicoId !== os.id && p.entrada && !p.saida);
+                if (pontoAssiduidadeAtivo() && !voltaDeAlmocoOS && !pontoAbertoHoje()) { avisarPicarPontoPrimeiro(); return; }
+                if ((dados.obraPontoLonga || []).some(p => p.funcionarioId === usuarioLogado.id && p.entrada && !p.saida)) { alert('Dá primeiro saída da obra em curso antes de entrares na OS.'); return; }
+                const outraObraAberta = (dados.ponto || []).find(p => p.funcionarioId === usuarioLogado.id && p.servicoId && p.servicoId !== os.id && p.entrada && !p.saida);
                 if (outraObraAberta) {
                     const outraOS = dados.servicos?.find(s => s.id === outraObraAberta.servicoId);
                     alert('Não podes dar entrada nesta obra — ainda tens uma entrada em aberto em "' + (outraOS?.descricao || outraObraAberta.obraDescricao || 'outra obra') + '". Dá primeiro a saída de lá.');
@@ -28177,13 +28188,13 @@ async function salvarAdmin(e) {
                         });
                         // Regresso do almoço para esta mesma OS — reabre logo também o relógio de
                         // ponto geral, sem precisar de ir picar entrada à parte no Registo de Ponto.
-                        if (voltaDeAlmocoOS) {
+                        if (voltaDeAlmocoOS && pontoAssiduidadeAtivo()) {
                             dados.ponto.push({ id: gerarId(), funcionarioId: usuarioLogado.id, adminId, data: hoje, entrada: hora, saida: null, lat: loc?.lat ?? null, lng: loc?.lng ?? null });
                         }
                         if (os.status !== 'concluído') os.status = 'em andamento';
                         guardarDados(dados);
                         renderizarTudo();
-                        alert('✅ Entrada picada nesta obra às ' + hora + '. Estado da OS passou para "Em andamento".' + (voltaDeAlmocoOS ? '\n\n🍽️ Regresso do almoço — o relógio de ponto geral também voltou a contar automaticamente.' : ''));
+                        alert('✅ Entrada picada nesta obra às ' + hora + '. Estado da OS passou para "Em andamento".' + (voltaDeAlmocoOS && pontoAssiduidadeAtivo() ? '\n\n🍽️ Regresso do almoço — o relógio de ponto geral também voltou a contar automaticamente.' : ''));
                     });
                     }, { tipo: 'servico', id: os.id });
                 };
@@ -31266,6 +31277,36 @@ window._relPrefill = function(msg){
             }
             return null;
         }
+        // Teste TG only: production does not read this isolated company preference.
+        function pontoAssiduidadeAtivo(admin = adminDoUtilizador()) {
+            return !expressAtivo(admin) && admin?.testePontoAssiduidadeAtivo !== false;
+        }
+        async function guardarRegistosTempoTeste() {
+            if (!['admin', 'subadmin'].includes(usuarioLogado?.role)) return;
+            const admin = adminAtual();
+            const input = document.getElementById('perf_ponto_assiduidade');
+            const button = document.getElementById('perf_guardar_registos_tempo');
+            if (!admin || !input || !button || button.disabled) return;
+            const ativo = input.checked;
+            if (!ativo && (dados.ponto || []).some(p => p.adminId === admin.id && !p.servicoId && !p.obraId && p.entrada && !p.saida)) {
+                alert('Fecha primeiro os pontos gerais em aberto da equipa. Depois podes desativar o ponto de assiduidade.');
+                return;
+            }
+            button.disabled = true;
+            const tenantId = admin.id;
+            try {
+                const { data, error } = await supa.from('administradores').update({ teste_tg_ponto_assiduidade_ativo: ativo }).eq('id', tenantId).select('id,teste_tg_ponto_assiduidade_ativo').single();
+                if (error) throw error;
+                if (!data || data.id !== tenantId || data.teste_tg_ponto_assiduidade_ativo !== ativo) throw new Error('Gravação não confirmada');
+                admin.testePontoAssiduidadeAtivo = ativo;
+                if (adminAtual()?.id === tenantId) {
+                    renderizarTudo();
+                    alert('✅ Registos de tempo guardados. ' + (ativo ? 'Ponto de assiduidade ativado.' : 'Entrada direta em Obras/OS ativada.'));
+                }
+            } catch (error) {
+                alert('Não foi possível guardar os registos de tempo: ' + (error.message || 'falha de ligação'));
+            } finally { button.disabled = false; }
+        }
         function pontoAbertoHoje() {
             if (!usuarioLogado) return null;
             const hoje = getDataHoje();
@@ -31276,10 +31317,10 @@ window._relPrefill = function(msg){
             const btn = document.getElementById('btnPicar');
             const estado = document.getElementById('pontoEstado');
             const r = usuarioLogado?.role;
-            const podePicar = (r === 'funcionario' || r === 'encarregado' || r === 'admin' || r === 'subadmin' || r === 'vendedor' || r === 'vigilante' || r === 'supervisor_vigilantes');
+            const podePicar = pontoAssiduidadeAtivo() && (r === 'funcionario' || r === 'encarregado' || r === 'admin' || r === 'subadmin' || r === 'vendedor' || r === 'vigilante' || r === 'supervisor_vigilantes');
             if (btn) btn.style.display = podePicar ? 'inline-block' : 'none';
             const btnAdmin = document.getElementById('btnPontoAdmin');
-            if (btnAdmin) btnAdmin.style.display = (r === 'admin') ? 'inline-block' : 'none';
+            if (btnAdmin) btnAdmin.style.display = (pontoAssiduidadeAtivo() && r === 'admin') ? 'inline-block' : 'none';
             // Nome, horas semanais e última marcação do próprio (funcionário/encarregado)
             if (podePicar) {
                 const reg = (r === 'encarregado' ? dados.encarregados : r === 'admin' ? dados.administradores : dados.funcionarios)?.find(x => x.id === usuarioLogado.id)
@@ -31339,6 +31380,7 @@ window._relPrefill = function(msg){
 
         let _picandoEntrada = false;
         async function picarPonto() {
+            if (!pontoAssiduidadeAtivo()) return;
             if (_picandoEntrada) return;
             const r = usuarioLogado?.role;
             if (r !== 'funcionario' && r !== 'encarregado' && r !== 'admin' && r !== 'subadmin' && r !== 'vendedor' && r !== 'vigilante' && r !== 'supervisor_vigilantes') {
@@ -34320,6 +34362,7 @@ window._relPrefill = function(msg){
             else _voltarMeuDia();
         }
         function abrirSecao(nome) {
+            if (['ponto', 'assiduidade'].includes(nome) && !pontoAssiduidadeAtivo()) { alert('O ponto de assiduidade está desativado. Regista a entrada diretamente na Obra/OS.'); return; }
             if (nome === 'quiosque') { ativarModoQuiosque(); return; }
             if (['crm', 'assistencias'].includes(nome) && !window.TGModules.prepare(nome)) return;
             if (nome === 'exportar-dados') { abrirModalExportarImportar(); return; }
@@ -34855,6 +34898,19 @@ window._relPrefill = function(msg){
                                 <div class="form-group ff-span2">
                                     <p class="help-text" style="margin:0 0 10px;">Transforma este aparelho (monitor/TV da empresa) num painel fixo, em ecrã inteiro, com o Mapa da Equipa e a Agenda de Obras lado a lado. Fica sempre ligado — mesmo que o ecrã reinicie, volta a abrir sozinho.</p>
                                     <button type="button" class="btn btn-outline" style="width:100%;" onclick="fecharModalPerfil(); ativarPainelTV();"><i class="fas fa-tv"></i> Ativar Painel TV neste aparelho</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ff-secao ff-tint-doc">
+                            <div class="ff-secao-head"><i class="fas fa-stopwatch"></i> Registos de tempo</div>
+                            <div class="ff-secao-body">
+                                <div class="form-group ff-span2">
+                                    <label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" id="perf_ponto_assiduidade" ${admin?.testePontoAssiduidadeAtivo !== false ? 'checked' : ''} style="width:auto;" /> Ponto de assiduidade</label>
+                                    <p class="help-text">Desativa para a equipa registar apenas a chegada e a saída nas Obras/OS, sem picar a entrada no dia.</p>
+                                    <p class="help-text"><strong>Registo em Obras/OS ativo:</strong> as horas continuam a contar para cada trabalho. As férias e faltas mantêm-se disponíveis.</p>
+                                    <p class="help-text">Esta configuração aplica-se apenas ao Teste TG e a toda a equipa desta empresa.</p>
+                                    <button type="button" id="perf_guardar_registos_tempo" class="btn btn-primary" onclick="guardarRegistosTempoTeste()">Guardar registos de tempo</button>
                                 </div>
                             </div>
                         </div>

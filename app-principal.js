@@ -756,7 +756,7 @@
                     let q = supa.from(t).select('*');
                     if (t === 'ponto') q = supa.from(t).select('*').gte('data', _pontoCarregadoDesde);
                     else if (t === 'servicos') q = supa.from(t).select('*').or(`status.neq.concluído,data.gte.${_servicosCarregadoDesde}`);
-                    else if (t === 'folhas_obra') q = supa.from(t).select('*').or(`assinatura.is.null,data.gte.${_folhasCarregadoDesde}`);
+                    else if (t === 'folhas_obra') q = supa.from(t).select('*').or(`assinatura.is.null,validada.eq.false,validada.is.null,data.gte.${_folhasCarregadoDesde}`);
                     else if (t === 'auditoria') q = supa.from(t).select('*').gte('data', _auditoriaCarregadaDesde);
                     if (clienteId) {
                         // portal do cliente: restringe ainda mais, só ao que é dele
@@ -12014,7 +12014,7 @@
             let q = supa.from(tabela).select('*');
             if (tabela === 'ponto') q = q.gte('data', _pontoCarregadoDesde || _dataCorteMeses(6));
             else if (tabela === 'servicos') q = q.or(`status.neq.concluído,data.gte.${_servicosCarregadoDesde || _dataCorteMeses(3)}`);
-            else if (tabela === 'folhas_obra') q = q.or(`assinatura.is.null,data.gte.${_folhasCarregadoDesde || _dataCorteMeses(3)}`);
+            else if (tabela === 'folhas_obra') q = q.or(`assinatura.is.null,validada.eq.false,validada.is.null,data.gte.${_folhasCarregadoDesde || _dataCorteMeses(3)}`);
             else if (tabela === 'auditoria') q = q.gte('data', _dataCorteMeses(6));
             if (clienteId) {
                 if (tabela === 'administradores') q = q.eq('id', aid);
@@ -20522,6 +20522,7 @@
             document.getElementById('countPonto').textContent = countPonto;
             document.getElementById('countPedidos').textContent = countPedidos;
             document.getElementById('countFolhas').textContent = countFolhas;
+            document.getElementById('countFolhas').hidden = usuarioLogado?.role === 'funcionario';
             document.getElementById('countRequisicoes').textContent = countReqs;
         }
 

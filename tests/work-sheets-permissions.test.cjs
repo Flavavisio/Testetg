@@ -24,8 +24,8 @@ function setup() {
 test('encarregado sees own and assigned staff only; filters use this same scope',()=>{
  const {c,rows,options}=setup();c.renderizarFolhas();assert.deepEqual(rows(),['ana','bruno','self']);assert.deepEqual(options('tecnico'),['boss','f1','f2']);assert.deepEqual(options('cliente'),['c1','sem']);
 });
-test('employee sees own sheets and cannot discover other staff through filters',()=>{
- const {c,rows,options}=setup();c.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};c.renderizarFolhas();assert.deepEqual(rows(),['ana']);assert.deepEqual(options('tecnico'),['f1']);assert.deepEqual(options('cliente'),['c1']);
+test('employee sees own pending sheets without filter options',()=>{
+ const {c,rows,options}=setup();c.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};c.renderizarFolhas();assert.deepEqual(rows(),['ana']);assert.deepEqual(options('tecnico'),[]);assert.deepEqual(options('cliente'),[]);
 });
 test('filters narrow rows and clearing them does not widen permission scope',()=>{
  const {c,nodes,rows}=setup();c.renderizarFolhas();nodes.folhasFiltro_tecnico.value='f2';c.tgFolhasFiltrar();assert.deepEqual(rows(),['bruno']);c.tgFolhasLimpar();assert.deepEqual(rows(),['ana','bruno','self']);
@@ -47,4 +47,41 @@ test('employee and manager cannot validate sheets',async()=>{
 });
 test('signed-out and superadmin list no sheets; portal continues using existing access',()=>{
  const {c,rows,calls}=setup();c.usuarioLogado=null;c.renderizarFolhas();assert.deepEqual(rows(),[]);c.usuarioLogado={id:'super',role:'superadmin'};c.renderizarFolhas();assert.deepEqual(rows(),[]);c.usuarioLogado={id:'client',role:'cliente',adminId:'tenant'};c.renderizarFolhas();assert.deepEqual(rows(),[]);c.abrirFolhaDetalhe('ana');assert.equal(calls.length,1);
+});
+
+test('employee cards omit verified sheets and ignore stale filters and completed tabs',()=>{
+ const {c,nodes,rows}=setup();c.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};
+ for(const id of ['folhasGrupos','folhasFiltros','folhasAvisoCarregamento','folhasListaTitulo','folhasFaturacaoTabs'])nodes[id]={};
+ c.dados.folhasObra.push({id:'verified',adminId:'tenant',funcionarioId:'f1',validada:true},{id:'legacy',adminId:'tenant',funcionarioId:'f1',validada:null},{id:'finished',adminId:'tenant',funcionarioId:'f1',validada:false,servicoId:'done'});
+ c.dados.servicos.push({id:'done',adminId:'tenant',status:'concluído'});
+ c.renderizarFolhas();nodes.folhasFiltro_validacao.value='validada';c.tgFolhasGrupo('concluidas');
+ assert.deepEqual(rows(),['ana','finished','legacy']);
+ for(const id of ['folhasGrupos','folhasFiltros','folhasFiltroContagem','folhasAvisoCarregamento','folhasFaturacaoTabs'])assert.equal(nodes[id].hidden,true,id);
+ assert.equal(nodes.folhasListaTitulo.textContent,'Por verificar pela empresa');
+ assert(nodes.tabelaFolhas.innerHTML.includes('Abrir folha'));assert(!nodes.tabelaFolhas.innerHTML.includes('data-folha-validacao'));
+ c.dados.folhasObra.filter(f=>f.funcionarioId==='f1'&&f.adminId==='tenant').forEach(f=>f.validada=true);c.renderizarFolhas();assert.deepEqual(rows(),[]);assert.equal(nodes.emptyFolhas.textContent,'Não tens folhas de obra por verificar.');
+});
+test('employee refresh reloads sheets and removes newly verified rows',async()=>{
+ const {c,rows}=setup();c.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};c.renderizarFolhas();
+ c.carregarTabelaEspecifica=async key=>{assert.equal(key,'folhasObra');c.dados.folhasObra.find(f=>f.id==='ana').validada=true;};
+ await c.tgFolhasAtualizar();assert.deepEqual(rows(),[]);
+});
+test('switching from employee to admin restores filters, count and verified sheets',()=>{
+ const {c,nodes,rows}=setup();nodes.folhasFiltros={};c.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};c.dados.folhasObra.find(f=>f.id==='ana').validada=true;c.renderizarFolhas();
+ assert(!rows().includes('ana'));assert(nodes.folhasFiltros.hidden);
+ c.usuarioLogado={id:'tenant',role:'admin'};c.renderizarFolhas();assert(rows().includes('ana'));assert.equal(nodes.folhasFiltros.hidden,false);assert.equal(nodes.folhasFiltroContagem.hidden,false);
+});
+test('real employee screen renders cards with no groups, filters or count and readable phone layout',()=>{
+ const {JSDOM}=require('jsdom');
+ const w=new JSDOM(fs.readFileSync(path.join(__dirname,'../login.html'),'utf8'),{runScripts:'outside-only'}).window;
+ try{
+  const fixture=setup();w.usuarioLogado={id:'f1',adminId:'tenant',role:'funcionario'};w.dados=fixture.c.dados;
+  Object.assign(w,{_tenantId:()=>w.usuarioLogado.adminId||w.usuarioLogado.id,_folhasOrdem:'desc',_folhasCarregadoDesde:'2026-07-22',escapeHtmlSimples:s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),renderizarFolhas(){},abrirFolhaDetalhe(){},gerarPDFFolha(){},excluirEntidade(){},mostrarErro(){}});
+  const style=w.document.createElement('style');style.textContent=fs.readFileSync(path.join(__dirname,'../tg-work-sheets.css'),'utf8');w.document.head.appendChild(style);
+  w.eval(source);w.renderizarFolhas();
+  const section=w.document.getElementById('secao-folhas');assert(section.classList.contains('folhas-funcionario'));
+  for(const id of ['folhasFiltros','folhasGrupos','folhasFiltroContagem'])assert(w.document.getElementById(id).hidden);
+  const row=w.document.querySelector('#tabelaFolhas tr');assert(row);assert.equal(w.getComputedStyle(row).display,'grid');assert.equal(parseFloat(w.getComputedStyle(row.closest('table')).minWidth),0);assert.equal(row.querySelector('button').textContent.trim(),'Abrir folha');assert(!row.querySelector('[data-folha-validacao]'));
+  w.dados.folhasObra.find(f=>f.id==='ana').descricao='<img src=x onerror=alert(1)>';w.renderizarFolhas();assert.equal(w.document.querySelector('#tabelaFolhas img'),null);
+ }finally{w.close();}
 });

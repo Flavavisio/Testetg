@@ -1,0 +1,23 @@
+/* Readable form text prevents mobile browsers from zooming on focus.
+   Screen-only: retain document typography when printing reports. */
+@media screen and (max-width:900px), screen and (any-pointer:coarse) {
+  html body input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]):not([type=file]),
+  html body select,
+  html body textarea,
+  html body [contenteditable="true"],
+  html body [contenteditable="plaintext-only"],
+  html body [contenteditable=""] {
+    font-size:max(16px, var(--tg-form-focus-min, 16px))!important;
+  }
+}
+/* Touch devices can use a desktop viewport or a mouse as their primary pointer. */
+@media screen {
+  html body [data-tg-form-focus-sized] {
+    font-size:max(16px, var(--tg-form-focus-min, 16px))!important;
+    /* The readable size must apply on pointerdown, before native focus zoom. */
+    transition-property:border-color, box-shadow, background-color, color!important;
+  }
+}
+@media print {
+  [data-tg-form-focus-sized] { transition:none!important; }
+}

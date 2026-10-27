@@ -29792,6 +29792,52 @@ window._relPrefill = function(msg){
             } catch (e) { console.error('ler texto do storage:', e); return null; }
         }
 
+        // Keep saved reports inside the mobile app; iOS standalone windows may
+        // expose neither the browser Back button nor a way to close the document.
+        function _abrirLeitorRelatorioGuardado() {
+            document.getElementById('tgRelatorioGuardado')?._tgFechar?.();
+            const anterior = document.activeElement;
+            const overflow = document.body.style.overflow;
+            const overlay = document.createElement('div');
+            overlay.id = 'tgRelatorioGuardado';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-label', 'Relatório guardado');
+            overlay.style.cssText = 'position:fixed;inset:0;z-index:500000;display:flex;flex-direction:column;background:#fff;height:100dvh;box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);';
+            overlay.innerHTML = '<div style="display:flex;align-items:center;gap:12px;flex-shrink:0;padding:8px 12px;background:#fff;color:#152a52;border-bottom:1px solid #cbd5e1;font:600 16px system-ui"><span style="flex:1">Relatório</span><button type="button" aria-label="Fechar relatório e voltar" title="Fechar relatório e voltar" style="width:48px;height:48px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#152a52;font:32px system-ui;cursor:pointer">&times;</button></div>';
+            const frame = document.createElement('iframe');
+            frame.title = 'Relatório guardado';
+            frame.style.cssText = 'display:block;width:100%;flex:1;min-height:0;border:0;background:#fff';
+            const status = '<meta name="viewport" content="width=device-width,initial-scale=1"><p style="font:16px system-ui;padding:20px;color:#64748b">A carregar relatório…</p>';
+            frame.srcdoc = status;
+            overlay.appendChild(frame);
+            const closeButton = overlay.querySelector('button');
+            const onKey = event => { if (event.key === 'Escape') fechar(); };
+            function fechar() {
+                overlay.remove();
+                document.body.style.overflow = overflow;
+                document.removeEventListener('keydown', onKey);
+                if (anterior?.isConnected) anterior.focus({preventScroll:true});
+            }
+            overlay._tgFechar = fechar;
+            closeButton.addEventListener('click', fechar);
+            document.addEventListener('keydown', onKey);
+            document.body.style.overflow = 'hidden';
+            document.body.appendChild(overlay);
+            closeButton.focus({preventScroll:true});
+            return {
+                mostrar(html, imprimir) {
+                    if (!overlay.isConnected) return;
+                    frame.onload = () => {
+                        if (imprimir) setTimeout(() => {
+                            if (overlay.isConnected) { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (_) {} }
+                        }, 400);
+                    };
+                    frame.srcdoc = html;
+                }
+            };
+        }
+
         async function _verRelatorioEspecialidadeSnapshot(relatorioId, autoImprimir) {
             const r = (dados.relatoriosEspecialidade || []).find(x => x.id === relatorioId);
             if (!r || !r.campos) { alert('Este relatório não tem um snapshot guardado para visualizar.'); return; }
@@ -29799,11 +29845,14 @@ window._relPrefill = function(msg){
             // Abre a janela já aqui, ainda dentro do clique do utilizador (síncrono),
             // para o Safari/iOS não bloquear o pop-up. Só depois é que vamos
             // buscar o conteúdo (que pode envolver pedidos assíncronos ao storage).
-            const w = window.open('', '_blank');
-            if (!w) { alert('O browser bloqueou a janela nova. Permite pop-ups para veres o relatório.'); return; }
-            w.document.open();
-            w.document.write('<p style="font-family:sans-serif;color:#64748b;padding:20px;">A carregar relatório…</p>');
-            w.document.close();
+            const leitor = window.matchMedia('(max-width:900px), (any-pointer:coarse)').matches ? _abrirLeitorRelatorioGuardado() : null;
+            const w = leitor ? null : window.open('', '_blank');
+            if (!leitor && !w) { alert('O browser bloqueou a janela nova. Permite pop-ups para veres o relatório.'); return; }
+            if (w) {
+                w.document.open();
+                w.document.write('<p style="font-family:sans-serif;color:#64748b;padding:20px;">A carregar relatório…</p>');
+                w.document.close();
+            }
 
             let html = r.campos.htmlSnapshot || '';
             if (!html && r.campos.htmlSnapshotPath) {
@@ -29816,11 +29865,14 @@ window._relPrefill = function(msg){
                 } catch (e) { console.error('ler snapshot do storage:', e); }
             }
             if (!html) {
+                if (leitor) { leitor.mostrar('<p style="font:16px system-ui;padding:20px;color:#dc2626">Não foi possível carregar o relatório guardado. Fecha e tenta novamente.</p>'); return; }
                 try { w.document.body.innerHTML = '<p style="font-family:sans-serif;color:#dc2626;padding:20px;">Não foi possível carregar o relatório guardado.</p>'; } catch (e) {}
                 alert('Não foi possível carregar o relatório guardado.');
                 return;
             }
 
+            if (leitor) { leitor.mostrar(html, autoImprimir === true); return; }
+            if (w.closed) return;
             w.document.open();
             w.document.write(html);
             w.document.close();

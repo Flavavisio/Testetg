@@ -137,6 +137,7 @@
         });
     }
     function refresh() {
+        document.body.classList.toggle('tg-favoritos-ocultos', ['admin', 'subadmin'].includes(user()?.role));
         const enabled = active();
         document.body.classList.toggle('tg-nexus', enabled);
         if (!enabled) {

@@ -23,3 +23,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:900px),(pointer:coarse){
  html body :is(#modalOverlay,#modalGenericoOverlay,#modalFolhaObrigOverlay) :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=hidden]){font-size:16px!important;line-height:1.5;transition-property:background-color,border-color,color,box-shadow!important}
 }
+/* Drag confirmation stays centred; long dialogs can still scroll internally. */
+#modalGenericoOverlay:has(#conf_slide_track){align-items:center!important;justify-content:center!important;flex-wrap:nowrap;gap:0;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#modalGenericoOverlay:has(#conf_slide_track)>.modal{height:auto!important;min-height:0;margin:0;max-height:calc(100vh - 48px)!important;max-height:calc(100dvh - max(16px,env(safe-area-inset-top)) - max(16px,env(safe-area-inset-bottom)))!important;overflow-y:auto;box-sizing:border-box}

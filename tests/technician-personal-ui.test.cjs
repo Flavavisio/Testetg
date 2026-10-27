@@ -7,7 +7,7 @@ function setup(){
  w.dados={funcionarios:[{id:'f',adminId:'a',nome:'Vanda Ribeiro'}],encarregados:[],servicos:[{id:'os',adminId:'a',funcionariosIds:['f'],data:'2026-10-27',clienteId:'c',localId:'l',descricao:'Serviço'}],clientes:[{id:'c',adminId:'a',nome:'Cliente'}],ponto:[],obras:[],obraPontoLonga:[]};
  Object.assign(w,{expressAtivo:()=>false,adminDoUtilizador:()=>({id:'a'}),_licencaValidaTenant:()=>true,getDataHoje:()=> '2026-10-27',_pausaAlmocoPendente:()=>null});
  w.allowed=true;w.opened=[];w.TGPassport={scope:(c,l)=>w.allowed?{customerId:c,localId:l}:null,open:(...args)=>w.opened.push(args)};
- const instrumented=source.replace('window.TGTechnician={refresh,jobs,todayJobs,weekJobs,enabled};refresh();','window.TGTechnician={jobs,avatarHTML,notes,openPassport,protectFieldFont,installWizard,removeWizard,wizards};');
+ const instrumented=source.replace('window.TGTechnician={refresh,jobs,todayJobs,weekJobs,enabled};refresh();','window.TGTechnician={jobs,focusHTML,avatarHTML,notes,openPassport,protectFieldFont,installWizard,removeWizard,wizards};');
  assert.notEqual(source,instrumented);w.eval(instrumented);return w;
 }
 test('header uses first name and last surname initials, including accents and a single name',()=>{
@@ -27,5 +27,9 @@ test('worksheet fields are at least 16px before focus and restoration preserves 
 });
 test('avatar, wizard scale correction and refreshed CSS are included in both app entry points',()=>{
  const css=fs.readFileSync('tg-technician.css','utf8');assert(css.includes('.tgt-avatar'));assert(css.includes('animation:none!important;transform:none!important'));assert(source.includes('${avatarHTML()}</header>'));
- for(const file of ['index.html','login.html']){const html=fs.readFileSync(file,'utf8');assert(html.includes('tg-technician.js?v=1.4.0-teste'));assert(html.includes('tg-technician.css?v=1.4.0-teste'));const responsive=html.match(/responsive-device\.css\?v=\d+/)?.[0];assert(responsive&&fs.readFileSync('sw.js','utf8').includes(responsive));assert(!html.includes('user-scalable=no'));}
+ for(const file of ['index.html','login.html']){const html=fs.readFileSync(file,'utf8');assert(html.includes('tg-technician.js?v=1.4.1-teste'));assert(html.includes('tg-technician.css?v=1.4.0-teste'));const responsive=html.match(/responsive-device\.css\?v=\d+/)?.[0];assert(responsive&&fs.readFileSync('sw.js','utf8').includes(responsive));assert(!html.includes('user-scalable=no'));}
+});
+
+test('the intervention toolbar opens the installation passport directly without a notes dialog',()=>{
+ const w=setup();try{const job=w.TGTechnician.jobs()[0];job.open={entrada:'09:00',data:'2026-10-27'};const host=w.document.createElement('div');host.innerHTML=w.TGTechnician.focusHTML(job);w.document.body.append(host);const b=host.querySelector('[data-tgt-action=passport]');assert(b);assert(b.textContent.includes('Passaporte'));assert.equal(host.querySelector('[data-tgt-action=notes]'),null);b.click();assert.deepEqual(w.opened,[['c','l']]);assert(!w.document.getElementById('modalGenericoOverlay').classList.contains('open'));w.allowed=false;assert(!w.TGTechnician.focusHTML(job).includes('data-tgt-action="passport"'));}finally{w.close();}
 });

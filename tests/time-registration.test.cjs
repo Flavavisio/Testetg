@@ -72,7 +72,7 @@ for(const active of [true,false])for(const mode of ['agenda','fixed']){
 test('phone focus offers direct intervention without attendance prerequisite',()=>{
  const tech=fs.readFileSync('tg-technician.js','utf8');
  const focus=tech.match(/    function focusHTML\([^]*?\n    \}/)[0];
- const c=vm.createContext({attendance:()=>false,personalClock:()=>null,resumingLunch:()=>false,icon:()=>'',esc:x=>x,button:label=>label,label:()=> 'OS'});
+ const c=vm.createContext({passportTarget:()=>true,attendance:()=>false,personalClock:()=>null,resumingLunch:()=>false,icon:()=>'',esc:x=>x,button:label=>label,label:()=> 'OS'});
  vm.runInContext(focus,c);
  const html=c.focusHTML({kind:'os',id:'os',row:{},title:'Serviço',client:'Cliente'});
  assert(html.includes('Iniciar intervenção'));assert(!html.includes('Picar entrada no dia'));assert(!html.includes('Regista primeiro'));

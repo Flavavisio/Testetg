@@ -14817,6 +14817,34 @@
             }
         }
         _registarTabela('obraslonga', renderizarObrasLongaDuracao);
+        let _obrasLongaEstadoFiltro = 'todas', _obrasLongaConta = '';
+        function _obrasLongaGrupoEstado(obra) {
+            if (obra.estado === 'pausa para almoço') return 'ativa';
+            return ['preparacao', 'ativa', 'suspensa', 'concluida'].includes(obra.estado) ? obra.estado : 'preparacao';
+        }
+        function _obrasLongaDataCriacao(obra) {
+            if (!obra.dataCriacao) return '—';
+            const data = new Date(obra.dataCriacao);
+            return Number.isNaN(data.getTime()) ? '—' : data.toLocaleDateString('pt-PT');
+        }
+        function obrasLongaFiltrarEstado(estado) {
+            if (!['admin', 'subadmin'].includes(usuarioLogado?.role) || !['todas', 'preparacao', 'ativa', 'suspensa', 'concluida'].includes(estado)) return;
+            _obrasLongaEstadoFiltro = estado;
+            renderizarObrasLongaDuracao();
+        }
+        function _obrasLongaContadores(lista, isAdminView) {
+            const cont = document.getElementById('obrasLongaContadores');
+            const coluna = document.getElementById('obrasLongaDataCriacaoTh');
+            if (coluna) coluna.hidden = !isAdminView;
+            if (!cont) return;
+            cont.hidden = !isAdminView;
+            if (!isAdminView) { cont.innerHTML = ''; return; }
+            const grupos = [['todas','Todas as obras'],['preparacao','Obras em preparação'],['ativa','Obras ativas'],['suspensa','Obras suspensas'],['concluida','Obras concluídas']];
+            cont.innerHTML = grupos.map(([estado, nome]) => {
+                const numero = estado === 'todas' ? lista.length : lista.filter(o => _obrasLongaGrupoEstado(o) === estado).length;
+                return `<button type="button" class="obras-estado-contador" data-obras-estado="${estado}" aria-pressed="${_obrasLongaEstadoFiltro === estado}" onclick="obrasLongaFiltrarEstado('${estado}')"><strong>${numero}</strong><span>${nome}</span></button>`;
+            }).join('');
+        }
         function renderizarObrasLongaDuracao() {
             const tb = document.getElementById('tabelaObrasLonga'); if (!tb) return;
             const empty = document.getElementById('emptyObrasLonga');
@@ -14826,17 +14854,22 @@
             let lista = (dados.obras || []).filter(o => o.adminId === adminId);
             if (!isAdminView) lista = lista.filter(o => o.estado !== 'concluida');
             const cCard = document.getElementById('countObrasLonga'); if (cCard) cCard.textContent = lista.filter(o => o.estado !== 'concluida').length;
+            const conta = JSON.stringify([adminId, usuarioLogado?.id, usuarioLogado?.role]);
+            if (_obrasLongaConta !== conta) { _obrasLongaConta = conta; _obrasLongaEstadoFiltro = 'todas'; }
+            _obrasLongaContadores(lista, isAdminView);
             const totalGeralOL = lista.length;
+            if (isAdminView && _obrasLongaEstadoFiltro !== 'todas') lista = lista.filter(o => _obrasLongaGrupoEstado(o) === _obrasLongaEstadoFiltro);
             lista = _aplicarFiltroOrdenacao('obraslonga', lista,
                 ['nome', o => obterNomeCliente(o.clienteId), o => o.responsavelId ? obterNomeFuncionario(o.responsavelId) : ''],
                 {
+                    dataCriacao: (a, b) => (new Date(a.dataCriacao || 0).getTime() || 0) - (new Date(b.dataCriacao || 0).getTime() || 0),
                     nome: (a, b) => (a.nome || '').localeCompare(b.nome || ''),
                     estado: (a, b) => (a.estado || '').localeCompare(b.estado || ''),
                     horas: (a, b) => totalHorasObra(a.id) - totalHorasObra(b.id)
                 });
             const tbToolbarOL = document.getElementById('obrasLongaToolbar');
             if (tbToolbarOL) tbToolbarOL.innerHTML = totalGeralOL ? _toolbarHtml('obraslonga', 'Pesquisar por nome, cliente, responsável…', lista.length, totalGeralOL) : '';
-            if (!lista.length) { tb.innerHTML = totalGeralOL ? '<tr><td colspan="7" style="text-align:center;color:#94a3b8;">Sem resultados para essa pesquisa.</td></tr>' : ''; if (empty) empty.style.display = totalGeralOL ? 'none' : 'block'; return; }
+            if (!lista.length) { tb.innerHTML = totalGeralOL ? `<tr><td colspan="${isAdminView ? 8 : 7}" style="text-align:center;color:#94a3b8;">Sem obras para o estado ou pesquisa selecionados.</td></tr>` : ''; if (empty) empty.style.display = totalGeralOL ? 'none' : 'block'; return; }
             if (empty) empty.style.display = 'none';
             tb.innerHTML = lista.map(o => {
                 const nFolhas = (dados.folhasObra || []).filter(f => f.obraId === o.id).length;
@@ -14854,6 +14887,7 @@
                     if (_souRespFunc && o.estado !== 'concluida') acoes += ` <button class="btn btn-sm" style="background:#0f766e;color:#fff;" onclick="finalizarObraLonga('${o.id}')" title="Finalizar obra"><i class="fas fa-flag-checkered"></i> Finalizar</button>`;
                 }
                 return `<tr>
+                    ${isAdminView ? `<td data-label="Data de criação" class="obra-data-criacao">${_obrasLongaDataCriacao(o)}</td>` : ''}
                     <td><strong>${o.nome}</strong>${(obrasAvancadoAtivo(dados.administradores?.find(a => a.id === o.adminId)) && o.dataFimPrevista && o.estado !== 'concluida' && o.dataFimPrevista < getDataHoje()) ? ' <span title="Obra em atraso — fim previsto era ' + o.dataFimPrevista.split('-').reverse().join('/') + '" style="color:#dc2626;"><i class="fas fa-triangle-exclamation"></i></span>' : ''}</td><td>${o.clienteId ? obterNomeCliente(o.clienteId) : '—'}</td>
                     <td>${_nomesAtribuidosObraColorido(o)}</td>
                     <td>${_estadoSelectObra(o)}</td>

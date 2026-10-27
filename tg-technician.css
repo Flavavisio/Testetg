@@ -190,3 +190,10 @@ body.dark-mode .tgt-draft-card small{color:#f1d18e}
 .tgt-note-actions .tgt-button{width:100%;min-height:48px}
 /* Avoid focusing a scaled modal while its opening animation is running. */
 .tgt-active #modalOverlay:has(.tgt-wizard)>.modal{animation:none!important;transform:none!important}
+
+/* Keep the employee's familiar single-column workspace readable on a PC. */
+@media(min-width:901px){
+ body.tgt-active{padding-bottom:100px}
+ .tgt-active .header,.tgt-active #cardsGrid,.tgt-active #painelGrupoMobile{width:100%;max-width:960px;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
+ .tgt-active #menuInferiorMobile.tgt-nav{max-width:960px;margin:0 auto;border-radius:14px 14px 0 0}
+}

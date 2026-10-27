@@ -21,7 +21,7 @@
     ];
     const calendars = [['agenda-obras','Planeamento'],['calendario-equipa','Equipa'],['agenda','Prazos e vencimentos']];
     const originalCards = new Map(), originalGroups = [];
-    const legacyMobile = () => innerWidth <= 900;
+    const legacyMobile = () => innerWidth <= 900 || !!window.TGTechnician?.enabled();
     const originalVisibility = window.ajustarVisibilidadeCards;
     let groupedMode = null, originalReportsTitle = '', pendingLayoutRefresh = false;
     let identity = '', current = 'home', returnToMore = false, moreGroup = '', refreshing = false;

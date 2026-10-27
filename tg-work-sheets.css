@@ -49,3 +49,26 @@ body.dark-mode #secao-folhas .table-wrapper table td:first-child { background:#1
     #secao-folhas #folhasFiltros { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
     #secao-folhas #folhasFiltros select { min-width:0; width:100%; }
 }
+/* Employee workspace: the same card rhythm as holidays and absences. */
+#secao-folhas.folhas-funcionario .folhas-indicadores-nota{display:none}
+#secao-folhas.folhas-funcionario .table-wrapper{overflow:visible;background:transparent;border:0;box-shadow:none}
+#secao-folhas.folhas-funcionario table,#secao-folhas.folhas-funcionario tbody{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box}
+#secao-folhas.folhas-funcionario thead{display:none}
+#secao-folhas.folhas-funcionario tbody>tr{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 12px;margin-bottom:14px;padding:18px;border:1px solid #dce5ee;border-radius:14px;background:#fff!important;color:#19324b;box-sizing:border-box}
+#secao-folhas.folhas-funcionario tbody>tr>td{display:block;position:static!important;inset:auto!important;width:auto!important;min-width:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;white-space:pre-wrap;overflow-wrap:anywhere;text-align:left!important;color:inherit}
+#secao-folhas.folhas-funcionario td[data-label]:before{content:attr(data-label);display:block;margin-bottom:5px;color:#64748b;font-size:11px;font-weight:600}
+#secao-folhas.folhas-funcionario .folha-cliente{font-weight:700}
+#secao-folhas.folhas-funcionario .folha-larga,#secao-folhas.folhas-funcionario .folha-acoes{grid-column:1/-1}
+#secao-folhas.folhas-funcionario tbody>tr>.folha-acoes{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px!important;border-top:1px solid #dce5ee!important}
+#secao-folhas.folhas-funcionario .folha-acoes button{min-height:44px;padding:10px 16px;border-radius:10px}
+#secao-folhas.folhas-funcionario .folha-acoes .badge{background:#fff4d6;color:#805600;white-space:normal}
+#secao-folhas.folhas-funcionario #emptyFolhas{padding:24px 16px;background:#fff;border:1px solid #dce5ee;border-radius:14px;color:#64748b}
+body.dark-mode #secao-folhas.folhas-funcionario tbody>tr,body.dark-mode #secao-folhas.folhas-funcionario #emptyFolhas{background:#1a2436!important;color:#e2e8f0;border-color:#52647e}
+body.dark-mode #secao-folhas.folhas-funcionario td[data-label]:before{color:#bdcce0}
+body.dark-mode #secao-folhas.folhas-funcionario tbody>tr>.folha-acoes{border-color:#52647e!important}
+@media(max-width:900px){
+.tgt-active #secao-folhas.folhas-funcionario{background:transparent;box-shadow:none;border:0;padding:0;margin:0 0 90px;width:100%;min-width:0}
+.tgt-active #secao-folhas.folhas-funcionario .section-header{display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px;padding:0;background:transparent;box-shadow:none}
+.tgt-active #secao-folhas.folhas-funcionario .section-header h2{font-size:23px;flex-basis:100%;margin:0}
+.tgt-active #secao-folhas.folhas-funcionario .section-header button{min-height:44px;border-radius:12px}
+}

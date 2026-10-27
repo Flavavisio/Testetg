@@ -134,7 +134,8 @@
                 .forEach(f => pessoas.add(f.id));
         }
         return (dados.folhasObra || []).filter(f => f.adminId === tenant &&
-            (podeValidar() || pessoas.has(f.funcionarioId)));
+            (podeValidar() || pessoas.has(f.funcionarioId)) &&
+            (usuarioLogado.role !== 'funcionario' || f.validada !== true));
     }
 
     function atualizarFiltros(linhas) {
@@ -159,14 +160,28 @@
         const empty = document.getElementById('emptyFolhas');
         if (!tbody || !empty) return;
         prepararConta();
-        const comGrupos = !!document.getElementById('folhasGrupos');
+        const funcionario = usuarioLogado?.role === 'funcionario';
+        document.getElementById('secao-folhas')?.classList?.toggle('folhas-funcionario', funcionario);
+        for (const id of ['folhasGrupos', 'folhasFiltros', 'folhasFiltroContagem', 'folhasAvisoCarregamento']) {
+            const el = document.getElementById(id); if (el) el.hidden = funcionario;
+        }
+        if (funcionario) {
+            for (const id of ['folhasFaturacaoTabs', 'folhasEstadoAviso', 'folhasFaturacaoFeedback']) {
+                const el = document.getElementById(id); if (el) el.hidden = true;
+            }
+            const titulo = document.getElementById('folhasListaTitulo'); if (titulo) titulo.textContent = 'Por verificar pela empresa';
+            filtros.forEach(k => { const el = document.getElementById('folhasFiltro_' + k); if (el) { el.value = ''; el.replaceChildren(new Option('Todos', '')); } });
+        } else {
+            const feedback = document.getElementById('folhasFaturacaoFeedback'); if (feedback) feedback.hidden = false;
+        }
+        const comGrupos = !funcionario && !!document.getElementById('folhasGrupos');
         const todas = folhasVisiveis();
         const linhas = todas.map(f => ({ f, ctx: contexto(f), sit: situacao(f) }));
         if (comGrupos) {
             void carregarEstado();
             renderizarGrupos(linhas);
         }
-        atualizarFiltros(linhas);
+        if (!funcionario) atualizarFiltros(linhas);
         const valores = Object.fromEntries(filtros.map(k => [k, document.getElementById('folhasFiltro_' + k)?.value || '']));
         const doGrupo = comGrupos ? linhas.filter(({ f, sit }) => sit.grupo === grupo && (grupo !== 'concluidas' ||
             (faturacaoPronta && estadoFolha(f).faturada === (faturacao === 'faturadas')))) : linhas;
@@ -180,11 +195,25 @@
         const contador = document.getElementById('folhasFiltroContagem');
         if (contador) contador.textContent = `${filtradas.length} de ${doGrupo.length} folhas neste separador · ${linhas.length} carregadas no total`;
         empty.style.display = filtradas.length ? 'none' : 'block';
-        empty.textContent = grupo === 'concluidas' && !faturacaoPronta ? (erroEstado || 'A confirmar os estados de faturação…') : doGrupo.length ? 'Nenhuma folha corresponde aos filtros.' : 'Nenhuma folha de obra neste separador.';
+        empty.textContent = funcionario ? 'Não tens folhas de obra por verificar.' : grupo === 'concluidas' && !faturacaoPronta ? (erroEstado || 'A confirmar os estados de faturação…') : doGrupo.length ? 'Nenhuma folha corresponde aos filtros.' : 'Nenhuma folha de obra neste separador.';
         tbody.innerHTML = filtradas.map(({ f, ctx, sit }) => {
             const idAttr = escapeHtmlSimples(f.id);
             const validada = f.validada === true;
             const acao = nome => escapeHtmlSimples(`${nome}(${JSON.stringify(f.id)})`);
+            if (funcionario) {
+                const data = /^\d{4}-\d{2}-\d{2}$/.test(f.data || '') ? f.data.split('-').reverse().join('/') : f.data || '—';
+                const campo = (nome, valor, classe = '') => `<td data-label="${nome}" class="${classe}">${escapeHtmlSimples(valor)}</td>`;
+                return `<tr data-folha-id="${idAttr}">
+                    ${campo('Cliente', ctx.cliente.nome, 'folha-cliente')}
+                    ${campo('Data', data)}
+                    ${campo('Obra / OS', ctx.obra.nome, 'folha-larga')}
+                    ${ctx.instalacao.chave !== 'sem' ? campo('Instalação', ctx.instalacao.nome, 'folha-larga') : ''}
+                    ${campo('Trabalho realizado', f.descricao || '—', 'folha-larga')}
+                    ${f.materiais ? campo('Materiais', f.materiais, 'folha-larga') : ''}
+                    ${campo('Horas de trabalho', (Number(f.horasTrabalhadas) || 0).toLocaleString('pt-PT') + ' h')}
+                    <td class="folha-acoes"><button type="button" class="btn btn-primary" onclick="${acao('abrirFolhaDetalhe')}"><i class="fas fa-eye" aria-hidden="true"></i> Abrir folha</button><span class="badge">Por verificar</span></td>
+                </tr>`;
+            }
             const estado = validada ? 'Validada' : 'Não validada';
             const bloqueio = !validada && sit.bloqueioValidacao;
             const tituloValidacao = bloqueio || (validada ? 'Marcar como não validada' : 'Validar esta folha');
@@ -331,7 +360,15 @@
         grupo = nome; faturacao = 'por_faturar'; render();
     };
     window.tgFolhasFaturacao = estado => { if (['por_faturar', 'faturadas'].includes(estado)) { faturacao = estado; render(); } };
-    window.tgFolhasAtualizar = () => { const promessa = carregarEstado(true); render(); return promessa; };
+    window.tgFolhasAtualizar = async () => {
+        if (usuarioLogado?.role === 'funcionario') {
+            const conta = identidade();
+            try { await carregarTabelaEspecifica('folhasObra'); if (conta === identidade()) render(); }
+            catch (e) { if (conta === identidade()) mostrarErro('Não foi possível atualizar as folhas de obra.'); }
+            return;
+        }
+        const promessa = carregarEstado(true); render(); return promessa;
+    };
     window.tgFolhasFaturar = faturar;
     renderizarFolhas = render;
 }());

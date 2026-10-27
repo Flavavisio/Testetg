@@ -114,7 +114,7 @@
     function recordsHTML() {
         if(!permitted('folhas'))return '';
         const count=rows('folhasObra').filter(f=>f.funcionarioId===u().id).length;
-        return `<button type="button" class="tgt-record-card" data-tgt-action="sheets">${icon('clipboard-list')}<span><strong>Folhas de obra</strong><small>${count?count+' '+(count===1?'registo teu':'registos teus'):'Consultar os meus registos'}</small></span>${icon('chevron-right')}</button>`;
+        return `<button type="button" class="tgt-record-card" data-tgt-action="sheets">${icon('clipboard-list')}<span><strong>Folhas de obra</strong><small>${u()?.role==='funcionario'?'Por verificar pela empresa':count?count+' '+(count===1?'registo teu':'registos teus'):'Consultar os meus registos'}</small></span>${icon('chevron-right')}</button>`;
     }
     function draftsHTML(list) {
         const draft=rows('relatoriosEspecialidade').find(r=>r.rascunho&&r.tecnicoId===u().id&&list.some(job=>job.kind==='os'&&job.id===r.servicoId));

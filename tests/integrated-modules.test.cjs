@@ -84,7 +84,9 @@ test('real CRM and Assist pages initialize in the host and retain their existing
     const result={data:tables[table]||[],error:null};const query={select(){return this;},eq(){return this;},single:async()=>({data:result.data[0],error:null}),then(resolve,reject){return Promise.resolve(result).then(resolve,reject);}};return query;
    },functions:{invoke:async()=>({error:null})}})};
    child.eval(embed);
-   for(const script of child.document.querySelectorAll('script:not([src])')) if(script.textContent.trim()) child.eval(script.textContent);
+   const inline=[...child.document.querySelectorAll('script:not([src])')].map(script=>script.textContent).join('\n');
+   if(name==='assistencias') child.matchMedia=()=>({matches:false});
+   child.eval((name==='assistencias'?fs.readFileSync('tg-assist-central.js','utf8')+'\n':'')+inline);
    child.document.dispatchEvent(new child.Event('DOMContentLoaded'));
    await new Promise(r=>setTimeout(r,260));
    assert.equal(child.document.getElementById('crmApp').style.display,'block',name+' app initializes');

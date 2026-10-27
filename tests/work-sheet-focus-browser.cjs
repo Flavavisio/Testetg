@@ -22,7 +22,7 @@ const shell = `<!doctype html><html><head><meta name="viewport" content="width=d
       const page = await context.newPage();
       await page.goto('https://tg.test/');
       await page.addScriptTag({ content: `
-        var dados = {obras:[{id:'obra',nome:'Obra teste'}],servicos:[{id:'os',descricao:'OS teste',obraId:'obra'}]};
+        var dados = {obras:[{id:'obra',nome:'Obra teste'}],servicos:[{id:'os',descricao:'OS teste',obraId:'obra'},{id:'assistencia',descricao:'Assistência teste',origem:'assistencia',obraId:'obra'}]};
         var usuarioLogado={id:'tecnico',role:'funcionario'},_folhaOSPendente={terminou:false};
         var _folhaObraPendente,_foHorasCorrigidasManualmente,entidadeAtual,_foMatExtra,idEditando;
         var escapeHtmlSimples = s=>s, getDataHoje=()=> '2026-10-24', expressAtivo=()=>false, adminDoUtilizador=()=>({});
@@ -30,14 +30,14 @@ const shell = `<!doctype html><html><head><meta name="viewport" content="width=d
         var _horasPicadasObra=()=>2,_horasPicadasOS=()=>2,_horasFmt=()=> '2h',_gerarOpcoesHoras=()=>'<option value="2">2h</option>';
         var renderPlanoConsumoFolha=()=>document.getElementById('fo_plano_materiais').innerHTML='<input id="material_nome" placeholder="Material"><input type="number" id="material_qtd" value="2">';
         ${functions}` });
-      for (const kind of ['obra', 'os']) {
+      for (const kind of ['obra', 'os', 'assistencia']) {
         for (const zoom of [1, .9, .8]) {
           await page.evaluate(({kind,zoom}) => {
             document.querySelector('.modal').style.zoom = zoom;
-            if (kind === 'obra') criarFolhaDaObra('obra',false); else criarFolhaDaOS('os');
+            if (kind === 'obra') criarFolhaDaObra('obra',false); else criarFolhaDaOS(kind);
             _foEscolherMateriais(true);
           }, {kind,zoom});
-          for (const id of ['fo_obra_desc','fo_descricao','fo_materiais','fo_data','material_nome','material_qtd']) {
+          for (const id of ['fo_obra_desc','fo_descricao','fo_materiais','fo_data','material_nome','material_qtd',...(kind==='assistencia'?['fo_estado_assistencia']:[])]) {
             const field = page.locator('#'+id);
             const event = await field.evaluate(el => {
               const event = new PointerEvent('pointerdown', {bubbles:true,cancelable:true});
@@ -69,6 +69,6 @@ const shell = `<!doctype html><html><head><meta name="viewport" content="width=d
       assert(!/maximum-scale|user-scalable/.test(await page.locator('meta[name=viewport]').getAttribute('content')));
       await context.close();
     }
-    console.log('PASS: actual Obra/OS sheet renderers, dynamic materials, 100/90/80% sizing before focus, simulated page reduction, preserved zoom/drafts/quantities/printing.');
+    console.log('PASS: actual Obra/OS/Assistance sheet renderers and assistance status, dynamic materials, 100/90/80% sizing before focus, simulated page reduction, preserved zoom/drafts/quantities/printing.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

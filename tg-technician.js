@@ -1,11 +1,11 @@
-/* Teste TG: an essential phone workspace for today's assigned work. All writes use the native flows. */
+/* Teste TG: the same essential employee workspace on phone and PC. All writes use the native flows. */
 (function () {
     'use strict';
     if (window.TGTechnician) return;
     const $ = id => document.getElementById(id);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const u = () => typeof usuarioLogado === 'undefined' ? null : usuarioLogado;
-    const enabled = () => innerWidth <= 900 && ['funcionario','encarregado'].includes(u()?.role)
+    const enabled = () => (u()?.role === 'funcionario' || innerWidth <= 900 && u()?.role === 'encarregado')
         && !(typeof expressAtivo==='function' && expressAtivo(adminDoUtilizador()));
     const tenant = () => u()?.adminId;
     const rows = key => (typeof dados === 'undefined' ? [] : dados[key] || []).filter(row => row.adminId === tenant());

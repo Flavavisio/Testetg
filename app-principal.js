@@ -12382,6 +12382,7 @@
         }
         let _agendaDragId = null;
         function agendaDragStart(e, id) { if (usuarioLogado?.role === 'funcionario' || document.getElementById('tgPainelTVOverlay')?.classList.contains('aberto')) return; _agendaDragId = id; try { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; } catch (_) {} }
+        function agendaDragEnd() { _agendaDragId = null; document.querySelectorAll('.ag-drop').forEach(el => el.classList.remove('ag-drop')); }
         function agendaDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('ag-drop'); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; }
         function agendaDragLeave(e) { e.currentTarget.classList.remove('ag-drop'); }
         function _notificarAlteracaoOS(s, antesData, antesHora, antesIds) {
@@ -12485,7 +12486,7 @@
             const cls = _estadoClasseAg(estado);
             const emConf = conflitos && conflitos.has(s.id);
             const bloqueada = _osBloqueada(s);
-            const draggableAttr = (!readOnly && !bloqueada) ? `draggable="true" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
+            const draggableAttr = (!readOnly && !bloqueada) ? `data-tg-agenda-drag draggable="true" ondragend="agendaDragEnd()" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
             const _duracaoBadge = (s.duracaoDias && s.duracaoDias > 1) ? `<span style="background:#eef2ff;color:#4f46e5;font-size:.68rem;padding:1px 6px;border-radius:8px;font-weight:700;" title="Duração estimada"><i class="fas fa-calendar-week"></i> ${s.duracaoDias}d</span>` : '';
             const _mapaInfo = _osMapaInfo(s.clienteId, s.morada, s.localId);
             const _moradaBadge = _mapaInfo ? `<a href="${_mapaInfo.url}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="${_mapaInfo.exato ? 'Ver pin exato no mapa' : 'Ver morada da instalação no mapa (aproximado)'}${s.morada ? ': ' + s.morada.replace(/"/g,'&quot;') : ''}" style="color:${_mapaInfo.exato ? '#16a34a' : '#dc2626'};text-decoration:none;"><i class="fas fa-map-location-dot"></i></a>` : '';
@@ -12638,7 +12639,7 @@
             const label = document.getElementById('agendaObrasLabel');
             if (label) label.textContent = `${nomesSemana[diaSemanaIdx]}, ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
             const doDia = oss.filter(s => s.data === ds).sort(_ordenarPorHora);
-            const dropAttrs = readOnly ? '' : `ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
+            const dropAttrs = readOnly ? '' : `data-tg-agenda-drop ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
             const addBtn = readOnly ? '' : `<button type="button" class="btn btn-sm btn-outline" onclick="novaOSNoDia('${ds}')"><i class="fas fa-plus"></i> Nova OS neste dia</button>`;
             let html = `<div class="agenda-dia-wrap" ${dropAttrs}>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -12680,7 +12681,7 @@
                 dias.forEach((d, idx) => {
                     const ds = _fmtDataAg(d);
                     const doDia = oss.filter(s => s.data === ds).sort(_ordenarPorHora);
-                    const dropAttrs = readOnly ? '' : `ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
+                    const dropAttrs = readOnly ? '' : `data-tg-agenda-drop ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
                     const addBtn = readOnly ? '' : `<span class="ag-add" title="Criar OS neste dia" onclick="novaOSNoDia('${ds}')">+</span>`;
                     h += `<div class="agenda-col${ds === hojeStr ? ' agenda-hoje' : ''}" ${dropAttrs}>
                         <div class="agenda-col-h">${nomesSemana[idx]} <span class="dnum">${d.getDate()}/${d.getMonth() + 1}</span> ${addBtn}</div>`;
@@ -12736,7 +12737,7 @@
                 const ds = _fmtDataAg(d);
                 const fora = d.getMonth() !== mes;
                 const doDia = oss.filter(s => s.data === ds).sort(_ordenarPorHora);
-                const dropAttrsM = readOnly ? '' : `ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
+                const dropAttrsM = readOnly ? '' : `data-tg-agenda-drop ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDrop(event,'${ds}')"`;
                 const addBtnM = readOnly ? '' : `<span class="ag-add" title="Criar OS" onclick="novaOSNoDia('${ds}')">+</span>`;
                 html += `<div class="agenda-mes-cel${fora ? ' fora' : ''}${ds === hojeStr ? ' hoje' : ''}" ${dropAttrsM}>
                     <div class="dia-num">${d.getDate()} ${addBtnM}</div>`;
@@ -12744,7 +12745,7 @@
                     const cls = _estadoClasseAg(s.status || 'pendente');
                     const conf = conflitos && conflitos.has(s.id);
                     const bloq = _osBloqueada(s);
-                    const dragAttrM = (!readOnly && !bloq) ? `draggable="true" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
+                    const dragAttrM = (!readOnly && !bloq) ? `data-tg-agenda-drag draggable="true" ondragend="agendaDragEnd()" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
                     html += `<div class="agenda-mes-os ${cls}" ${dragAttrM} title="${s.hora || ''} ${_nomeClienteOS(s.clienteId)} — ${s.status || 'pendente'}${conf ? ' (sobreposição)' : ''}${bloq ? ' (bloqueada)' : ''}">${bloq ? '🔒 ' : ''}${conf ? '⚠ ' : ''}${s.hora ? s.hora + ' ' : ''}${_nomeClienteOS(s.clienteId).slice(0, 12)}</div>`;
                 });
                 if (doDia.length > 4) html += `<div style="font-size:.68rem;color:#64748b;margin-top:2px;">+${doDia.length - 4} mais</div>`;
@@ -12776,7 +12777,7 @@
                 const cls = _estadoClasseAg(s.status || 'pendente');
                 const emConf = conflitos && conflitos.has(s.id);
                 const bloqueada = _osBloqueada(s);
-                const draggableAttr = (!readOnly && !bloqueada) ? `draggable="true" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
+                const draggableAttr = (!readOnly && !bloqueada) ? `data-tg-agenda-drag draggable="true" ondragend="agendaDragEnd()" ondragstart="agendaDragStart(event,'${s.id}')"` : '';
                 const cliente = escapeHtmlSimples(_nomeClienteOS(s.clienteId).slice(0, 22));
                 const tipo = _tipoOSResumo(s);
                 const coordsChip = _osCoordenadasExatas(s);
@@ -12798,7 +12799,7 @@
                 dias.forEach(d => {
                     const ds = _fmtDataAg(d);
                     const doDia = (pessoaId ? oss.filter(s => s.data === ds && atribuidosDe(s).includes(pessoaId)) : semResponsavel.filter(s => s.data === ds)).sort(_ordenarPorHora);
-                    const dropAttrs = readOnly ? '' : `ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDropGantt(event,'${ds}',${pessoaId ? `'${pessoaId}'` : 'null'})"`;
+                    const dropAttrs = readOnly ? '' : `data-tg-agenda-drop ondragover="agendaDragOver(event)" ondragleave="agendaDragLeave(event)" ondrop="agendaDropGantt(event,'${ds}',${pessoaId ? `'${pessoaId}'` : 'null'})"`;
                     html += `<div class="agg-cel${ds === hojeStr ? ' agenda-hoje' : ''}" ${dropAttrs}>${doDia.map(chip).join('') || ''}</div>`;
                 });
             };

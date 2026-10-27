@@ -3884,6 +3884,7 @@
             renderizarPedidosFunc();
             renderizarCalendarioEquipa();
             if (_secaoVisivel('secao-folhas')) renderizarFolhas();
+            if (_secaoVisivel('secao-dashboard-central')) renderizarDashboardCentralSecao();
             if (_secaoVisivel('secao-requisicoes')) renderizarRequisicoes();
             renderizarReports();
             renderizarAlertas();
@@ -11995,7 +11996,8 @@
         // Recarrega SÓ uma coluna de dados (uma tabela), em vez de tudo — usa exatamente os
         // mesmos filtros que carregarDados() já aplicava a essa tabela, para nunca trazer mais
         // (nem menos) dados do que traria um carregamento completo.
-        async function carregarTabelaEspecifica(col) {
+        async function carregarTabelaEspecifica(col, sincronizacaoRemota = false) {
+            const geracaoAoCarregar = _dadosPollGeracao;
             const actorAtLoad = JSON.stringify([usuarioLogado?.adminId || usuarioLogado?.id, usuarioLogado?.id]);
             if (col === 'administradores' || col === 'encarregados') {
                 // Estes dois têm dados adicionais embutidos (licença; funcionários do encarregado)
@@ -12026,8 +12028,10 @@
                 q = q.eq('admin_id', aid);
             }
             const { data, error } = await _buscarPaginadoGenerico(q);
-            if (error) { console.warn('carregarTabelaEspecifica (' + col + '):', error); return; }
+            if (error) { console.warn('carregarTabelaEspecifica (' + col + '):', error); if (sincronizacaoRemota) throw error; return; }
             if (actorAtLoad !== JSON.stringify([usuarioLogado?.adminId || usuarioLogado?.id, usuarioLogado?.id])) return;
+            if (sincronizacaoRemota && geracaoAoCarregar !== _dadosPollGeracao) return;
+            if (sincronizacaoRemota && _contarAlteracoesPendentes() > 0) throw new Error('Há alterações locais por confirmar.');
             dados[col] = (data || []).map(M[col].from);
             const m = new Map();
             for (const o of dados[col]) m.set(o.id, JSON.stringify(M[col].to(o)));
@@ -12036,57 +12040,86 @@
         }
         let _falhasSyncConsecutivas = 0;
         let _avisoSyncPersistenteMostrado = false;
-        function iniciarPollDadosGerais() {
-            if (_dadosPollTimer || !usuarioLogado) return;
-            _dadosPollTimer = setInterval(async () => {
-                if (!usuarioLogado || document.hidden) return;
-                if (document.querySelector('.modal-overlay.open')) return; // não interrompe quem está a preencher um formulário
-                // Se ainda há alterações locais por confirmar no servidor (ex: a última gravação falhou),
-                // NÃO recarrega — recarregar agora substituiria os dados locais pelos do servidor e fazia
-                // "desaparecer" o que ainda não chegou a gravar. Tenta primeiro voltar a sincronizar.
+        // Teste TG: the two live dashboards check lightweight table versions every 2s.
+        // Other screens retain the 30s cadence. No full reload unless data changed.
+        let _dadosPollEmCurso = false, _dadosPollUltima = 0, _dadosPollIdentidade = '', _dadosPollGeracao = 0;
+        function _painelAtividadeVisivel() {
+            if (!['admin', 'subadmin', 'encarregado'].includes(usuarioLogado?.role)) return false;
+            const central = document.getElementById('secao-dashboard-central');
+            if (central?.classList.contains('active') || central?.style.display === 'block') return true;
+            const dia = document.getElementById('omeudia');
+            return !!dia && dia.style.display !== 'none' && !document.querySelector('.section-container.active');
+        }
+        async function _pollDadosGerais(urgente = false) {
+            if (_dadosPollEmCurso || !usuarioLogado || document.hidden || navigator.onLine === false) return;
+            if (document.querySelector('.modal-overlay.open')) return;
+            const identidade = JSON.stringify([_tenantIdAtual(), usuarioLogado.id, usuarioLogado.role]);
+            if (_dadosPollIdentidade !== identidade) {
+                _dadosPollIdentidade = identidade; _ultimasVersoesPorTabela = {}; _ultimaVersaoConhecida = null; _dadosPollUltima = 0;
+            }
+            const intervalo = _painelAtividadeVisivel() ? 2000 : 30000;
+            if (!urgente && Date.now() - _dadosPollUltima < intervalo) return;
+            _dadosPollUltima = Date.now();
+            _dadosPollEmCurso = true;
+            const versoesAntes = { ..._ultimasVersoesPorTabela }, versaoAntes = _ultimaVersaoConhecida;
+            const geracao = _dadosPollGeracao;
+            const mesmaConta = () => geracao === _dadosPollGeracao && identidade === JSON.stringify([_tenantIdAtual(), usuarioLogado?.id, usuarioLogado?.role]);
+            try {
                 if (_contarAlteracoesPendentes() > 0) {
-                    // Se a mesma gravação falhar muitas vezes seguidas (ex.: uma coluna em falta no
-                    // Supabase, migração por aplicar), parar de tentar automaticamente a cada 30s —
-                    // isso só martelava o mesmo erro sem fim, e cada tentativa refazia o ecrã todo,
-                    // dando a sensação de a interface "tremer"/travar. Volta a tentar só quando a
-                    // pessoa fizer uma ação nova (guardar algo), que já tem a sua própria mensagem de erro.
-                    if (_falhasSyncConsecutivas >= 3) {
-                        if (!_avisoSyncPersistenteMostrado) {
-                            _avisoSyncPersistenteMostrado = true;
-                            console.warn('Sincronização com falhas repetidas — parei de tentar automaticamente. Verifica a consola para o erro exato (ex.: coluna em falta, migração por aplicar).');
-                        }
-                        return;
-                    }
+                    if (_falhasSyncConsecutivas >= 3) return;
                     try { await guardarDados(dados); _falhasSyncConsecutivas = 0; _avisoSyncPersistenteMostrado = false; }
-                    catch (e) { _falhasSyncConsecutivas++; console.warn('Poll: ainda não foi possível sincronizar alterações pendentes:', e); }
+                    catch (e) { _falhasSyncConsecutivas++; console.warn('Poll: alterações locais ainda por confirmar:', e); }
                     return;
                 }
                 _falhasSyncConsecutivas = 0;
-                try {
-                    // Verificação leve primeiro (uma linha por tabela, poucos bytes cada) — só
-                    // recarrega as tabelas que realmente mudaram desde a última vez, em vez de
-                    // recarregar a empresa toda a cada picagem de ponto ou alteração pequena.
-                    const tabelasMudaram = await _tabelasQueMudaram();
-                    if (tabelasMudaram === 'TUDO') {
-                        await carregarDados();
-                        renderizarTudo();
-                        return;
-                    }
-                    if (!tabelasMudaram || !tabelasMudaram.length) return;
-                    const colsParaRecarregar = new Set();
-                    tabelasMudaram.forEach(t => {
-                        if (t === 'licencas') { colsParaRecarregar.add('administradores'); return; }
-                        if (t === 'encarregado_funcionarios') { colsParaRecarregar.add('encarregados'); return; }
-                        const col = TABELA_PARA_COLUNA[t];
-                        if (col) colsParaRecarregar.add(col);
-                    });
-                    if (!colsParaRecarregar.size) return;
-                    await Promise.all([...colsParaRecarregar].map(col => carregarTabelaEspecifica(col)));
-                    renderizarTudo();
-                } catch (e) { console.warn('Poll de dados gerais falhou:', e); }
-            }, 30000);
+                const tabelasMudaram = await _tabelasQueMudaram();
+                if (!mesmaConta()) return;
+                if (_contarAlteracoesPendentes() > 0) throw new Error('Gravação local em curso.');
+                if (tabelasMudaram === 'TUDO') {
+                    await carregarDados();
+                    if (mesmaConta()) renderizarTudo();
+                    return;
+                }
+                if (!tabelasMudaram?.length) return;
+                const cols = new Set();
+                tabelasMudaram.forEach(t => {
+                    const col = t === 'licencas' ? 'administradores' : t === 'encarregado_funcionarios' ? 'encarregados' : TABELA_PARA_COLUNA[t];
+                    if (col) cols.add(col);
+                });
+                if (!cols.size) return;
+                if (cols.has('administradores') || cols.has('encarregados')) {
+                    await carregarDados();
+                    if (mesmaConta()) renderizarTudo();
+                    return;
+                }
+                // Wait for every read before releasing the lock, including failed reads.
+                const resultados = await Promise.allSettled([...cols].map(col => carregarTabelaEspecifica(col, true)));
+                const falha = resultados.find(r => r.status === 'rejected');
+                if (falha) throw falha.reason;
+                if (mesmaConta()) renderizarTudo();
+            } catch (e) {
+                // Retry failed reads on the next tick; never consume an unconfirmed version.
+                if (mesmaConta()) { _ultimasVersoesPorTabela = versoesAntes; _ultimaVersaoConhecida = versaoAntes; }
+                console.warn('Poll de dados gerais falhou:', e);
+            } finally { _dadosPollEmCurso = false; }
         }
-        function pararPollDadosGerais() { if (_dadosPollTimer) { clearInterval(_dadosPollTimer); _dadosPollTimer = null; } }
+        function _retomarPollDadosGerais() { if (_dadosPollTimer) void _pollDadosGerais(true); }
+        function iniciarPollDadosGerais() {
+            if (_dadosPollTimer || !usuarioLogado) return;
+            _dadosPollTimer = setInterval(() => { void _pollDadosGerais(); }, 2000);
+            document.addEventListener('visibilitychange', _retomarPollDadosGerais);
+            window.addEventListener('focus', _retomarPollDadosGerais);
+            window.addEventListener('online', _retomarPollDadosGerais);
+            void _pollDadosGerais(true);
+        }
+        function pararPollDadosGerais() {
+            if (_dadosPollTimer) clearInterval(_dadosPollTimer);
+            _dadosPollTimer = null; _dadosPollUltima = 0; _dadosPollIdentidade = ''; _dadosPollGeracao++;
+            _ultimasVersoesPorTabela = {}; _ultimaVersaoConhecida = null;
+            document.removeEventListener('visibilitychange', _retomarPollDadosGerais);
+            window.removeEventListener('focus', _retomarPollDadosGerais);
+            window.removeEventListener('online', _retomarPollDadosGerais);
+        }
         function iniciarPollEquipa() {
             if (_equipaPollTimer || usuarioLogado?.role !== 'admin' && usuarioLogado?.role !== 'subadmin') return;
             atualizarAtividadeEquipa().then(() => renderizarResumoPontoAdmin());

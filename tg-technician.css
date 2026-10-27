@@ -179,3 +179,14 @@ body.dark-mode .tgt-draft-card small{color:#f1d18e}
 .tgt-active #modalPedidoOverlay .modal-actions{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;z-index:2;background:var(--tgt-surface);padding:12px 0 0;margin-top:18px;border-top:1px solid var(--tgt-line)}
 .tgt-active #modalPedidoOverlay .modal-actions button{min-width:0;min-height:48px;margin:0;font-size:14px;white-space:normal;justify-content:center;padding:10px 8px}
 @media(max-width:360px){.tgt-active #ped_horas_bloco>.form-group{flex-basis:100%!important}}
+
+/* Personal header and installation context for the phone workspace. */
+.tgt-home>.tgt-day-head{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:center}
+.tgt-home>.tgt-day-head>p,.tgt-home>.tgt-day-head>h2{grid-column:1}
+.tgt-avatar{grid-column:2;grid-row:1/4;position:relative;display:grid;place-items:center;width:64px;height:64px;overflow:hidden;border-radius:50%;background:var(--tgt-soft);color:var(--tgt-blue);border:1px solid var(--tgt-line);font-size:23px;font-weight:750;flex-shrink:0}
+.tgt-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:var(--tgt-surface)}
+.tgt-avatar img[hidden]{display:none!important}
+.tgt-note-actions{display:grid;gap:10px;margin-top:18px}
+.tgt-note-actions .tgt-button{width:100%;min-height:48px}
+/* Avoid focusing a scaled modal while its opening animation is running. */
+.tgt-active #modalOverlay:has(.tgt-wizard)>.modal{animation:none!important;transform:none!important}

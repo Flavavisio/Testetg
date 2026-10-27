@@ -122,6 +122,15 @@
         return job?`<button type="button" class="tgt-draft-card" data-tgt-action="reports" data-tgt-kind="os" data-tgt-id="${esc(job.id)}">${icon('file-pen')}<span><strong>Relatório por terminar</strong><small>${esc(label(job))} · ${esc(draft.tipo||'Relatório')} em rascunho</small></span>${icon('chevron-right')}</button>`:'';
     }
 
+    function avatarHTML() {
+        const person = rows('funcionarios').find(p => p.id === u()?.id) || rows('encarregados').find(p => p.id === u()?.id);
+        const name = String(person?.nome || u()?.nome || 'Técnico').trim();
+        const parts = name.split(/\s+/).filter(Boolean);
+        const initials = (Array.from(parts[0] || 'T')[0] + (parts.length > 1 ? [...parts[parts.length - 1]][0] : '')).toLocaleUpperCase('pt-PT');
+        const photo = String(person?.foto || '').trim();
+        const safe = /^(https?:\/\/|\/[^/])/.test(photo) || /^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(photo);
+        return `<span class="tgt-avatar" role="img" aria-label="${esc(name)}"><span aria-hidden="true">${esc(initials)}</span>${safe ? `<img data-tgt-avatar src="${esc(photo)}" alt="" decoding="async" referrerpolicy="no-referrer">` : ''}</span>`;
+    }
     function renderHome() {
         if (!enabled()) return;
         const dia=$('omeudia');if(!dia)return;
@@ -133,7 +142,7 @@
         const general=personalClock();
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
-        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p></header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${button(general?'Ver ponto':'Picar entrada',general?'point':'clock')}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
+        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${button(general?'Ver ponto':'Picar entrada',general?'point':'clock')}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
         const finalHTML=oldSession?html.replace('</header>','</header>'+button('Entrada anterior por encerrar · Abrir Trabalhos','jobs')):html;
         if(dia.dataset.tgtHtml!==finalHTML){dia.innerHTML=finalHTML;dia.dataset.tgtHtml=finalHTML;}
         dia.style.display=view==='home'&&!document.querySelector('.section-container.active')?'block':'none';
@@ -187,10 +196,20 @@
         content.append(actions);menu();
     }
     function navigate(open) {const result=open();window.scrollTo({top:0,behavior:'auto'});return result;}
+    function passportTarget(job) {
+        const customerId = job?.row?.clienteId, localId = job?.row?.localId || '';
+        if (!customerId || !window.TGPassport?.scope(customerId, localId)) return null;
+        return { customerId, localId };
+    }
+    function openPassport(job) {
+        const target = passportTarget(job); if (!target) return;
+        $('modalGenericoOverlay')?.classList.remove('open');
+        return window.TGPassport.open(target.customerId, target.localId);
+    }
     function notes(job) {
         const overlay=$('modalGenericoOverlay'),fields=$('modalGenericoCampos'),form=$('modalGenericoForm');if(!overlay||!fields||!form)return;
         $('modalGenericoTitulo').textContent='Notas · '+label(job);
-        fields.innerHTML=`<section class="tgt-notes"><h3>${esc(job.title)}</h3><p class="tgt-message">Observações da ${job.kind==='os'?'ordem de serviço':'obra'}</p><p class="tgt-note-text">${esc(job.row.observacoes||'Sem observações registadas.')}</p>${button('Abrir relatórios','reports',job)}</section>`;
+        fields.innerHTML=`<section class="tgt-notes"><h3>${esc(job.title)}</h3><p class="tgt-message">Observações da ${job.kind==='os'?'ordem de serviço':'obra'}</p><p class="tgt-note-text">${esc(job.row.observacoes||'Sem observações registadas.')}</p><div class="tgt-note-actions">${passportTarget(job)?button(icon('id-card')+' Ver passaporte de instalação','passport',job):'<p class="tgt-message">Passaporte de instalação indisponível neste trabalho.</p>'}${button('Abrir relatórios','reports',job)}</div></section>`;
         form.onsubmit=event=>{event.preventDefault();_fecharModalGenerico();};
         const close=overlay.querySelector('.modal-actions .btn-success');if(close){close.style.display='';close.textContent='Fechar';}
         overlay.classList.add('open');
@@ -202,13 +221,19 @@
 
     // A wizard groups the existing fields without copying them or replacing native save,
     // cancellation, material consumption, clock rollback or report completion handlers.
+    function protectFieldFont(field, wizard) {
+        if (!field.matches?.('input,textarea,select') || ['hidden','checkbox','radio','range','color'].includes(field.type)) return;
+        if (!wizard.fonts.has(field)) wizard.fonts.set(field, [field.style.getPropertyValue('font-size'), field.style.getPropertyPriority('font-size')]);
+        const size = Math.max(16, parseFloat(getComputedStyle(field).fontSize) || 16);
+        field.style.setProperty('font-size', size + 'px', 'important');
+    }
     function installWizard() {
         if(!enabled())return;
         const form=$('modalForm'),fields=$('modalCampos'),overlay=$('modalOverlay');
         if(!form||!fields||!overlay?.classList.contains('open')||!$('fo_descricao')||wizards.has(form))return;
         const children=[...fields.children];if(!children.length)return;
         const submit=$('modalSubmitBtn');if(!submit)return;
-        const wizard={form,fields,submit,submitText:submit.innerHTML,noValidate:form.noValidate,step:0,parts:[],root:null};
+        const wizard={form,fields,submit,submitText:submit.innerHTML,noValidate:form.noValidate,step:0,parts:[],root:null,fonts:new Map()};
         const root=document.createElement('div');root.className='tgt-wizard';
         root.innerHTML='<p class="tgt-eyebrow">FOLHA DE OBRA</p><nav class="tgt-wizard-tabs" aria-label="Etapas da folha"><button type="button" data-tgt-step="0">1 · Trabalho</button><button type="button" data-tgt-step="1">2 · Materiais</button><button type="button" data-tgt-step="2">3 · Rever</button></nav>';
         const pages=[0,1,2].map(i=>{const page=document.createElement('section');page.className='tgt-wizard-page';page.dataset.tgtPage=i;root.append(page);return page;});
@@ -221,6 +246,7 @@
         });
         const actions=document.createElement('div');actions.className='tgt-wizard-actions';actions.innerHTML=button('Voltar','wizard-back')+button('Continuar','wizard-next',null,true);root.append(actions);
         fields.append(root);wizard.root=root;wizard.pages=pages;wizard.review=review;form.noValidate=true;
+        root.querySelectorAll('input,textarea,select').forEach(field => protectFieldFont(field, wizard));
         wizards.set(form,wizard);setStep(wizard,0);
     }
     function validate(wizard,step) {
@@ -255,6 +281,7 @@
         }
     }
     function removeWizard(wizard) {
+        wizard.fonts.forEach(([value, priority], field) => { if (value) field.style.setProperty('font-size', value, priority); else field.style.removeProperty('font-size'); });
         if(wizard.root.parentElement===wizard.fields)wizard.parts.forEach(({node})=>wizard.fields.append(node));wizard.root.remove();
         wizard.submit.hidden=false;wizard.submit.innerHTML=wizard.submitText;wizard.form.noValidate=wizard.noValidate;wizards.delete(wizard.form);
     }
@@ -323,6 +350,7 @@
             case'details':return details(job);
             case'photos':return details(job,'fotos');
             case'notes':return notes(job);
+            case'passport':return openPassport(job);
             case'reports':return details(job,'relatorios');
             case'materials':return details(job,'materiais');
             case'start':if(completed(job))return;if(express()&&job.kind==='os')return criarFolhaDaOS(job.id);if(attendance()&&!personalClock()&&!resumingLunch(job))return picarPonto();if(job.open)return;return job.kind==='os'?picarPontoOS(job.id,'entrada'):obraLongaPicarEntrada(job.id);
@@ -334,6 +362,16 @@
     if($('modalOverlay'))new MutationObserver(()=>{
         if(!$('modalOverlay').classList.contains('open'))wizards.forEach(removeWizard);else installWizard();
     }).observe($('modalOverlay'),{attributes:true,attributeFilter:['class']});
+    const protectFocusedField = event => {
+        if (!enabled()) return;
+        const wizard = wizards.get(event.target.form);
+        if (wizard) protectFieldFont(event.target, wizard);
+    };
+    document.addEventListener('pointerdown', protectFocusedField, true);
+    document.addEventListener('focusin', protectFocusedField, true);
+    document.addEventListener('error', event => {
+        if (event.target.matches?.('img[data-tgt-avatar]')) event.target.hidden = true;
+    }, true);
     document.addEventListener('tg:interface-updated',refresh);
     let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(refresh,180);});
     window.TGTechnician={refresh,jobs,todayJobs,weekJobs,enabled};refresh();

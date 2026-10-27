@@ -18,3 +18,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   #tg-signup-card .signup-grid2{grid-template-columns:minmax(0,1fr)}
   #tg-landing .tg-toto-note p{min-width:0}
 }
+
+/* Keep every work-sheet field at an unscaled 16px before iOS focuses it. */
+@media(max-width:900px),(pointer:coarse){
+ html body :is(#modalOverlay,#modalGenericoOverlay,#modalFolhaObrigOverlay) :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=hidden]){font-size:16px!important;line-height:1.5;transition-property:background-color,border-color,color,box-shadow!important}
+}

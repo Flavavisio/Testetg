@@ -163,7 +163,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" /></noscript>
-    <link rel="stylesheet" href="styles.css?v=e2e-review-20261015" />
+    <link rel="stylesheet" href="styles.css?v=obras-contadores-20261027" />
     <link rel="stylesheet" href="landing-ui.css?v=1.0.1" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -2106,10 +2106,12 @@
             </div>
         </div>
         <p style="color:#64748b;font-size:.85rem;margin-top:-6px;">Cada picagem de entrada/saída em obra e cada folha de obra ficam ligadas aqui, com o total de horas acumuladas.</p>
+        <div id="obrasLongaContadores" class="obras-estado-contadores" aria-label="Contadores de obras por estado" hidden></div>
         <div id="obrasLongaToolbar"></div>
         <div class="table-wrapper">
             <table>
                 <thead><tr>
+                    <th id="obrasLongaDataCriacaoTh" class="tg-th-sort" data-tkey="obraslonga" data-tcol="dataCriacao" onclick="tableOrdenar('obraslonga','dataCriacao')" hidden>Data de criação <i class="tg-sort-ic fas fa-sort"></i></th>
                     <th class="tg-th-sort" data-tkey="obraslonga" data-tcol="nome" onclick="tableOrdenar('obraslonga','nome')">Obra <i class="tg-sort-ic fas fa-sort"></i></th>
                     <th>Cliente</th><th>Responsável</th>
                     <th class="tg-th-sort" data-tkey="obraslonga" data-tcol="estado" onclick="tableOrdenar('obraslonga','estado')">Estado <i class="tg-sort-ic fas fa-sort"></i></th>
@@ -2803,7 +2805,7 @@
 <!-- The assistant ID prevents the legacy app loader from adding a duplicate. -->
 <script defer src="tg-smart-engine.js?v=3.1.0-stock"></script>
 <script defer id="tg-assistente-script" src="tg-assistente.js?v=4.1.1-teste"></script>
-<script src="app-principal.js?v=atividade-rapida-20261027"></script>
+<script src="app-principal.js?v=obras-contadores-20261027"></script>
 <link rel="stylesheet" href="tg-supervisor-home.css?v=1.0.0">
 <script src="tg-supervisor-home.js?v=1.0.0"></script>
 <script src="tg-push.js?v=1.2.3"></script>

@@ -5937,17 +5937,18 @@ function _assistLerNotas(value) {
         function _servicosGrupoEstado(servico) {
             const estado = (servico.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
             if (estado === 'concluido') return 'concluidos';
+            if (estado === 'stand by') return 'standby';
             return estado === 'cancelado' ? 'cancelados' : 'pendentes';
         }
         function servicosFiltrarEstado(estado) {
-            if (!['todos', 'pendentes', 'concluidos'].includes(estado)) return;
+            if (!['todos', 'pendentes', 'standby', 'concluidos'].includes(estado)) return;
             _servicosEstadoFiltro = estado;
             renderizarServicos();
         }
         function _servicosContadores(lista) {
             const cont = document.getElementById('servicosContadores');
             if (!cont) return;
-            cont.innerHTML = [['pendentes', 'Pendentes'], ['concluidos', 'Concluídos'], ['todos', 'Todos']].map(([estado, nome]) => {
+            cont.innerHTML = [['pendentes', 'Pendentes'], ['standby', 'Stand by'], ['concluidos', 'Concluídos'], ['todos', 'Todos']].map(([estado, nome]) => {
                 const numero = estado === 'todos' ? lista.length : lista.filter(s => _servicosGrupoEstado(s) === estado).length;
                 return `<button type="button" class="obras-estado-contador" data-servicos-estado="${estado}" aria-pressed="${_servicosEstadoFiltro === estado}" onclick="servicosFiltrarEstado('${estado}')"><strong>${numero}</strong><span>${nome}</span></button>`;
             }).join('');
@@ -25574,7 +25575,7 @@ async function salvarAdmin(e) {
                         <div class="ff-secao ff-tint-id">
                             <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Morada</div>
                             <div class="ff-secao-body">
-                                <div class="form-group ff-span2"><label>Número de cliente</label><input type="text" id="c_numero_cliente" value="${item ? (item.numeroCliente||'') : ''}" maxlength="8" inputmode="numeric" pattern="[0-9]*" placeholder="Até 8 dígitos" /></div>
+                                <div class="form-group ff-span2"><label>Número de cliente</label><input type="text" id="c_numero_cliente" value="${item ? (item.numeroCliente||'') : ''}" maxlength="9" inputmode="numeric" pattern="[0-9]*" placeholder="Até 9 dígitos" /></div>
                                 <div class="form-group ff-span2"><label>Morada</label><input type="text" id="c_morada" value="${item ? (item.morada||item.endereco||'') : ''}" autocomplete="off" /></div>
                                 <div class="form-group"><label>Número de porta</label><input type="text" id="c_numero_porta" value="${item ? (item.numeroPorta||'') : ''}" placeholder="ex.: 3, 3A, Lote 2" /></div>
                                 <div class="form-group"><label>Código Postal</label><input type="text" id="c_cp" value="${item ? (item.codigoPostal||'') : ''}" placeholder="0000-000" autocomplete="off" oninput="aplicarMascaraCP(this); _cttPreencherPorCP(this.value,{cidade:'c_cidade',freguesia:'c_freguesia',morada:'c_morada'})" maxlength="8" /></div>
@@ -27239,8 +27240,8 @@ async function salvarAdmin(e) {
                     }
                 }
                 if (!obj.nome) obj.nome = 'Cliente ' + obj.nif;
-                if (obj.numeroCliente && !/^\d{1,8}$/.test(obj.numeroCliente)) {
-                    alert('O número de cliente deve ter só dígitos, até 8 no máximo.');
+                if (obj.numeroCliente && !/^\d{1,9}$/.test(obj.numeroCliente)) {
+                    alert('O número de cliente deve ter só dígitos, até 9 no máximo.');
                     return;
                 }
                 if (obj.portalAtivo && obj.nif === _NIF_CONSUMIDOR_FINAL) {

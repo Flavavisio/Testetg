@@ -241,8 +241,6 @@
 <script src="tg-planner.js?v=1.0.1"></script>
 <link id="tg-form-focus-style" rel="stylesheet" href="tg-form-focus.css?v=1.2.0">
 <script src="tg-form-focus.js?v=1.2.0"></script>
-<link rel="stylesheet" href="tg-assist-central.css?v=1.0.0">
-<script src="tg-assist-central.js?v=1.0.0"></script>
 </head>
 <body>
 
@@ -306,26 +304,29 @@
                 </div>
 
                 <div id="secao-assistencias" class="secao-crm">
-                    <div id="assistCentral" class="ac">
-                        <div class="ac-intro"><div><h2>Central de atendimento</h2><p>Pedidos, intervenções e acompanhamento.</p></div></div>
-                        <div id="acMetrics" class="ac-metrics" aria-label="Indicadores das assistências"></div>
-                        <div class="ac-filters">
-                            <label>Cliente<select id="assistFiltroCliente" onchange="renderizarAssistencias()"><option value="">Todos os clientes</option></select></label>
-                            <label>Instalação<select id="assistFiltroLocal" onchange="renderizarAssistencias()"><option value="">Todas as instalações</option></select></label>
-                            <label>Técnico<select id="assistFiltroTecnico" onchange="renderizarAssistencias()"><option value="">Todos os técnicos</option></select></label>
-                            <label>Prioridade<select id="assistFiltroPrioridade" onchange="renderizarAssistencias()"><option value="">Todas as prioridades</option><option value="baixa">Baixa</option><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></label>
-                            <label>Estado<select id="assistFiltroEstado" onchange="renderizarAssistencias()"><option value="">Todos os estados</option><option value="aberta">Aberta</option><option value="andamento">Em atendimento</option><option value="resolvida">Resolvida</option><option value="fechada">Fechada</option></select></label>
-                        </div>
-                        <div class="ac-workspace">
-                            <aside class="ac-inbox" aria-label="Lista de assistências">
-                                <div class="ac-inbox-head"><h3>Pedidos</h3><span id="acListCount" aria-live="polite"></span></div>
-                                <label class="ac-search"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Pesquisar cliente ou pedido</span><input type="search" id="assistPesquisa" placeholder="Pesquisar cliente ou pedido…" oninput="renderizarAssistencias()" autocomplete="off"></label>
-                                <div id="acList" class="ac-list"></div>
-                            </aside>
-                            <section id="acDetail" class="ac-detail" aria-labelledby="acDetailTitle" hidden></section>
-                            <div id="acDetailEmpty" class="ac-detail ac-empty ac-empty-detail"><i class="fas fa-headset" aria-hidden="true"></i><strong>O próximo passo começa aqui</strong>Escolhe um pedido para consultar os detalhes,<br>adicionar notas ou criar uma ordem de serviço.</div>
-                        </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                        <select id="assistFiltroEstado" onchange="renderizarAssistencias()" style="max-width:200px;">
+                            <option value="">Todos os estados</option>
+                            <option value="aberta">Aberta</option>
+                            <option value="andamento">Em atendimento</option>
+                            <option value="resolvida">Resolvida</option>
+                            <option value="fechada">Fechada</option>
+                        </select>
+                        <select id="assistFiltroPrioridade" onchange="renderizarAssistencias()" style="max-width:180px;">
+                            <option value="">Todas as prioridades</option>
+                            <option value="baixa">Baixa</option>
+                            <option value="normal">Normal</option>
+                            <option value="alta">Alta</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
                     </div>
+                    <div class="table-wrapper scroll">
+                        <table>
+                            <thead><tr><th>Nº</th><th>Cliente</th><th>Assunto</th><th>Prioridade</th><th>Estado</th><th>Atribuído</th><th>Data</th><th>Ações</th></tr></thead>
+                            <tbody id="tabelaAssistencias"></tbody>
+                        </table>
+                    </div>
+                    <p id="emptyAssistencias" class="text-muted text-center mt-10" style="display:none;">Nenhuma assistência ainda — clica em "Nova Assistência" para começar.</p>
                 </div>
 
             </div>
@@ -774,7 +775,36 @@
             const c = dados.clientes?.find(c => c.id === id);
             return c ? c.nome : '(removido)';
         }
-        function renderizarAssistencias() { window.TGAssistCentral.render(); }
+        function renderizarAssistencias() {
+            const tid = _tenantId();
+            const filtroEstado = document.getElementById('assistFiltroEstado')?.value || '';
+            const filtroPrioridade = document.getElementById('assistFiltroPrioridade')?.value || '';
+            let lista = (dados.assistencias || []).filter(a => a.adminId === tid);
+            if (filtroEstado) lista = lista.filter(a => a.estado === filtroEstado);
+            if (filtroPrioridade) lista = lista.filter(a => a.prioridade === filtroPrioridade);
+            lista.sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
+            document.getElementById('emptyAssistencias').style.display = lista.length ? 'none' : 'block';
+            document.getElementById('tabelaAssistencias').innerHTML = lista.map(a => {
+                const est = ASSIST_ESTADOS[a.estado] || ASSIST_ESTADOS.aberta;
+                const pri = ASSIST_PRIORIDADES[a.prioridade] || ASSIST_PRIORIDADES.normal;
+                const foraSla = !['resolvida', 'fechada'].includes(a.estado) && (Date.now() - (a.dataCriacao || Date.now())) >= 48 * 3600000;
+                return `<tr>
+                    <td>${escapeHtmlSimples(a.numero || '—')}${foraSla ? ' <i class="fas fa-triangle-exclamation" style="color:#d1342f;" title="Aberta há mais de 48h"></i>' : ''}</td>
+                    <td>${escapeHtmlSimples(obterNomeCliente(a.clienteId))}</td>
+                    <td>${_assistResumoHtml(a)}</td>
+                    <td><span class="badge" style="background:${pri.cor}22;color:${pri.cor};">${pri.label}</span></td>
+                    <td><span class="badge" style="background:${est.bg};color:${est.cor};">${est.label}</span></td>
+                    <td>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId))}</td>
+                    <td>${a.dataCriacao ? new Date(a.dataCriacao).toLocaleDateString('pt-PT') : '—'}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn btn-sm btn-outline" onclick="abrirModalAssistencia('${a.id}')" title="Ver/editar"><i class="fas fa-pen"></i></button>
+                        ${a.estado !== 'fechada' && !a.osGeradaId ? `<button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8;" onclick="criarOSDeAssistencia('${a.id}')" title="Criar OS"><i class="fas fa-hard-hat"></i></button>` : ''}
+                        ${a.osGeradaId ? `<span class="badge" style="background:var(--green-bg);color:var(--green);" title="OS já criada"><i class="fas fa-check"></i> OS criada</span>` : ''}
+                        <button class="btn btn-sm btn-outline" style="color:var(--red);" onclick="excluirAssistencia('${a.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
         // ===== Pesquisa de Cliente (nome ou número) — mesmo mecanismo já usado no resto da app
         // (OS, Folha, Contrato, Obra) — substitui o <select> simples que só listava por ordem,
         // sem pesquisa nenhuma. Mostra até 40 resultados, mesmo antes de escrever nada.
@@ -988,8 +1018,8 @@
                 </div>
             </div>`;
         }
-        async function adicionarNotaAssistencia(id, inputId = 'assist_nova_nota', listaId = 'assist_notas_lista') {
-            const input = document.getElementById(inputId);
+        async function adicionarNotaAssistencia(id) {
+            const input = document.getElementById('assist_nova_nota');
             const texto = input.value.trim();
             if (!texto) return;
             const item = dados.assistencias?.find(a => a.id === id);
@@ -997,7 +1027,7 @@
             if (!item.notas) item.notas = [];
             item.notas.push({ texto, autor: usuarioLogado?.nome || 'Eu', data: Date.now() });
             input.value = '';
-            document.getElementById(listaId).innerHTML = item.notas.slice().reverse().map(n => `
+            document.getElementById('assist_notas_lista').innerHTML = item.notas.slice().reverse().map(n => `
                 <div style="padding:6px 0;border-bottom:1px solid var(--border-soft);font-size:.82rem;">
                     <div>${escapeHtmlSimples(n.texto)}</div>
                     <div class="help-text">${escapeHtmlSimples(n.autor || '')} · ${new Date(n.data).toLocaleString('pt-PT')}</div>
@@ -1173,7 +1203,6 @@
                 document.getElementById('crmTopIcon').innerHTML = '<i class="fas ' + meta.icone + '"></i>';
                 document.getElementById('crmTopAcoes').innerHTML = '<a href="index.html" class="btn btn-sm btn-voltar-tg"><i class="fas fa-arrow-left"></i> <span>Voltar ao Total Gest</span></a>' + meta.botao;
             }
-            window.TGAssistCentral?.syncLayout();
             if (nome === 'dashboard') renderizarDashboardAssist();
             else if (nome === 'assistencias') renderizarAssistencias();
         }
@@ -1236,7 +1265,6 @@
                 usuarioLogado.nome = obterNomeFuncionario(usuarioLogado.id) || 'Eu';
                 document.getElementById('crmApp').style.display = 'block';
                 renderizarTudo();
-                mudarTabCRM('assistencias');
                 // Se veio de um link direto (ex.: da lista "Sem OS" no Dashboard Central da app
                 // principal), abre já o modal de criar OS dessa assistência específica, sem
                 // precisar de navegar até lá dentro do Assist.

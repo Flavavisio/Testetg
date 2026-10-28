@@ -3,7 +3,7 @@
     'use strict';
     const modules = {
         crm: { title: 'CRM Comercial', page: 'TOTALGEST_CRM.html', roles: ['admin','subadmin','vendedor'] },
-        assistencias: { title: 'Assistências', page: 'TOTALGEST_ASSIST.html', version: '2.0.0-central', roles: ['admin','subadmin'] }
+        assistencias: { title: 'Assistências', page: 'TOTALGEST_ASSIST.html', version: '1.0.1-encarregados', roles: ['admin','subadmin'] }
     };
     const frames = new Map();
     let pending = null;
@@ -40,7 +40,7 @@
         const src = mod.page + '?' + params;
         let state = frames.get(name);
         let hasDraft = false;
-        try { hasDraft = !!state && (!!state.frame.contentWindow._tgModuleUnsynced || !!state.frame.contentWindow.TGAssistCentral?.hasDraft() || !!state.frame.contentDocument.querySelector('.modal-overlay.open')); } catch (_) {}
+        try { hasDraft = !!state && (!!state.frame.contentWindow._tgModuleUnsynced || !!state.frame.contentDocument.querySelector('.modal-overlay.open')); } catch (_) {}
         if (state && (state.identity !== identity() || state.src !== src || (!section.classList.contains('active') && !hasDraft))) { state.frame.remove(); frames.delete(name); state = null; }
         if (!state) {
             const frame = document.createElement('iframe'); frame.className = 'tg-module-frame';

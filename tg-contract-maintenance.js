@@ -318,19 +318,19 @@
             const key=r.servicoId ? 'os:'+r.servicoId : (r.id ? 'reg:'+r.id : 'legacy:'+records.indexOf(r));
             if(!unique.has(key))unique.set(key,r);
         }
-        // Teste TG requests reserve one annual visit. A linked completed OS replaces the
-        // reservation instead of consuming another visit, even if completed next year.
-        const bookings=(dados.assistencias||[]).filter(a=>a.adminId===tenant&&a.testeContratoId===c.id&&a.testeVisitaAno&&!a.apagadoSuperAdmin);
-        for(const [key,r] of unique){if(bookings.some(a=>a.osGeradaId===r.servicoId&&String(a.testeVisitaAno)!==yr))unique.delete(key);}
-        let reserved=0;
-        for(const a of bookings.filter(a=>String(a.testeVisitaAno)===yr)){
-            const completedRecord=a.osGeradaId&&(dados.registosManutencao||[]).find(r=>r.adminId===tenant&&r.contratoId===c.id&&r.servicoId===a.osGeradaId&&r.dataRealizacao);
-            const completedOS=a.osGeradaId&&(dados.servicos||[]).find(os=>os.id===a.osGeradaId&&os.adminId===tenant&&os.contratoId===c.id&&['concluído','concluido'].includes(os.status));
-            if(completedRecord)unique.set('os:'+a.osGeradaId,completedRecord);
-            else if(completedOS)unique.set('os:'+a.osGeradaId,{id:'assistencia:'+a.id,adminId:tenant,contratoId:c.id,servicoId:completedOS.id,dataRealizacao:completedOS.data});
-            else reserved++;
+        // Teste TG: a request and a pending OS never consume allowance. Completed
+        // linked OS count once in the completion year; older data use their recorded date.
+        const bookings=(dados.assistencias||[]).filter(a=>a.adminId===tenant&&a.testeContratoId===c.id&&!a.apagadoSuperAdmin);
+        for(const [key,r] of unique)if(bookings.some(a=>a.osGeradaId===r.servicoId))unique.delete(key);
+        for(const a of bookings){
+            const os=a.osGeradaId&&(dados.servicos||[]).find(os=>os.id===a.osGeradaId&&os.adminId===tenant&&os.contratoId===c.id&&os.clienteId===a.clienteId&&(os.localId||'')===(a.localId||''));
+            if(os&&!['concluído','concluido'].includes(os.status))continue;
+            if(!a.osGeradaId||(!os&&!a.testeVisitaConcluidaEm))continue;
+            const record=(dados.registosManutencao||[]).find(r=>r.adminId===tenant&&r.contratoId===c.id&&r.servicoId===a.osGeradaId&&r.dataRealizacao);
+            const completionDate=String(a.testeVisitaConcluidaEm||record?.dataRealizacao||os?.data||'').slice(0,10);
+            if(completionDate.slice(0,4)===yr)unique.set('os:'+a.osGeradaId,record||{id:'assistencia:'+a.id,adminId:tenant,contratoId:c.id,servicoId:a.osGeradaId,dataRealizacao:completionDate});
         }
-        const completed=unique.size,used=completed+reserved;
+        const completed=unique.size,reserved=0,used=completed;
         return {year:Number(year),planned,completed,reserved,used,remaining:planned===null?null:Math.max(0,planned-used),
             excess:planned===null?null:Math.max(0,used-planned),known:planned!==null,
             records:[...unique.values()]};
@@ -343,11 +343,10 @@
             '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">'+
             '<span>Previstas: <b>'+esc(v.planned===null?'Não definido':v.planned)+'</b></span>'+
             '<span>Realizadas: <b>'+esc(v.completed)+'</b></span>'+
-            '<span>Reservadas por assistências: <b>'+esc(v.reserved)+'</b></span>'+
             '<span>Disponíveis: <b>'+esc(v.remaining===null?'—':v.remaining)+'</b></span></div>'+
             (v.planned>0?'<div role="progressbar" aria-valuenow="'+esc(Math.min(v.used,v.planned))+'" aria-valuemin="0" aria-valuemax="'+esc(v.planned)+'" style="height:7px;border-radius:6px;background:#dfe7f2;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#2860a6"></div></div>':'')+
             (v.excess>0?'<p class="help-text">Visitas adicionais: '+esc(v.excess)+'</p>':'')+
-            '<p class="help-text">As assistências reservam uma visita no ano da criação; a manutenção confirmada substitui essa reserva. Sem reserva, contam os registos de manutenção concluídos; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
+            '<p class="help-text">Uma assistência só desconta uma visita depois de a OS associada estar concluída, no ano da conclusão. Criar a assistência ou uma OS pendente não desconta visitas; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
     }
     // Read-only annual calendar: completed events from confirmed maintenance logs;
     // future events from existing next-maintenance calculations (not fabricated yearly dates).

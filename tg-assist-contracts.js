@@ -5,6 +5,7 @@ const esc=v=>escapeHtmlSimples(String(v??''));
 const own=(key,id)=>(dados[key]||[]).find(x=>x.id===id&&x.adminId===_tenantId()&&!x.apagadoSuperAdmin);
 const licensed=()=>typeof moduloContratosAtivo==='function'&&moduloContratosAtivo(adminAtual());
 const localKey=id=>id||'';
+let potentialClient='';
 function locations(clienteId){
  const c=own('clientes',clienteId);if(!c)return [];
  return [{id:'',nome:'Sede',cidade:c.cidade||'',morada:c.morada||c.endereco||''},...(dados.locais||[]).filter(l=>l.adminId===_tenantId()&&l.clienteId===c.id&&!l.apagadoSuperAdmin).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt'))];
@@ -14,9 +15,19 @@ function contracts(clienteId,localId,today=getDataHoje()){
   (Array.isArray(c.locaisIds)&&c.locaisIds.length?c.locaisIds:[c.localId||'']).includes(localKey(localId))).sort((a,b)=>(a.numero||a.id).localeCompare(b.numero||b.id,'pt',{numeric:true}));
 }
 function potential(){
- return (dados.clientes||[]).filter(c=>c.adminId===_tenantId()&&!c.apagadoSuperAdmin).flatMap(c=>locations(c.id).filter(l=>!contracts(c.id,l.id).length).map(l=>({client:c,local:l})))
- .sort((a,b)=>(a.client.nome||'').localeCompare(b.client.nome||'','pt',{sensitivity:'base',numeric:true})||(a.local.nome||'').localeCompare(b.local.nome||'','pt'));
+ const ids=new Set((dados.assistencias||[]).filter(a=>a.adminId===_tenantId()&&!a.apagadoSuperAdmin&&own('clientes',a.clienteId)&&locations(a.clienteId).some(l=>localKey(l.id)===localKey(a.localId))&&!contracts(a.clienteId,a.localId).length).map(a=>a.clienteId));
+ return [...ids].map(id=>({client:own('clientes',id),locations:locations(id)})).sort((a,b)=>(a.client.nome||'').localeCompare(b.client.nome||'','pt',{sensitivity:'base',numeric:true}));
 }
+function askForContract(clientId,localId,prefix,box){
+ if(typeof tgConfirm!=='function')return;
+ const tenant=_tenantId(),user=usuarioLogado?.id;
+ Promise.resolve(tgConfirm('Esta instalação não tem contrato de manutenção ativo. Queres criar um contrato de manutenção agora?',{titulo:'Contrato de manutenção',icone:'fa-file-signature',textoOk:'Sim',textoCancelar:'Não'})).then(yes=>{
+  if(!yes||typeof document==='undefined'||!box.isConnected)return;
+  const current=selected(prefix);
+  if(yes&&box.isConnected&&tenant===_tenantId()&&user===usuarioLogado?.id&&current.clientId===clientId&&localKey(current.localId)===localKey(localId))openContract(clientId,localId);
+ });
+}
+
 function selected(prefix='assist'){
  const clientId=document.getElementById(prefix+'_cliente')?.value||'',select=document.getElementById(prefix+'_local');
  const value=select?.value;return {clientId,localId:value==='__sede__'?null:value||null,chosen:!!value};
@@ -38,13 +49,13 @@ function syncContract(prompt=false,prefix='assist'){
  const matches=contracts(clientId,localId),previous=document.getElementById(prefix+'_contrato')?.value;
  const saved=box.dataset.contract;
  if(matches.length){
-  box.innerHTML='<label for="'+prefix+'_contrato">Contrato de manutenção</label><select id="'+prefix+'_contrato">'+matches.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.numero||c.id)+'</option>').join('')+'</select><p class="help-text">Ao guardar a assistência, fica descontada uma visita do saldo anual. Criar a OS não desconta outra visita.</p>';
+  box.innerHTML='<label for="'+prefix+'_contrato">Contrato de manutenção</label><select id="'+prefix+'_contrato">'+matches.map(c=>'<option value="'+esc(c.id)+'">'+esc(c.numero||c.id)+'</option>').join('')+'</select><p class="help-text">A visita só é descontada quando a OS desta assistência for concluída. Criar ou guardar a assistência não desconta visitas.</p>';
   const select=document.getElementById(prefix+'_contrato');if(matches.some(c=>c.id===(previous||saved)))select.value=previous||saved;
  }else{
   box.innerHTML='<strong>Potencial para contrato</strong><p class="help-text">Esta instalação não tem contrato de manutenção ativo.</p><button type="button" class="btn btn-sm btn-outline" id="'+prefix+'CreateContract">Criar contrato de manutenção</button>';
   document.getElementById(prefix+'CreateContract').onclick=()=>openContract(clientId,localId);
   const key=JSON.stringify([clientId,localId]);
-  if(prompt&&box.dataset.warned!==key){box.dataset.warned=key;if(confirm('Esta instalação não tem contrato de manutenção ativo. Queres criar um contrato de manutenção agora?'))openContract(clientId,localId);}
+  if(prompt&&box.dataset.warned!==key){box.dataset.warned=key;askForContract(clientId,localId,prefix,box);}
  }
 }
 function form(item,prefix='assist'){
@@ -74,14 +85,28 @@ function openContract(clientId,localId){
 function renderPotential(){
  const root=document.getElementById('secao-assistencias');if(!root)return;
  let panel=document.getElementById('tgAssistPotentialPane');if(!panel){panel=document.createElement('div');panel.id='tgAssistPotentialPane';root.appendChild(panel);
-  panel.addEventListener('click',e=>{const b=e.target.closest('[data-potential-action]');if(!b)return;const clientId=b.dataset.client,localId=b.dataset.local||'';if(!own('clientes',clientId))return;
-   if(b.dataset.potentialAction==='contract')openContract(clientId,localId);
+  panel.addEventListener('click',e=>{const b=e.target.closest('[data-potential-action]');if(!b)return;
+   if(b.dataset.potentialAction==='back'){potentialClient='';renderPotential();return;}
+   const clientId=b.dataset.client,localId=b.dataset.local||'';if(!potential().some(row=>row.client.id===clientId))return;
+   if(b.dataset.potentialAction==='sites'){potentialClient=clientId;renderPotential();}
+   else if(b.dataset.potentialAction==='contract')openContract(clientId,localId);
+   else if(b.dataset.potentialAction==='viewContract'){const c=contracts(clientId,localId)[0];if(c&&licensed())abrirModalContrato(c.id);}
    else if(b.dataset.potentialAction==='client')abrirWorkspaceCliente(clientId);
-   else if(locations(clientId).some(l=>l.id===localId)&&localId)abrirModalLocalCliente(clientId,localId);
   });
  }
- const rows=potential();panel.innerHTML='<h3>Potencial para contrato</h3><p class="help-text">'+rows.length+' instalações sem contrato ativo. Inclui sedes, instalações sem contrato e contratos expirados.</p><div class="tg-assist-potential-grid">'+rows.map(({client:c,local:l})=>'<article class="tg-assist-card"><strong>'+esc(c.nome)+'</strong><p>'+esc(l.nome)+(l.cidade?' · '+esc(l.cidade):'')+'</p><p class="help-text">'+esc(l.morada||'')+'</p><div class="tg-assist-card-actions">'+[['client','Abrir cliente'],...(l.id?[['local','Abrir instalação']]:[]),['contract','Criar contrato']].map(([action,label])=>'<button type="button" class="btn btn-sm btn-outline" data-potential-action="'+action+'" data-client="'+esc(c.id)+'" data-local="'+esc(l.id)+'">'+label+'</button>').join('')+'</div></article>').join('')+'</div>'+(rows.length?'':'<p class="help-text">Todos os clientes e instalações têm contrato ativo.</p>');
+ const rows=potential(),current=rows.find(row=>row.client.id===potentialClient);
+ if(!current)potentialClient='';
+ if(current){
+  const c=current.client;
+  panel.innerHTML='<button type="button" class="btn btn-sm btn-outline" data-potential-action="back">Voltar aos clientes</button><h3 style="margin-top:14px">'+esc(c.nome)+'</h3><p class="help-text">Escolhe a instalação para criar ou consultar o contrato de manutenção.</p><div class="tg-assist-potential-grid">'+current.locations.map(l=>{
+   const covered=contracts(c.id,l.id).length>0;
+   return '<article class="tg-assist-card"><strong>'+esc(l.nome)+'</strong><p>'+esc([l.morada,l.cidade].filter(Boolean).join(' · '))+'</p><p class="help-text">'+(covered?'Com contrato ativo':'Sem contrato ativo')+'</p><button type="button" class="btn btn-sm btn-outline" data-potential-action="'+(covered?'viewContract':'contract')+'" data-client="'+esc(c.id)+'" data-local="'+esc(l.id)+'">'+(covered?'Abrir contrato':'Criar contrato de manutenção')+'</button></article>';
+  }).join('')+'</div>';
+ }else{
+  panel.innerHTML='<h3>Potencial para contrato</h3><p class="help-text">'+rows.length+' clientes com assistências em instalações sem contrato ativo.</p><div class="tg-assist-potential-grid">'+rows.map(({client:c,locations:sites})=>'<button type="button" class="tg-assist-card tg-assist-potential-customer" data-potential-action="sites" data-client="'+esc(c.id)+'"><strong>'+esc(c.nome)+'</strong><span>'+sites.length+' instalações · Abrir instalações</span></button>').join('')+'</div>'+(rows.length?'':'<p class="help-text">Ainda não há assistências de clientes com potencial para contrato.</p>');
+ }
 }
+
 document.addEventListener('tg:interface-updated',()=>{for(const prefix of ['assist','wsa'])if(document.getElementById(prefix+'_local'))syncContract(false,prefix);});
 window.TGAssistContracts={locations,contracts,potential,form,syncForm,syncContract,selected,booking,openContract,renderPotential};
 })();

@@ -106,7 +106,7 @@ test('request creation cannot assign a technician; assignment is made when creat
 }finally{dom.window.close()}});
 
 function contractFeature(w){
- w.dados.contratos=[];w.adminAtual=()=>w.admin;w.moduloContratosAtivo=()=>true;
+ w.dados.contratos=[];w.tgConfirm=(message,options)=>{w.calls.push(['tgConfirm',message,options]);return Promise.resolve(false)};w.adminAtual=()=>w.admin;w.moduloContratosAtivo=()=>true;
  w.eval(fs.readFileSync('tg-assist-contracts.js','utf8'));
 }
 test('customer installation is required, contract reserves once, and OS context is immutable',async()=>{const {dom,w}=setup();try{
@@ -127,11 +127,11 @@ test('customer installation is required, contract reserves once, and OS context 
 }finally{dom.window.close()}});
 
 test('potential lists tenant customers and sites without active contracts; popup opens the prefilled contract',async()=>{const {dom,w}=setup();try{
- contractFeature(w);const d=w.document;w._clienteLabel=c=>c.nome;let prompted=0;w.confirm=()=>{prompted++;return false;};
+ contractFeature(w);const d=w.document;w._clienteLabel=c=>c.nome;let prompted=0;w.tgConfirm=()=>{prompted++;return Promise.resolve(false);};
  w.dados.clientes.push({id:'foreign',adminId:'other',nome:'Segredo'});w.dados.locais.push({id:'l2',adminId:'admin',clienteId:'c',nome:'Outra loja'});
  w.dados.contratos=[{id:'ct',adminId:'admin',clienteId:'c',localId:'l',dataInicio:'2026-01-01',validadeContrato:'2026-12-31'},{id:'expired',adminId:'admin',clienteId:'c',localId:'l2',validadeContrato:'2025-12-31'}];
- assert.deepEqual(Array.from(w.TGAssistContracts.potential(),r=>r.local.id),['l2','']);
- w.TGModules.open('assistencias');d.querySelector('[data-assist-action=potential]').click();assert.match(d.getElementById('tgAssistPotentialPane').textContent,/Sede/);assert(!d.getElementById('tgAssistPotentialPane').textContent.includes('Segredo'));
+ assert.equal(w.TGAssistContracts.potential().length,0);w.dados.assistencias.push({id:'lead',adminId:'admin',clienteId:'c',localId:'l2',estado:'aberta',assunto:'Pedido sem contrato'});assert.deepEqual(Array.from(w.TGAssistContracts.potential(),r=>r.client.id),['c']);
+ w.TGModules.open('assistencias');d.querySelector('[data-assist-action=potential]').click();assert(d.querySelector('[data-potential-action=sites]'));d.querySelector('[data-potential-action=sites]').click();assert.match(d.getElementById('tgAssistPotentialPane').textContent,/Sede/);assert(!d.getElementById('tgAssistPotentialPane').textContent.includes('Segredo'));
  d.querySelector('#tgAssistMetrics [data-state=""]').click();assert(d.getElementById('tgAssistPotentialPane').hidden);assert(!d.getElementById('tgAssistResults').hidden);
  await w.TGAssistNative.abrirModalAssistencia(null);d.getElementById('assist_cliente').value='c';w.TGAssistNative._assistAtualizarContactosRapidos();const local=d.getElementById('assist_local');local.value='l2';local.dispatchEvent(new w.Event('change'));assert.equal(prompted,1);assert.match(d.getElementById('assistContractSummary').textContent,/Potencial para contrato/);
  w.abrirModalContrato=()=>{d.body.insertAdjacentHTML('beforeend','<input id="ct_cliente"><input id="ct_cliente_busca"><select id="ct_local"><option value=""></option><option value="l2"></option></select>')};w.onClienteContratoChange=()=>{};w.onLocalContratoChange=()=>{};
@@ -155,11 +155,29 @@ test('customer menu creates the same installation-linked contract visit without 
  a.osGeradaId='os';w._wsAssistNovoForm('c',a.id);assert(d.getElementById('wsa_local').disabled);d.getElementById('wsa_local').value='__sede__';await w._wsAssistGuardar('c',a.id);assert.equal(a.localId,'l');
 }finally{dom.window.close()}});
 test('customer menu prompts for uncovered sites and rejects foreign sites, guessed records or revoked access',async()=>{const {dom,w}=setup();try{
- customerWorkspace(w);const d=w.document;let prompts=0;w.confirm=()=>{prompts++;return false;};w._wsAssistNovoForm('c');d.getElementById('wsa_local').value='__sede__';d.getElementById('wsa_local').dispatchEvent(new w.Event('change'));assert.equal(prompts,1);assert.match(d.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
+ customerWorkspace(w);const d=w.document;let prompts=0;w.tgConfirm=()=>{prompts++;return Promise.resolve(false);};w._wsAssistNovoForm('c');d.getElementById('wsa_local').value='__sede__';d.getElementById('wsa_local').dispatchEvent(new w.Event('change'));assert.equal(prompts,1);assert.match(d.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
  d.getElementById('wsa_assunto').value='Sem contrato';await w._wsAssistGuardar('c',null);const a=w.dados.assistencias.find(x=>x.assunto==='Sem contrato');assert.equal(a.localId,null);assert.equal(a.testeContratoId,null);
  w._wsAssistNovoForm('c');d.getElementById('wsa_assunto').value='Intruso';const bad=new w.Option('Outra instalação','foreign');d.getElementById('wsa_local').add(bad);d.getElementById('wsa_local').value='foreign';const before=w.dados.assistencias.length;await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,before);
  await w._wsAssistGuardar('c','other');assert.equal(w.dados.assistencias.length,before);w.license=false;await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,before);
 }finally{dom.window.close()}});
 test('customer with only headquarters still receives the missing-contract popup when starting a request',()=>{const {dom,w}=setup();try{
- customerWorkspace(w);w.dados.locais=[];let prompts=0;w.confirm=()=>{prompts++;return false;};w._wsAssistNovoForm('c');assert.equal(w.document.getElementById('wsa_local').value,'__sede__');assert.equal(prompts,1);assert.match(w.document.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
+ customerWorkspace(w);w.dados.locais=[];let prompts=0;w.tgConfirm=()=>{prompts++;return Promise.resolve(false);};w._wsAssistNovoForm('c');assert.equal(w.document.getElementById('wsa_local').value,'__sede__');assert.equal(prompts,1);assert.match(w.document.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
+}finally{dom.window.close()}});
+test('missing-contract prompt uses TG Sim/Não and never opens a contract after the selected customer changes',async()=>{const {dom,w}=setup();try{
+ customerWorkspace(w);let resolvePrompt,options;w.confirm=()=>{throw Error('Native browser popup must not be used')};w.tgConfirm=(message,opts)=>{options=opts;return new Promise(resolve=>resolvePrompt=resolve)};
+ w._wsAssistNovoForm('c');w.document.getElementById('wsa_local').value='__sede__';w.document.getElementById('wsa_local').dispatchEvent(new w.Event('change'));assert.equal(options.textoOk,'Sim');assert.equal(options.textoCancelar,'Não');
+ let opened=0;w.abrirModalContrato=()=>opened++;w.document.getElementById('wsa_cliente').value='changed';resolvePrompt(true);await Promise.resolve();assert.equal(opened,0);
+}finally{dom.window.close()}});
+test('potential creates one customer card from requests and disappears after the requested installations have active contracts',()=>{const {dom,w}=setup();try{
+ contractFeature(w);w.dados.clientes.push({id:'no-request',adminId:'admin',nome:'Sem pedidos'});w.dados.assistencias[0].localId='l';w.dados.assistencias.push({id:'second',adminId:'admin',clienteId:'c',localId:'l',estado:'aberta'});
+ assert.equal(w.TGAssistContracts.potential().length,1);assert.equal(w.TGAssistContracts.potential()[0].client.id,'c');assert.equal(w.TGAssistContracts.potential()[0].locations.length,2);
+ w.dados.contratos.push({id:'ct',adminId:'admin',clienteId:'c',localId:'l',validadeContrato:'2026-12-31'});assert.equal(w.TGAssistContracts.potential().length,0);
+}finally{dom.window.close()}});
+test('Sim in the TG popup opens a maintenance contract prefilled for the selected headquarters',async()=>{const {dom,w}=setup();try{
+ customerWorkspace(w);w.dados.locais=[];w.confirm=()=>{throw Error('Browser popup forbidden')};w.tgConfirm=()=>Promise.resolve(true);const d=w.document;
+ w.abrirModalContrato=()=>d.body.insertAdjacentHTML('beforeend','<input id="ct_cliente"><input id="ct_cliente_busca"><select id="ct_local"><option value=""></option></select>');w.onClienteContratoChange=()=>{};w.onLocalContratoChange=()=>{};
+ w._wsAssistNovoForm('c');await new Promise(resolve=>setImmediate(resolve));assert.equal(d.getElementById('ct_cliente').value,'c');assert.equal(d.getElementById('ct_local').value,'');assert.equal(w.dados.assistencias.length,2);
+}finally{dom.window.close()}});
+test('a contract created after the assistance can be linked when its OS is created, without a completion debit',async()=>{const {dom,w}=setup();try{
+ contractFeature(w);w.dados.contratos=[{id:'new-ct',adminId:'admin',clienteId:'c',localId:'l',numero:'Novo contrato'}];w.TGModules.open('assistencias');w.TGAssistNative.criarOSDeAssistencia('a');assert.equal(w.document.getElementById('assistOsContrato').value,'new-ct');await w.TGAssistNative._confirmarCriarOSDeAssistencia('a');assert.equal(w.dados.servicos[0].contratoId,'new-ct');assert.equal(w.dados.assistencias[0].testeContratoId,'new-ct');assert(!w.dados.assistencias[0].testeVisitaConcluidaEm);assert.equal(w.dados.servicos[0].status,'pendente');
 }finally{dom.window.close()}});

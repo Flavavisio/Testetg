@@ -383,6 +383,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const cliente = a.clienteId ? dados.clientes?.find(c => c.id === a.clienteId) : null;
             const clientesTenant = (dados.clientes || []).filter(c => c.adminId === tid);
             const funcionariosTenant = (dados.funcionarios || []).filter(f => f.adminId === tid && !f.suspenso);
+            const contratosSite=window.TGAssistContracts?.contracts(a.clienteId,a.localId)||[];
             document.getElementById('modalGenericoTitulo').innerHTML = '<i class="fas fa-hard-hat"></i> Criar OS a partir da assistência';
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="form-group"><label>Cliente</label>
@@ -390,6 +391,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                 </div>
                 <div class="form-group"><label>Instalação</label><input type="text" id="assistOsLocalNome" value="${escapeHtmlSimples((dados.locais||[]).find(l=>l.id===a.localId&&l.adminId===tid&&l.clienteId===a.clienteId)?.nome || 'Sede')}" readonly><input type="hidden" id="assistOsLocal" value="${escapeHtmlSimples(a.localId||'')}"></div>
                 <div class="form-group"><label>Morada</label><input type="text" id="assistOsMorada" value="${escapeHtmlSimples((dados.locais||[]).find(l=>l.id===a.localId&&l.adminId===tid&&l.clienteId===a.clienteId)?.morada || cliente?.morada || '')}" readonly></div>
+                ${!a.testeContratoId && contratosSite.length ? `<div class="form-group"><label>Contrato de manutenção</label><select id="assistOsContrato">${contratosSite.map(c=>`<option value="${escapeHtmlSimples(c.id)}">${escapeHtmlSimples(c.numero||c.id)}</option>`).join('')}</select><small class="help-text">A visita só é descontada após a conclusão da OS.</small></div>` : ''}
                 <div class="form-group"><label>Data</label><input type="date" id="assistOsData" value="${getDataHoje()}"></div>
                 <div class="form-group"><label>Hora</label><input type="time" id="assistOsHora" value="09:00"></div>
                 <div class="form-group"><label>Descrição</label><textarea id="assistOsDescricao" rows="3">${escapeHtmlSimples((a.assunto || '') + (a.descricao ? ' — ' + a.descricao : ''))}</textarea></div>
@@ -416,6 +418,8 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             if((document.getElementById('assistOsLocal')?.value||null)!==(a.localId||null))return alert('A instalação é a da assistência e não pode ser alterada aqui.');
             if(a.localId&&!(dados.locais||[]).some(l=>l.id===a.localId&&l.clienteId===a.clienteId&&l.adminId===tid))return alert('A instalação da assistência já não está disponível.');
             const funcionariosIds = [...document.querySelectorAll('.assist-os-func-chk:checked')].map(el => el.value);
+            const contractId=a.testeContratoId||document.getElementById('assistOsContrato')?.value||null;
+            if(!a.testeContratoId&&contractId&&!window.TGAssistContracts?.contracts(a.clienteId,a.localId).some(c=>c.id===contractId))return alert('Escolhe um contrato ativo desta instalação.');
             const identityBeforeNumber = actor(),localBeforeNumber=a.localId||null;
             if(clienteIdEscolhido && !(dados.clientes||[]).some(c=>c.id===clienteIdEscolhido&&c.adminId===tid))return alert('Seleciona um cliente da empresa.');
             if(funcionariosIds.some(id=>!(dados.funcionarios||[]).some(f=>f.id===id&&f.adminId===tid&&!f.suspenso)))return alert('Seleciona técnicos da empresa.');
@@ -426,6 +430,10 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const currentAssist = item(assistId);
             if(!currentAssist || currentAssist.osGeradaId || _assistEstado(currentAssist.estado)==='resolvida') return;
             if(currentAssist.clienteId!==clienteIdEscolhido||(currentAssist.localId||null)!==localBeforeNumber)throw Error('O cliente ou a instalação da assistência mudou. Volta a abrir a criação da OS.');
+            if(!currentAssist.testeContratoId&&contractId){
+                if(!window.TGAssistContracts?.contracts(currentAssist.clienteId,currentAssist.localId).some(c=>c.id===contractId))return alert('O contrato desta instalação mudou. Volta a criar a OS.');
+                currentAssist.testeContratoId=contractId;currentAssist.testeVisitaAno=Number(getDataHoje().slice(0,4));
+            }
             const novaOS = {
                 id: gerarId(), adminId: tid, clienteId: clienteIdEscolhido,
                 funcionarioId: funcionariosIds[0] || null, funcionariosIds,

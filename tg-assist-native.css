@@ -20,3 +20,6 @@ body.dark-mode .tg-assist-native .btn-outline{color:#e2e8f0!important;border-col
 .tg-assist-contract-summary{border:1px solid var(--assist-line,#d8e3ee);border-radius:10px;padding:12px;margin:0 0 14px}.tg-assist-potential-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin-top:14px}.tg-assist-potential-grid .tg-assist-card{display:block}.tg-assist-potential-grid .tg-assist-card-actions{display:flex;flex-wrap:wrap;gap:8px}
 
 .tg-assist-native .tg-assist-tabs .btn[aria-pressed="true"]{background:#152a52!important;color:#fff!important;border-color:#152a52!important}
+
+.tg-assist-potential-customer{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}.tg-assist-potential-customer strong,.tg-assist-potential-customer span{display:block}.tg-assist-potential-customer span{margin-top:10px;font-size:13px;color:var(--assist-muted)}.tg-assist-potential-customer:hover,.tg-assist-potential-customer:focus-visible{border-color:#087b9d;outline:2px solid #087b9d;outline-offset:2px}
+.tg-assist-contract-summary label{display:block;font-weight:600;margin-bottom:6px}.tg-assist-contract-summary select{display:block;width:100%;min-height:44px;padding:10px;border:1px solid var(--assist-line,#cbd5e1);border-radius:8px;font:inherit;font-size:max(16px,1em)}

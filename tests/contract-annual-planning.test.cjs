@@ -24,7 +24,7 @@ test('assets agree on cache version and no production deployment scripts added',
  const index=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
  assert.match(index,/tg-contract-maintenance\.js\?v=1\.9\.0/);
  assert.match(sw,/tg-contract-maintenance\.js\?v=1\.9\.0/);
- assert.match(index,/app-principal\.js\?v=assist-contratos-20261028/);
+ assert.match(index,/app-principal\.js\?v=cliente-assist-20261028/);
 });
 
 test('completed equipment maintenance is not also shown as pending for identical date and location',()=>{

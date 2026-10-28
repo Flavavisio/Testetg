@@ -5440,7 +5440,7 @@ function _assistEstado(value) {
             `;
         }
         function _wsAssistenciasHtml(clienteId) {
-            const assistCliente = (dados.assistencias || []).filter(a => a.clienteId === clienteId && !a.apagadoSuperAdmin).sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
+            const assistCliente = (dados.assistencias || []).filter(a => a.adminId === _tenantId() && a.clienteId === clienteId && !a.apagadoSuperAdmin).sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
             const cabecalho = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div class="help-text" style="margin:0;">${assistCliente.length} pedido${assistCliente.length === 1 ? '' : 's'} de assistência registado${assistCliente.length === 1 ? '' : 's'}.</div>
@@ -5450,10 +5450,10 @@ function _assistEstado(value) {
             `;
             if (!assistCliente.length) return cabecalho + `<p class="help-text">Este cliente ainda não tem nenhum pedido de assistência registado.</p>${_wsAssistBotaoAbrirApp()}`;
             const ASSIST_PRIORIDADES = { baixa: { label: 'Baixa', cor: '#64748b' }, normal: { label: 'Normal', cor: '#2456d8' }, alta: { label: 'Alta', cor: '#b0650a' }, urgente: { label: 'Urgente', cor: '#d1342f' } };
-            const estadoLabel = { aberta: 'Aberta', andamento: 'Em andamento', resolvida: 'Resolvida', fechada: 'Fechada' };
+            const estadoLabel = { aberta: 'Aberta', resolvida: 'Resolvida' };
             const estadoCor = { aberta: ['#92400e', '#fef3c7'], andamento: ['#1e40af', '#dbeafe'], resolvida: ['#166534', '#dcfce7'], fechada: ['#475569', '#f1f5f9'] };
             const linhas = assistCliente.map(a => {
-                const [corTexto, corFundo] = estadoCor[a.estado] || estadoCor.aberta;
+                const [corTexto, corFundo] = estadoCor[_assistEstado(a.estado)] || estadoCor.aberta;
                 const prio = ASSIST_PRIORIDADES[a.prioridade] || ASSIST_PRIORIDADES.normal;
                 // Se já gerou uma OS, "ver" abre essa OS diretamente (já cá dentro da app); senão,
                 // abre o TotalGest Assist — a área própria destes pedidos — já no ecrã de criar a
@@ -5466,12 +5466,13 @@ function _assistEstado(value) {
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:.86rem;font-weight:600;text-align:left;">${a.numero ? '#' + escapeHtmlSimples(a.numero) + ' — ' : ''}${escapeHtmlSimples(a.assunto || 'Pedido de assistência')}</div>
                         <div style="font-size:.76rem;color:#64748b;text-align:left;">${a.dataCriacao ? new Date(a.dataCriacao).toLocaleDateString('pt-PT') : '—'} · <span style="color:${prio.cor};font-weight:600;">${prio.label}</span> · ${a.atribuidoId ? escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId) || 'Atribuída') : 'Por atribuir'}</div>
+                        <div class="help-text" style="text-align:left;">${escapeHtmlSimples(a.localId ? (dados.locais || []).find(l => l.id === a.localId && l.clienteId === clienteId && l.adminId === a.adminId)?.nome || 'Instalação indisponível' : 'Sede')}</div>
                     </div>
                     <div style="text-align:right;">
-                        <span style="font-size:.7rem;font-weight:600;padding:3px 9px;border-radius:6px;background:${corFundo};color:${corTexto};white-space:nowrap;">${estadoLabel[a.estado] || 'Aberta'}</span>
+                        <span style="font-size:.7rem;font-weight:600;padding:3px 9px;border-radius:6px;background:${corFundo};color:${corTexto};white-space:nowrap;">${estadoLabel[_assistEstado(a.estado)]}</span>
                         <div style="font-size:.68rem;margin-top:3px;font-weight:600;color:${a.osGeradaId ? '#166534' : '#dc2626'};white-space:nowrap;">${a.osGeradaId ? '✓ OS atribuída' : 'Falta agendar data de OS'}</div>
                     </div>
-                    ${a.estado === 'aberta' ? `<button class="btn btn-sm btn-warning" onclick="event.stopPropagation();_wsAssistNovoForm('${clienteId}','${a.id}')" title="Editar pedido"><i class="fas fa-edit"></i></button>` : ''}
+                    ${_wsAssistAcesso(clienteId) && _assistEstado(a.estado) === 'aberta' ? `<button class="btn btn-sm btn-warning" onclick="event.stopPropagation();_wsAssistNovoForm('${clienteId}','${a.id}')" title="Editar pedido"><i class="fas fa-edit"></i></button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_wsAssistApagar('${clienteId}','${a.id}')" title="Apagar pedido"><i class="fas fa-trash"></i></button>
                 </div>`;
             }).join('');
@@ -5488,56 +5489,64 @@ function _assistEstado(value) {
         }
         // Criar uma assistência sem sair do workspace — fica logo válida "por atribuir" (sem
         // técnico definido ainda), tal como já é possível fazer no Total Gest Assist.
+        function _wsAssistAcesso(clienteId) {
+            return !!window.TGModules?.allowed('assistencias') && !!window.TGAssistContracts &&
+                (dados.clientes || []).some(c => c.id === clienteId && c.adminId === _tenantId() && !c.apagadoSuperAdmin);
+        }
         function _wsAssistNovoForm(clienteId, assistId) {
             const area = document.getElementById('wsAssistFormArea');
-            if (!area) return;
-            const editando = !!assistId;
-            const a = editando ? (dados.assistencias || []).find(x => x.id === assistId) : null;
-            if (!editando && area.dataset.aberto === '1') { area.innerHTML = ''; area.dataset.aberto = ''; return; }
+            if (!area || area.dataset.saving === '1') return;
+            if (!_wsAssistAcesso(clienteId)) { alert('Sem acesso às assistências deste cliente.'); return; }
+            const a = assistId ? (dados.assistencias || []).find(x => x.id === assistId && x.clienteId === clienteId && x.adminId === _tenantId() && !x.apagadoSuperAdmin) : null;
+            if (assistId && !a) return;
+            if (!assistId && area.dataset.aberto === '1') { area.innerHTML = ''; area.dataset.aberto = ''; return; }
             area.dataset.aberto = '1';
-            const ASSIST_PRIORIDADES = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
+            const cliente = dados.clientes.find(c => c.id === clienteId && c.adminId === _tenantId());
+            const prioridades = { baixa: 'Baixa', normal: 'Normal', alta: 'Alta', urgente: 'Urgente' };
             area.innerHTML = `
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
-                    <div class="form-group"><label>Assunto</label><input type="text" id="wsa_assunto" placeholder="Ex: Alarme a disparar sem motivo" value="${escapeHtmlSimples(a?.assunto || '')}" /></div>
-                    <div class="form-group"><label>Descrição (opcional)</label><textarea id="wsa_descricao" rows="2" placeholder="Mais detalhes sobre o pedido...">${escapeHtmlSimples(a?.descricao || '')}</textarea></div>
-                    <div style="display:flex;gap:10px;">
-                        <div class="form-group" style="flex:1;"><label>Prioridade</label>
-                            <select id="wsa_prioridade">${Object.entries(ASSIST_PRIORIDADES).map(([k, l]) => `<option value="${k}" ${(a?.prioridade || 'normal') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-                        </div>
-                        <div class="form-group" style="flex:1;"><label>Atribuir a</label>
-                            <select id="wsa_atribuido"><option value="">— Por atribuir —</option>${_mePessoas().map(p => `<option value="${p.id}" ${a?.atribuidoId === p.id ? 'selected' : ''}>${escapeHtmlSimples(p.nome)}</option>`).join('')}</select>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:8px;margin-top:6px;">
-                        <button type="button" class="btn btn-sm btn-primary" onclick="_wsAssistGuardar('${clienteId}', ${editando ? `'${assistId}'` : 'null'})"><i class="fas fa-check"></i> ${editando ? 'Guardar alterações' : 'Criar assistência'}</button>
+                <div class="tg-assist-contract-summary" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+                    <div class="form-group"><label for="wsa_cliente_busca">Cliente</label><input id="wsa_cliente_busca" type="text" value="${escapeHtmlSimples(_clienteLabel(cliente))}" readonly><input id="wsa_cliente" type="hidden" value="${escapeHtmlSimples(clienteId)}"></div>
+                    <div class="form-group"><label for="wsa_local">Instalação *</label><select id="wsa_local" required></select></div>
+                    <div id="wsaContractSummary" class="tg-assist-contract-summary"></div>
+                    <div class="form-group"><label for="wsa_assunto">Assunto *</label><input type="text" id="wsa_assunto" placeholder="Ex: Alarme a disparar sem motivo" value="${escapeHtmlSimples(a?.assunto || '')}" required /></div>
+                    <div class="form-group"><label for="wsa_descricao">Descrição (opcional)</label><textarea id="wsa_descricao" rows="2" placeholder="Mais detalhes sobre o pedido...">${escapeHtmlSimples(a?.descricao || '')}</textarea></div>
+                    <div class="form-group"><label for="wsa_prioridade">Prioridade</label><select id="wsa_prioridade">${Object.entries(prioridades).map(([key,label]) => `<option value="${key}" ${(a?.prioridade || 'normal') === key ? 'selected' : ''}>${label}</option>`).join('')}</select></div>
+                    <p class="help-text">O técnico é escolhido ao criar a ordem de serviço.</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                        <button type="button" data-wsa-save class="btn btn-sm btn-primary" onclick="_wsAssistGuardar('${clienteId}', ${a ? `'${assistId}'` : 'null'})"><i class="fas fa-check"></i> ${a ? 'Guardar alterações' : 'Criar assistência'}</button>
                         <button type="button" class="btn btn-sm btn-outline" onclick="_wsAssistNovoForm('${clienteId}')">Cancelar</button>
                     </div>
-                </div>
-            `;
+                </div>`;
+            TGAssistContracts.form(a, 'wsa');
+            if (!a && TGAssistContracts.selected('wsa').chosen) TGAssistContracts.syncContract(true, 'wsa');
         }
         async function _wsAssistGuardar(clienteId, assistId) {
+            const area = document.getElementById('wsAssistFormArea');
+            if (!area || area.dataset.saving === '1' || !_wsAssistAcesso(clienteId)) return;
             const assunto = document.getElementById('wsa_assunto')?.value.trim();
             if (!assunto) { alert('Escreve o assunto do pedido.'); return; }
+            const contexto = TGAssistContracts.selected('wsa');
+            if (contexto.clientId !== clienteId || !contexto.chosen) { alert('Escolhe a instalação deste cliente.'); return; }
+            let a = assistId ? (dados.assistencias || []).find(x => x.id === assistId && x.adminId === _tenantId() && x.clienteId === clienteId && !x.apagadoSuperAdmin) : null;
+            if (assistId && !a) return;
+            let reserva;
+            try { reserva = TGAssistContracts.booking(a, clienteId, contexto.localId, 'wsa'); } catch(e) { alert(e.message); return; }
             const prioridade = document.getElementById('wsa_prioridade')?.value || 'normal';
+            if (!['baixa','normal','alta','urgente'].includes(prioridade)) { alert('Escolhe uma prioridade válida.'); return; }
             const descricao = document.getElementById('wsa_descricao')?.value.trim() || null;
-            const atribuidoId = document.getElementById('wsa_atribuido')?.value || null;
-            if (assistId) {
-                const a = (dados.assistencias || []).find(x => x.id === assistId);
-                if (!a) return;
-                a.assunto = assunto; a.descricao = descricao; a.prioridade = prioridade; a.atribuidoId = atribuidoId;
-                a.dataModificacao = Date.now();
-            } else {
-                const tid = _tenantId();
-                dados.assistencias = dados.assistencias || [];
-                dados.assistencias.push({
-                    id: gerarId(), adminId: tid, numero: _wsGerarNumeroAssistencia(), clienteId,
-                    assunto, descricao, prioridade, estado: 'aberta',
-                    atribuidoId, // fica por atribuir se não se escolher ninguém
-                    criadoPor: usuarioLogado?.id || null, osGeradaId: null, notas: [],
-                    dataCriacao: Date.now(), dataModificacao: Date.now(),
-                });
+            const identidade = JSON.stringify([_tenantId(), usuarioLogado?.id]);
+            area.dataset.saving = '1';area.querySelectorAll('button').forEach(b => b.disabled = true);
+            if (!a) {
+                a = { id: gerarId(), adminId: _tenantId(), numero: _wsGerarNumeroAssistencia(), clienteId,
+                    estado: 'aberta', atribuidoId: null, criadoPor: usuarioLogado?.id || null,
+                    osGeradaId: null, notas: [], dataCriacao: Date.now() };
+                (dados.assistencias ||= []).push(a);
             }
-            try { await guardarDados(dados, ['assistencias']); } catch (e) { alert('⚠️ Ficou no ecrã, mas ainda não foi possível confirmar no servidor.'); }
+            Object.assign(a, { assunto, descricao, prioridade, localId: contexto.localId, ...reserva, dataModificacao: Date.now() });
+            try { await guardarDados(dados, ['assistencias']); }
+            catch(e) { if (identidade === JSON.stringify([_tenantId(), usuarioLogado?.id])) alert('⚠️ Ficou no ecrã, mas ainda não foi possível confirmar no servidor.'); }
+            finally { if (area.isConnected) { area.dataset.saving = '';area.querySelectorAll('button').forEach(b => b.disabled = false); } }
+            if (identidade !== JSON.stringify([_tenantId(), usuarioLogado?.id]) || !_wsAssistAcesso(clienteId)) return;
             const conteudo = document.getElementById('wsClienteConteudo');
             if (conteudo) conteudo.innerHTML = _wsAssistenciasHtml(clienteId);
         }

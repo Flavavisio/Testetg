@@ -137,3 +137,29 @@ test('potential lists tenant customers and sites without active contracts; popup
  w.abrirModalContrato=()=>{d.body.insertAdjacentHTML('beforeend','<input id="ct_cliente"><input id="ct_cliente_busca"><select id="ct_local"><option value=""></option><option value="l2"></option></select>')};w.onClienteContratoChange=()=>{};w.onLocalContratoChange=()=>{};
  d.getElementById('assistCreateContract').click();assert.equal(d.getElementById('ct_cliente').value,'c');assert.equal(d.getElementById('ct_local').value,'l2');
 }finally{dom.window.close()}});
+
+function customerWorkspace(w){
+ contractFeature(w);w._clienteLabel=c=>c.nome;
+ w.eval(source.match(/function _assistEstado\(value\) \{[\s\S]*?\n\}/)[0]);
+ for(const name of ['_wsAssistAcesso','_wsAssistNovoForm','_wsAssistGuardar','_wsAssistenciasHtml','_wsGerarNumeroAssistencia','_wsAssistBotaoAbrirApp'])w.eval(source.match(new RegExp('        (?:async )?function '+name+'\\([^]*?\\n        \\}'))[0]);
+ w.document.body.insertAdjacentHTML('beforeend','<div id="wsClienteConteudo"><div id="wsAssistFormArea"></div></div>');
+}
+test('customer menu creates the same installation-linked contract visit without an initial technician and preserves it on edit',async()=>{const {dom,w}=setup();try{
+ customerWorkspace(w);const d=w.document;w.dados.contratos=[{id:'ct',adminId:'admin',clienteId:'c',localId:'l',numero:'CT',validadeContrato:'2026-12-31'}];
+ w._wsAssistNovoForm('c');assert.equal(d.getElementById('wsa_cliente').value,'c');assert.equal(d.getElementById('wsa_atribuido'),null);assert.equal(d.getElementById('wsa_local').value,'');
+ d.getElementById('wsa_assunto').value='Pedido no cliente';await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,2);
+ d.getElementById('wsa_local').value='l';d.getElementById('wsa_local').dispatchEvent(new w.Event('change'));assert.equal(d.getElementById('wsa_contrato').value,'ct');
+ let finish;w.guardarDados=()=>new Promise(resolve=>finish=resolve);const pending=w._wsAssistGuardar('c',null);await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,3);finish();await pending;
+ const a=w.dados.assistencias.find(a=>a.assunto==='Pedido no cliente');assert.equal(a.localId,'l');assert.equal(a.atribuidoId,null);assert.equal(a.testeContratoId,'ct');assert.equal(a.testeVisitaAno,2026);assert.match(d.getElementById('wsClienteConteudo').textContent,/Instalação Centro/);
+ w.guardarDados=async()=>{};a.atribuidoId='f';w._wsAssistNovoForm('c',a.id);await w._wsAssistGuardar('c',a.id);assert.equal(a.atribuidoId,'f');assert.equal(w.dados.assistencias.filter(x=>x.testeContratoId==='ct').length,1);
+ a.osGeradaId='os';w._wsAssistNovoForm('c',a.id);assert(d.getElementById('wsa_local').disabled);d.getElementById('wsa_local').value='__sede__';await w._wsAssistGuardar('c',a.id);assert.equal(a.localId,'l');
+}finally{dom.window.close()}});
+test('customer menu prompts for uncovered sites and rejects foreign sites, guessed records or revoked access',async()=>{const {dom,w}=setup();try{
+ customerWorkspace(w);const d=w.document;let prompts=0;w.confirm=()=>{prompts++;return false;};w._wsAssistNovoForm('c');d.getElementById('wsa_local').value='__sede__';d.getElementById('wsa_local').dispatchEvent(new w.Event('change'));assert.equal(prompts,1);assert.match(d.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
+ d.getElementById('wsa_assunto').value='Sem contrato';await w._wsAssistGuardar('c',null);const a=w.dados.assistencias.find(x=>x.assunto==='Sem contrato');assert.equal(a.localId,null);assert.equal(a.testeContratoId,null);
+ w._wsAssistNovoForm('c');d.getElementById('wsa_assunto').value='Intruso';const bad=new w.Option('Outra instalação','foreign');d.getElementById('wsa_local').add(bad);d.getElementById('wsa_local').value='foreign';const before=w.dados.assistencias.length;await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,before);
+ await w._wsAssistGuardar('c','other');assert.equal(w.dados.assistencias.length,before);w.license=false;await w._wsAssistGuardar('c',null);assert.equal(w.dados.assistencias.length,before);
+}finally{dom.window.close()}});
+test('customer with only headquarters still receives the missing-contract popup when starting a request',()=>{const {dom,w}=setup();try{
+ customerWorkspace(w);w.dados.locais=[];let prompts=0;w.confirm=()=>{prompts++;return false;};w._wsAssistNovoForm('c');assert.equal(w.document.getElementById('wsa_local').value,'__sede__');assert.equal(prompts,1);assert.match(w.document.getElementById('wsaContractSummary').textContent,/Potencial para contrato/);
+}finally{dom.window.close()}});

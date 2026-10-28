@@ -22,6 +22,10 @@
             alert('Este módulo não está disponível no pack/licença desta empresa ou para o seu perfil.');
             return false;
         }
+        if (name === 'assistencias') {
+            const id = pending?.name === name ? pending.id : null; pending = null;
+            return !!window.TGAssistNative?.prepare(id);
+        }
         const mod = modules[name];
         let section = document.getElementById('secao-' + name);
         if (!section) {
@@ -63,6 +67,7 @@
         return false;
     }
     function validate() {
+        window.TGAssistNative?.validate();
         for (const [name, state] of frames) {
             if (!allowed(name) || state.identity !== identity()) {
                 state.frame.remove(); frames.delete(name);

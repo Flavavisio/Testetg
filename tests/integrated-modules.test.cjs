@@ -31,10 +31,11 @@ test('original routes open the central section, preserve the shell and deep-link
  const {w,close}=setup();try{
  let prevented=false;assert.equal(w._abrirCRM({preventDefault(){prevented=true;}}),false);assert(prevented);
  const crm=w.document.querySelector('#secao-crm iframe');assert(crm);assert.equal(w._contextoAtual,'crm');assert(w.document.getElementById('secao-crm').classList.contains('active'));assert(w.document.querySelector('header'));
+ w.TGAssistNative={prepare(id){if(id)w.nativeRequest=id;let sec=w.document.getElementById('secao-assistencias');if(!sec){sec=w.document.createElement('section');sec.id='secao-assistencias';sec.className='section-container';w.document.body.appendChild(sec);}return true;},validate(){}};
  w.document.getElementById('wsClienteOverlay').classList.add('open');w._abrirAssist(null,'request&test');
- const assist=w.document.querySelector('#secao-assistencias iframe');assert.equal(new URL(assist.src).searchParams.get('criarOS'),'request&test');assert.equal(new URL(assist.src).searchParams.get('embedded'),'1');
+ assert.equal(w.document.querySelector('#secao-assistencias iframe'),null);assert.equal(w.nativeRequest,'request&test');
  assert(!w.document.getElementById('secao-crm').classList.contains('active'));assert(!w.document.getElementById('wsClienteOverlay').classList.contains('open'));
- w.document.querySelector('#secao-assistencias .tg-module-heading button').click();assert.equal(w._contextoAtual,'__inicio');
+ w.irParaInicio();assert.equal(w._contextoAtual,'__inicio');
  }finally{close();}
 });
 test('unbought, expired, hidden, wrong role and base-expired modules cannot load',()=>{
@@ -72,8 +73,8 @@ test('saved records refresh only permitted tables from the active account frame'
  w.loaded=[];w._contarAlteracoesPendentes=()=>1;send(child,'https://totalgest.test');await new Promise(r=>setTimeout(r,0));assert.deepEqual(w.loaded,[]);
  }finally{close();}
 });
-test('real CRM and Assist pages initialize in the host and retain their existing forms',async()=>{
- for(const [name,file] of [['crm','TOTALGEST_CRM.html'],['assistencias','TOTALGEST_ASSIST.html']]){
+test('real CRM page initializes in its host and retains its existing forms',async()=>{
+ for(const [name,file] of [['crm','TOTALGEST_CRM.html']]){
   const {w,close}=setup();try{
    w.TGModules.open(name,name==='assistencias'?'request-1':undefined);
    const child=w.document.querySelector('#secao-'+name+' iframe').contentWindow;
@@ -98,7 +99,7 @@ test('real CRM and Assist pages initialize in the host and retain their existing
  }
 });
 test('a table refresh from a former account does not overwrite the new account data',async()=>{
- const ctx=vm.createContext({usuarioLogado:{id:'a'},_tenantIdAtual:()=> 'a',M:{clientes:{tabela:'clientes',from:x=>x,to:x=>x}},dados:{clientes:[]},_snap:{},_guardarCacheLocal:()=>{},_buscarPaginadoGenerico:()=>new Promise(r=>ctx.resolve=r),supa:{from:()=>({select(){return this;},eq(){return this;}})},console});
+ const ctx=vm.createContext({_dadosPollGeracao:0,usuarioLogado:{id:'a'},_tenantIdAtual:()=> 'a',M:{clientes:{tabela:'clientes',from:x=>x,to:x=>x}},dados:{clientes:[]},_snap:{},_guardarCacheLocal:()=>{},_buscarPaginadoGenerico:()=>new Promise(r=>ctx.resolve=r),supa:{from:()=>({select(){return this;},eq(){return this;}})},console});
  vm.runInContext(fn('carregarTabelaEspecifica'),ctx);const pending=ctx.carregarTabelaEspecifica('clientes');
  ctx.usuarioLogado={id:'b'};ctx.dados.clientes=[{id:'new-company'}];ctx.resolve({data:[{id:'old-company'}],error:null});await pending;
  assert.deepEqual(ctx.dados.clientes,[{id:'new-company'}]);

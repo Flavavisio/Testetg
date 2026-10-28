@@ -1,3 +1,7 @@
+function _assistLerNotas(value) {
+    if (Array.isArray(value)) return value;
+    try { const parsed=JSON.parse(value||'[]'); return Array.isArray(parsed)?parsed:[]; } catch (_) { return []; }
+}
 
         // =============================================================
         //  CONFIGURAÇÃO SUPABASE  ── PREENCHER ESTES DOIS VALORES ──
@@ -307,8 +311,8 @@
             },
             assistencias: {
                 tabela: 'assistencias',
-                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, ...(r.notas!==undefined ? {notas:_assistLerNotas(r.notas)} : {}), apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, ...(o.notas!==undefined ? {notas:_assistLerNotas(o.notas)} : {}), apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
             },
             garantias: {
                 tabela: 'garantias',
@@ -31597,6 +31601,7 @@ window._relPrefill = function(msg){
         }
 
         function _fecharModalGenerico() {
+            delete document.getElementById('modalGenericoOverlay').dataset.tgAssistNative;
             _wsTentarVoltar();
             document.getElementById('modalGenericoOverlay').classList.remove('open', 'modal-veros');
             document.getElementById('rpPreviewFlutuante')?.classList.remove('open');

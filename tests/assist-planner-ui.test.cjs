@@ -6,9 +6,9 @@ const planner=require('../tg-planner.js');
 test('assistant planner is loaded before integration handlers and keeps save confirmation',()=>{
  assert.match(html,/src="tg-planner\.js\?v=1\.0\.1"/);
  assert.match(html,/function _tgAssistSugestao\(tipo\)/);
- assert.match(html,/onclick="_tgAssistSugestao\('assist'\)"/);
+ assert.doesNotMatch(html,/onclick="_tgAssistSugestao\('assist'\)"/);
  assert.match(html,/onclick="_tgAssistSugestao\('os'\)"/);
- assert.match(html,/const atribuidoNovo = document\.getElementById\('assist_atribuido'\)\.value/);
+ assert.doesNotMatch(html,/id="assist_atribuido"/);assert.match(html,/a\.atribuidoId = funcionariosIds\[0\] \|\| null/);
  assert.match(html,/document\.getElementById\('modalGenericoForm'\)\.onsubmit = _protegerSubmit/);
 });
 test('overlaps block recommendations even for new unsaved jobs',()=>{
@@ -18,6 +18,6 @@ test('overlaps block recommendations even for new unsaved jobs',()=>{
  assert.equal(planner.recommend(options)[0].eligible,false);
 });
 test('historical services and absences are not claimed as comprehensively validated',()=>{
- assert.match(html,/Férias e deslocações não estão totalmente validadas/);
+ assert.match(html,/férias e as deslocações não estão totalmente validadas/);
  assert.match(html,/Duração histórica desconhecida/);
 });

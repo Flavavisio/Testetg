@@ -27,7 +27,7 @@ function _assistEstado(value) {
 }
         const ASSIST_PRIORIDADES = { baixa: { label: 'Baixa', cor: '#64748b' }, normal: { label: 'Normal', cor: '#2456d8' }, alta: { label: 'Alta', cor: '#b0650a' }, urgente: { label: 'Urgente', cor: '#d1342f' } };
         const ASSIST_ESTADOS = { aberta: { label: 'Aberta', cor: '#2456d8', bg: 'var(--blue-bg)' }, resolvida: { label: 'Resolvida', cor: '#178a4c', bg: 'var(--green-bg)' } };
-const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> Assistências</h2><button type=\"button\" class=\"btn btn-primary\" data-assist-action=\"new\"><i class=\"fas fa-plus\"></i> Nova assistência</button></div><div class=\"tg-assist-tabs\"><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"assistencias\" aria-pressed=\"true\">Assistências</button><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"dashboard\" aria-pressed=\"false\">Indicadores</button></div><p id=\"tgAssistStatus\" role=\"status\" hidden></p><div id=\"tgAssistListPane\"><div id=\"tgAssistMetrics\" class=\"tg-assist-metrics\" role=\"group\" aria-label=\"Filtrar assistências por estado\"></div><div class=\"tg-assist-filters\"><label>Pesquisar<input id=\"tgAssistSearch\" type=\"search\" placeholder=\"Cliente, instalação ou pedido\"></label><label>Estado<select id=\"assistFiltroEstado\"><option value=\"\">Todos os estados</option><option value=\"aberta\">Aberta</option><option value=\"resolvida\">Resolvida</option></select></label><label>Prioridade<select id=\"assistFiltroPrioridade\"><option value=\"\">Todas as prioridades</option><option value=\"baixa\">Baixa</option><option value=\"normal\">Normal</option><option value=\"alta\">Alta</option><option value=\"urgente\">Urgente</option></select></label></div><p id=\"tgAssistCount\" class=\"help-text\"></p><div id=\"tgAssistResults\"></div></div><div id=\"tgAssistDashboardPane\" hidden>                    <div class=\"stat-row\">\n                        <div class=\"stat-card\"><div class=\"lbl\">Assistências abertas</div><div class=\"val\" id=\"assistDashAbertas\">0</div></div>\n                        <div class=\"stat-card warn\"><div class=\"lbl\">Abertas atribuídas</div><div class=\"val\" id=\"assistDashAndamento\">0</div></div>\n                        <div class=\"stat-card good\"><div class=\"lbl\">Resolvidas (30 dias)</div><div class=\"val\" id=\"assistDashResolvidas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">OS geradas (30 dias)</div><div class=\"val\" id=\"assistDashOsGeradas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">Tempo médio de resolução</div><div class=\"val\" id=\"assistDashTempoMedio\">—</div></div>\n                        <div class=\"stat-card\" id=\"assistDashForaSlaCard\" style=\"border-left:3px solid #d1342f;\"><div class=\"lbl\">Fora do SLA (+48h)</div><div class=\"val\" id=\"assistDashForaSla\">0</div></div>\n                    </div>\n                    <div id=\"assistDashAlertaSla\" style=\"display:none;margin-bottom:14px;padding:10px 14px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:600;font-size:.85rem;cursor:pointer;\" onclick=\"TGAssistNative.mudarTabCRM('assistencias')\"></div>\n                    <div style=\"display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;\">\n                        <div class=\"table-wrapper\" style=\"flex:1;min-width:260px;padding:16px 18px;\">\n                            <h4 style=\"margin-bottom:10px;color:var(--navy);\">Por prioridade (em aberto)</h4>\n                            <div id=\"assistDashPrioridades\"></div>\n                        </div>\n                    </div>\n                    <div class=\"orc-secao-titulo\" style=\"margin-top:6px;\">Assistências mais recentes</div>\n                    <div class=\"table-wrapper scroll\">\n                        <table>\n                            <thead><tr><th>Nº</th><th>Cliente</th><th>Assunto</th><th>Prioridade</th><th>Estado</th><th>Data</th></tr></thead>\n                            <tbody id=\"tabelaDashAssist\"></tbody>\n                        </table>\n                    </div>\n                    <p id=\"emptyDashAssist\" class=\"text-muted text-center mt-10\" style=\"display:none;\">Ainda não há assistências registadas.</p></div>";
+const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> Assistências</h2><button type=\"button\" class=\"btn btn-primary\" data-assist-action=\"new\"><i class=\"fas fa-plus\"></i> Nova assistência</button></div><div class=\"tg-assist-tabs\"><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"assistencias\" aria-pressed=\"true\">Assistências</button><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"dashboard\" aria-pressed=\"false\">Indicadores</button></div><p id=\"tgAssistStatus\" role=\"status\" hidden></p><div id=\"tgAssistListPane\"><div id=\"tgAssistMetrics\" class=\"tg-assist-metrics\" role=\"group\" aria-label=\"Filtrar assistências por estado\"></div><div class=\"tg-assist-filters\"><label>Pesquisar<input id=\"tgAssistSearch\" type=\"search\" placeholder=\"Cliente, instalação ou pedido\"></label><label>Localidade<select id=\"assistFiltroLocalidade\"><option value=\"\">Todas as localidades</option></select></label><label>Estado<select id=\"assistFiltroEstado\"><option value=\"\">Todos os estados</option><option value=\"aberta\">Aberta</option><option value=\"resolvida\">Resolvida</option></select></label><label>Prioridade<select id=\"assistFiltroPrioridade\"><option value=\"\">Todas as prioridades</option><option value=\"baixa\">Baixa</option><option value=\"normal\">Normal</option><option value=\"alta\">Alta</option><option value=\"urgente\">Urgente</option></select></label></div><p id=\"tgAssistCount\" class=\"help-text\"></p><div id=\"tgAssistResults\"></div></div><div id=\"tgAssistDashboardPane\" hidden>                    <div class=\"stat-row\">\n                        <div class=\"stat-card\"><div class=\"lbl\">Assistências abertas</div><div class=\"val\" id=\"assistDashAbertas\">0</div></div>\n                        <div class=\"stat-card warn\"><div class=\"lbl\">Abertas atribuídas</div><div class=\"val\" id=\"assistDashAndamento\">0</div></div>\n                        <div class=\"stat-card good\"><div class=\"lbl\">Resolvidas (30 dias)</div><div class=\"val\" id=\"assistDashResolvidas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">OS geradas (30 dias)</div><div class=\"val\" id=\"assistDashOsGeradas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">Tempo médio de resolução</div><div class=\"val\" id=\"assistDashTempoMedio\">—</div></div>\n                        <div class=\"stat-card\" id=\"assistDashForaSlaCard\" style=\"border-left:3px solid #d1342f;\"><div class=\"lbl\">Fora do SLA (+48h)</div><div class=\"val\" id=\"assistDashForaSla\">0</div></div>\n                    </div>\n                    <div id=\"assistDashAlertaSla\" style=\"display:none;margin-bottom:14px;padding:10px 14px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:600;font-size:.85rem;cursor:pointer;\" onclick=\"TGAssistNative.mudarTabCRM('assistencias')\"></div>\n                    <div style=\"display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;\">\n                        <div class=\"table-wrapper\" style=\"flex:1;min-width:260px;padding:16px 18px;\">\n                            <h4 style=\"margin-bottom:10px;color:var(--navy);\">Por prioridade (em aberto)</h4>\n                            <div id=\"assistDashPrioridades\"></div>\n                        </div>\n                    </div>\n                    <div class=\"orc-secao-titulo\" style=\"margin-top:6px;\">Assistências mais recentes</div>\n                    <div class=\"table-wrapper scroll\">\n                        <table>\n                            <thead><tr><th>Nº</th><th>Cliente</th><th>Assunto</th><th>Prioridade</th><th>Estado</th><th>Data</th></tr></thead>\n                            <tbody id=\"tabelaDashAssist\"></tbody>\n                        </table>\n                    </div>\n                    <p id=\"emptyDashAssist\" class=\"text-muted text-center mt-10\" style=\"display:none;\">Ainda não há assistências registadas.</p></div>";
         function gerarNumeroAssistencia() {
             const iniciais = _empresaIniciais((dados.administradores?.find(a => a.id === _tenantId())?.empresa) || (dados.administradores?.find(a => a.id === _tenantId())?.nome) || '');
             const agora = new Date();
@@ -184,6 +184,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             setTimeout(() => { const dd = document.getElementById(inputId + '_dd'); if (dd) dd.style.display = 'none'; }, 200);
         }
         function _tgAssistSugestao(tipo) {
+            if (tipo !== 'os') return;
             if (!window.TGPlanner || !usuarioLogado) return alert('Motor de planeamento indisponível.');
             const tid = _tenantId();
             const isOS = tipo === 'os';
@@ -239,7 +240,6 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const tid = _tenantId();
             const item = id ? dados.assistencias?.find(a => a.id === id) : null;
             _preencherDatalistClientes();
-            const pessoas = _pessoasParaAtribuir(tid);
             const cliente = item?.clienteId ? dados.clientes?.find(c => c.id === item.clienteId) : null;
             document.getElementById('modalGenericoTitulo').innerHTML = item ? `<i class="fas fa-headset"></i> ${escapeHtmlSimples(item.numero || 'Assistência')}` : '<i class="fas fa-headset"></i> Nova Assistência';
             document.getElementById('modalGenericoCampos').innerHTML = `
@@ -263,14 +263,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                         <select id="assist_estado">${Object.entries(ASSIST_ESTADOS).map(([k, v]) => `<option value="${k}" ${_assistEstado(item?.estado) === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
                     </div>
                 </div>
-                <div class="form-group"><label>Atribuído a</label>
-                    <select id="assist_atribuido"><option value="">— Por atribuir —</option>${pessoas.map(p => `<option value="${p.id}" ${item?.atribuidoId === p.id ? 'selected' : ''}>${escapeHtmlSimples(p.nome)}</option>`).join('')}</select>
-                </div>
-                <div class="form-group"><label>Data e hora para recomendação (não altera o agendamento da assistência)</label>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap"><input type="date" id="assist_plan_data" style="flex:1;min-width:125px"><input type="time" id="assist_plan_hora" style="flex:1;min-width:95px"><input type="number" id="assist_plan_duracao" min="15" max="720" value="90" aria-label="Duração prevista em minutos" style="width:85px" title="Minutos"></div>
-                    <button type="button" class="btn btn-outline" onclick="TGAssistNative._tgAssistSugestao('assist')" style="margin-top:8px">Sugerir técnico disponível</button>
-                    <small class="help-text">Sugestão sujeita a confirmação. Férias e deslocações ainda não são consideradas; nada é guardado automaticamente.</small>
-                </div>
+                <p class="help-text">O técnico é escolhido ao criar a ordem de serviço.</p>
                 ${item?.osGeradaId ? `<div class="help-text" style="color:var(--green);"><i class="fas fa-check-circle"></i> Já tem uma OS criada a partir desta assistência.</div>` : ''}
                 ${item ? _assistNotasHTML(item) : ''}
             `;
@@ -348,8 +341,6 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const tid = _tenantId();
             const clientId=document.getElementById('assist_cliente').value;
             if(clientId && !(dados.clientes||[]).some(c=>c.id===clientId&&c.adminId===_tenantId()))return alert('Seleciona um cliente da empresa.');
-            const assigned=document.getElementById('assist_atribuido').value;
-            if(assigned && !_pessoasParaAtribuir(_tenantId()).some(p=>p.id===assigned))return alert('Seleciona um técnico da empresa.');
             const assunto = document.getElementById('assist_assunto').value.trim();
             if (!assunto) { alert('Indica o assunto da assistência.'); return; }
             let item = id ? dados.assistencias?.find(a => a.id === id) : null;
@@ -364,14 +355,8 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             item.descricao = document.getElementById('assist_descricao').value.trim() || null;
             item.prioridade = document.getElementById('assist_prioridade').value;
             item.estado = _assistEstado(document.getElementById('assist_estado').value);
-            const atribuidoNovo = document.getElementById('assist_atribuido').value || null;
-            const atribuidoMudou = item.atribuidoId !== atribuidoNovo;
-            item.atribuidoId = atribuidoNovo;
+            if (novo) item.atribuidoId = null;
             item.dataModificacao = Date.now();
-
-            if ((novo || atribuidoMudou) && item.atribuidoId) {
-                await _crmNotificar(item.atribuidoId, '🎧 Assistência atribuída', `Foste atribuído à assistência ${item.numero} — "${item.assunto}".`);
-            }
 
             closeForm();
             try { await persist(); mostrarStatusCRM('✅ Assistência guardada.'); }
@@ -441,6 +426,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             if (!dados.servicos) dados.servicos = [];
             dados.servicos.push(novaOS);
             currentAssist.osGeradaId = novaOS.id;
+            currentAssist.atribuidoId = funcionariosIds[0] || null;
             currentAssist.dataModificacao = Date.now();
 
             const clienteNomeOS = clienteIdEscolhido ? (dados.clientes?.find(c => c.id === clienteIdEscolhido)?.nome || '') : '';
@@ -475,14 +461,32 @@ function assistAssigned(a){
  return !!(os&&(os.funcionarioId||(os.funcionariosIds||[]).some(Boolean)));
 }
 function assistGroup(a){return _assistEstado(a.estado)==='resolvida'?'resolvida':assistAssigned(a)?'atribuidas':'sem_atribuicao';}
+function assistLocality(a){
+ const os=(dados.servicos||[]).find(s=>s.id===a.osGeradaId&&s.adminId===a.adminId);
+ const clienteId=a.clienteId||os?.clienteId;
+ const client=(dados.clientes||[]).find(c=>c.id===clienteId&&c.adminId===a.adminId);
+ const localId=a.localId||(os&&os.clienteId===clienteId?os.localId:null);
+ const local=(dados.locais||[]).find(l=>l.id===localId&&l.adminId===a.adminId&&l.clienteId===clienteId);
+ const name=String(localId?(local?.cidade||local?.localidade||''):(client?.cidade||client?.localidade||'')).trim().replace(/\s+/g,' ');
+ return {key:name?name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase():'__sem_localidade__',name:name||'Sem localidade indicada'};
+}
+function assistLocalityOptions(all){
+ const select=document.getElementById('assistFiltroLocalidade'),previous=select.value;
+ const options=new Map();all.forEach(a=>{const l=assistLocality(a);if(!options.has(l.key))options.set(l.key,l.name);});
+ select.replaceChildren(new Option('Todas as localidades',''));
+ [...options].sort((a,b)=>a[1].localeCompare(b[1],'pt',{sensitivity:'base',numeric:true})).forEach(([key,name])=>select.add(new Option(name,key)));
+ select.value=options.has(previous)?previous:'';
+ return select.value;
+}
 function renderizarAssistencias(){
  const root=document.getElementById('secao-assistencias');if(!root)return;
  const state=document.getElementById('assistFiltroEstado').value,priority=document.getElementById('assistFiltroPrioridade').value;
  const query=document.getElementById('tgAssistSearch').value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const all=(dados.assistencias||[]).filter(a=>a.adminId===_tenantId()&&!a.apagadoSuperAdmin);
+ const locality=assistLocalityOptions(all);
  const list=all.filter(a=>{
-  const d=_assistResumoDados(a);const text=[a.numero,a.assunto,d.cliente,d.local,obterNomeFuncionario(a.atribuidoId)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  return (!state||_assistEstado(a.estado)===state)&&(!assistBucket||assistGroup(a)===assistBucket)&&(!priority||(a.prioridade||'normal')===priority)&&(!query||text.includes(query));
+  const d=_assistResumoDados(a);const text=[a.numero,a.assunto,d.cliente,d.local,assistLocality(a).name,obterNomeFuncionario(a.atribuidoId)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return (!locality||assistLocality(a).key===locality)&&(!state||_assistEstado(a.estado)===state)&&(!assistBucket||assistGroup(a)===assistBucket)&&(!priority||(a.prioridade||'normal')===priority)&&(!query||text.includes(query));
  }).sort((a,b)=>(b.dataCriacao||0)-(a.dataCriacao||0));
  document.getElementById('tgAssistCount').textContent=`${list.length} de ${all.length} assistências`;
  document.getElementById('tgAssistMetrics').innerHTML=[['sem_atribuicao','Abertas sem atribuição'],['atribuidas','Abertas atribuídas a técnico'],['resolvida','Resolvidas'],['','Todas']].map(([value,label])=>{

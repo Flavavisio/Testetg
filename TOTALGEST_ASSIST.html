@@ -888,6 +888,7 @@ function _assistEstado(value) {
         }
         // Recomendações explicáveis: só preenchem os controlos existentes; guardar continua manual.
         function _tgAssistSugestao(tipo) {
+            if (tipo !== 'os') return;
             if (!window.TGPlanner || !usuarioLogado) return alert('Motor de planeamento indisponível.');
             const tid = _tenantId();
             const isOS = tipo === 'os';
@@ -937,7 +938,6 @@ function _assistEstado(value) {
             const tid = _tenantId();
             const item = id ? dados.assistencias?.find(a => a.id === id) : null;
             _preencherDatalistClientes();
-            const pessoas = _pessoasParaAtribuir(tid);
             const cliente = item?.clienteId ? dados.clientes?.find(c => c.id === item.clienteId) : null;
             document.getElementById('modalGenericoTitulo').innerHTML = item ? `<i class="fas fa-headset"></i> ${escapeHtmlSimples(item.numero || 'Assistência')}` : '<i class="fas fa-headset"></i> Nova Assistência';
             document.getElementById('modalGenericoCampos').innerHTML = `
@@ -961,14 +961,7 @@ function _assistEstado(value) {
                         <select id="assist_estado">${Object.entries(ASSIST_ESTADOS).map(([k, v]) => `<option value="${k}" ${_assistEstado(item?.estado) === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
                     </div>
                 </div>
-                <div class="form-group"><label>Atribuído a</label>
-                    <select id="assist_atribuido"><option value="">— Por atribuir —</option>${pessoas.map(p => `<option value="${p.id}" ${item?.atribuidoId === p.id ? 'selected' : ''}>${escapeHtmlSimples(p.nome)}</option>`).join('')}</select>
-                </div>
-                <div class="form-group"><label>Data e hora para recomendação (não altera o agendamento da assistência)</label>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap"><input type="date" id="assist_plan_data" style="flex:1;min-width:125px"><input type="time" id="assist_plan_hora" style="flex:1;min-width:95px"><input type="number" id="assist_plan_duracao" min="15" max="720" value="90" aria-label="Duração prevista em minutos" style="width:85px" title="Minutos"></div>
-                    <button type="button" class="btn btn-outline" onclick="_tgAssistSugestao('assist')" style="margin-top:8px">Sugerir técnico disponível</button>
-                    <small class="help-text">Sugestão sujeita a confirmação. Férias e deslocações ainda não são consideradas; nada é guardado automaticamente.</small>
-                </div>
+                <p class="help-text">O técnico é escolhido ao criar a ordem de serviço.</p>
                 ${item?.osGeradaId ? `<div class="help-text" style="color:var(--green);"><i class="fas fa-check-circle"></i> Já tem uma OS criada a partir desta assistência.</div>` : ''}
                 ${item ? _assistNotasHTML(item) : ''}
             `;
@@ -1058,14 +1051,8 @@ function _assistEstado(value) {
             item.descricao = document.getElementById('assist_descricao').value.trim() || null;
             item.prioridade = document.getElementById('assist_prioridade').value;
             item.estado = _assistEstado(document.getElementById('assist_estado').value);
-            const atribuidoNovo = document.getElementById('assist_atribuido').value || null;
-            const atribuidoMudou = item.atribuidoId !== atribuidoNovo;
-            item.atribuidoId = atribuidoNovo;
+            if (novo) item.atribuidoId = null;
             item.dataModificacao = Date.now();
-
-            if ((novo || atribuidoMudou) && item.atribuidoId) {
-                await _crmNotificar(item.atribuidoId, '🎧 Assistência atribuída', `Foste atribuído à assistência ${item.numero} — "${item.assunto}".`);
-            }
 
             document.getElementById('modalGenericoOverlay').classList.remove('open');
             try { await guardarDados(dados, ['assistencias', 'notificacoes']); mostrarStatusCRM('✅ Assistência guardada.'); }
@@ -1161,6 +1148,7 @@ function _assistEstado(value) {
             if (!dados.servicos) dados.servicos = [];
             dados.servicos.push(novaOS);
             a.osGeradaId = novaOS.id;
+            a.atribuidoId = funcionariosIds[0] || null;
             a.dataModificacao = Date.now();
 
             const clienteNomeOS = clienteIdEscolhido ? (dados.clientes?.find(c => c.id === clienteIdEscolhido)?.nome || '') : '';

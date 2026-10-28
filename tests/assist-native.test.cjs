@@ -77,3 +77,30 @@ test('host persistence reads and writes only the two canonical assistance states
  }
  const fo=source.match(/<select id="fo_estado_assistencia"[\s\S]*?<\/select>/)[0];assert.match(fo,/value="aberta"/);assert.match(fo,/value="resolvida"/);assert.doesNotMatch(fo,/value="andamento"|value="fechada"/);
 }finally{dom.window.close()}});
+
+test('locality filter uses the installation or headquarters, remains tenant-scoped and combines with other filters',()=>{const {dom,w}=setup();try{
+ const d=w.document;w.dados.clientes[0].cidade='Porto';w.dados.locais[0].cidade='Lisboa';
+ w.dados.clientes.push({id:'c2',adminId:'admin',nome:'Cliente Sul',cidade:'Faro'});
+ w.dados.locais.push({id:'no-city',adminId:'admin',clienteId:'c',nome:'Sem cidade'},{id:'foreign-local',adminId:'other',clienteId:'c',cidade:'Segredo'});
+ w.dados.assistencias.push({id:'sede',adminId:'admin',clienteId:'c2',estado:'aberta',assunto:'Sede Sul',prioridade:'normal'},{id:'unknown',adminId:'admin',clienteId:'c',localId:'no-city',estado:'aberta',assunto:'Instalação desconhecida'},{id:'invalid',adminId:'admin',clienteId:'c',localId:'foreign-local',estado:'resolvida',assunto:'Não revelar cidade'});
+ w.TGModules.open('assistencias');const select=d.getElementById('assistFiltroLocalidade');
+ assert.deepEqual([...select.options].map(o=>o.textContent),['Todas as localidades','Faro','Lisboa','Sem localidade indicada']);assert(!select.textContent.includes('Segredo'));assert(!select.textContent.includes('Porto'));
+ const rows=()=>d.querySelectorAll('#tgAssistResults tbody tr').length;
+ select.value='lisboa';select.dispatchEvent(new w.Event('change'));assert.equal(rows(),1);
+ d.querySelector('#tgAssistMetrics [data-state="resolvida"]').click();assert.equal(rows(),0);
+ d.querySelector('#tgAssistMetrics [data-state=""]').click();assert.equal(rows(),1);
+ const search=d.getElementById('tgAssistSearch');search.value='Lisboa';search.dispatchEvent(new w.Event('input'));assert.equal(rows(),1);
+ search.value='';search.dispatchEvent(new w.Event('input'));select.value='__sem_localidade__';select.dispatchEvent(new w.Event('change'));assert.equal(rows(),2);
+ select.value='';select.dispatchEvent(new w.Event('change'));assert.equal(rows(),4);
+}finally{dom.window.close()}});
+
+test('request creation cannot assign a technician; assignment is made when creating the OS and preserved when editing',async()=>{const {dom,w}=setup();try{
+ const d=w.document;w.TGModules.open('assistencias');await w.TGAssistNative.abrirModalAssistencia(null);
+ assert.equal(d.getElementById('assist_atribuido'),null);assert.equal(d.getElementById('assist_plan_data'),null);
+ d.getElementById('assist_cliente').value='c';d.getElementById('assist_assunto').value='Pedido sem atribuição';
+ const injected=d.createElement('select');injected.id='assist_atribuido';injected.add(new w.Option('Técnico','f'));d.getElementById('modalGenericoCampos').appendChild(injected);
+ await w.TGAssistNative.guardarAssistencia(null);const request=w.dados.assistencias.find(a=>a.assunto==='Pedido sem atribuição');assert(request);assert.equal(request.atribuidoId,null);assert.equal(w.calls.filter(c=>c[0]==='notify').length,0);
+ w.TGAssistNative.criarOSDeAssistencia(request.id);assert(d.querySelector('.assist-os-func-chk'));d.querySelector('.assist-os-func-chk').checked=true;
+ await w.TGAssistNative._confirmarCriarOSDeAssistencia(request.id);assert.equal(request.atribuidoId,'f');assert(w.dados.servicos.some(os=>os.id===request.osGeradaId&&os.funcionariosIds.includes('f')));assert(w.calls.some(c=>c[0]==='notify'&&c[1]==='f'));
+ await w.TGAssistNative.abrirModalAssistencia(request.id);assert.equal(d.getElementById('assist_atribuido'),null);await w.TGAssistNative.guardarAssistencia(request.id);assert.equal(request.atribuidoId,'f');
+}finally{dom.window.close()}});

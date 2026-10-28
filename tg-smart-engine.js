@@ -46,7 +46,7 @@
     const due=s.contracts.filter(x=>valid(x.validadeContrato)&&x.validadeContrato>=s.today&&x.validadeContrato<=shift(s.today,30)).sort((a,b)=>a.validadeContrato.localeCompare(b.validadeContrato));
     const low=s.stock.filter(x=>x.quantity<0||(x.alertaStock===true&&x.stockMinimo!==null&&x.stockMinimo!==undefined&&x.stockMinimo!==''&&Number.isFinite(Number(x.stockMinimo))&&x.quantity<=Number(x.stockMinimo)));
     const portal=(s.assistance || []).filter(x=>x.origem==='portal' && x.estado==='aberta');
-    const urgent=(s.assistance || []).filter(x=>x.origem!=='portal' && !['concluida','concluido','cancelada','cancelado','fechada'].includes(norm(x.estado)) && ['alta','urgente'].includes(norm(x.prioridade || x.urgencia)));
+    const urgent=(s.assistance || []).filter(x=>x.origem!=='portal' && !['concluida','concluido','cancelada','cancelado','fechada','resolvida'].includes(norm(x.estado)) && ['alta','urgente'].includes(norm(x.prioridade || x.urgencia)));
     if(portal.length)a.push({kind:'portal',section:'assistencias',title:'Pedidos do portal por tratar',items:portal,severity:'high'});
     if(urgent.length)a.push({kind:'urgent',section:'assistencias',title:'Assistências urgentes ou de prioridade alta',items:urgent,severity:'high'});
     if((s.drafts || []).length)a.push({kind:'drafts',section:'servicos',title:'Relatórios em rascunho por concluir',items:s.drafts,severity:'medium'});
@@ -89,9 +89,9 @@
       if(!s.management || !s.sections.includes('assistencias'))return {text:'O teu perfil ou módulo não permite consultar assistências no Teco.',actions:[],state:'idle'};
       let items=s.assistance || [], title='Assistências';
       if(/portal/.test(q)){items=items.filter(x=>x.origem==='portal' && x.estado==='aberta');title='Pedidos do portal por tratar';}
-      else if(/urgent|prioridade alta/.test(q)){items=items.filter(x=>['alta','urgente'].includes(norm(x.prioridade || x.urgencia)) && !['concluida','concluido','cancelado','cancelada','fechada'].includes(norm(x.estado)));title='Assistências urgentes ou de prioridade alta';}
-      else if(!/concluid|todas/.test(q))items=items.filter(x=>!['concluida','concluido','cancelado','cancelada','fechada'].includes(norm(x.estado)));
-      else if(/concluid/.test(q))items=items.filter(x=>['concluida','concluido','fechada'].includes(norm(x.estado)));
+      else if(/urgent|prioridade alta/.test(q)){items=items.filter(x=>['alta','urgente'].includes(norm(x.prioridade || x.urgencia)) && !['concluida','concluido','cancelado','cancelada','fechada','resolvida'].includes(norm(x.estado)));title='Assistências urgentes ou de prioridade alta';}
+      else if(!/concluid|resolvid|todas/.test(q))items=items.filter(x=>!['concluida','concluido','cancelado','cancelada','fechada','resolvida'].includes(norm(x.estado)));
+      else if(/concluid|resolvid/.test(q))items=items.filter(x=>['concluida','concluido','fechada','resolvida'].includes(norm(x.estado)));
       return {...list(items,'assistance',title,'assistencias'),context:'assistance'};
     }
     if(/relatorio|rascunho|por assinar/.test(q)) {
@@ -109,10 +109,10 @@
       else if(/ontem/.test(q)){items=items.filter(x=>x.data===shift(s.today,-1));title='OS de ontem';}
       else if(/semana/.test(q)){const d=new Date(s.today+'T12:00:00'), end=shift(s.today,7-(d.getDay()||7));items=items.filter(x=>valid(x.data)&&x.data>=s.today&&x.data<=end);title='OS de hoje até domingo';}
       else if(/hoje/.test(q)){items=items.filter(x=>x.data===s.today);title='OS de hoje';}
-      if(/concluid/.test(q))items=items.filter(x=>['concluido','concluida'].includes(norm(x.status)));
+      if(/concluid|resolvid/.test(q))items=items.filter(x=>['concluido','concluida'].includes(norm(x.status)));
       else items=items.filter(open);
       if(/pendente/.test(q))items=items.filter(x=>norm(x.status)==='pendente');
-      const result=list([...items].sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999')||(a.hora||'').localeCompare(b.hora||'')),'os',title+' (exceto canceladas'+(/concluid/.test(q)?'': ' e concluídas')+')','servicos');
+      const result=list([...items].sort((a,b)=>(a.data||'9999').localeCompare(b.data||'9999')||(a.hora||'').localeCompare(b.hora||'')),'os',title+' (exceto canceladas'+(/concluid|resolvid/.test(q)?'': ' e concluídas')+')','servicos');
       return {...result,context:'os'};
     }
     if(/contrat/.test(q)) {

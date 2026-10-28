@@ -28,5 +28,5 @@ test('counts refresh on status changes, employee visibility and account switch',
  }finally{w.close();}
 });
 test('both entry points expose one counter group and matching versioned assets',()=>{
- for(const file of ['index.html','login.html']){const w=new JSDOM(fs.readFileSync(file,'utf8')).window;try{assert.equal(w.document.querySelectorAll('#servicosContadores').length,1);assert(w.document.querySelector('script[src="app-principal.js?v=os-standby-20261028"]'));assert(w.document.querySelector('link[href="styles.css?v=os-standby-20261028"]'));}finally{w.close();}}
+ for(const file of ['index.html','login.html']){const w=new JSDOM(fs.readFileSync(file,'utf8')).window;try{assert.equal(w.document.querySelectorAll('#servicosContadores').length,1);assert(w.document.querySelector('script[src="app-principal.js?v=assist-dois-estados-20261028"]'));assert(w.document.querySelector('link[href="styles.css?v=os-standby-20261028"]'));}finally{w.close();}}
 });

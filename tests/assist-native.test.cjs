@@ -42,16 +42,38 @@ test('legacy cached records load their history with a tenant-scoped read before 
  assert.deepEqual(query,[['from','assistencias'],['select','notas'],['eq','id','a'],['eq','admin_id','admin']]);
 }finally{dom.window.close()}});
 
-test('assistance counters filter by state, stay in sync with the dropdown and combine with search',()=>{const {dom,w}=setup();try{
- const d=w.document;w.dados.assistencias.push(...['andamento','resolvida','fechada'].map((estado,i)=>({id:'state'+i,adminId:'admin',estado,assunto:'Pedido '+estado,prioridade:'normal'})));
- w.dados.assistencias.push({id:'deleted',adminId:'admin',estado:'aberta',apagadoSuperAdmin:true});
+test('two states and four counter buckets include legacy records and linked OS assignments',async()=>{const {dom,w}=setup();try{
+ const d=w.document;
+ w.dados.assistencias.push(
+ {id:'assigned',adminId:'admin',estado:'andamento',atribuidoId:'f',assunto:'Atribuída'},
+ {id:'linked',adminId:'admin',estado:'aberta',osGeradaId:'os1',assunto:'Com OS'},
+ {id:'resolved',adminId:'admin',estado:'resolvida',assunto:'Resolvida'},
+ {id:'closed',adminId:'admin',estado:'fechada',assunto:'Antiga fechada'},
+ {id:'unassigned',adminId:'admin',estado:'andamento',assunto:'Antiga sem atribuição'},
+ {id:'foreignOS',adminId:'admin',estado:'aberta',osGeradaId:'otherOS',assunto:'Sem técnico'},
+ {id:'deleted',adminId:'admin',estado:'aberta',apagadoSuperAdmin:true});
+ w.dados.servicos.push({id:'os1',adminId:'admin',funcionariosIds:['f']},{id:'otherOS',adminId:'other',funcionarioId:'foreign'});
  w.TGModules.open('assistencias');
  const button=state=>d.querySelector(`#tgAssistMetrics [data-state="${state}"]`);
+ const count=state=>Number(button(state).querySelector('strong').textContent);
  const results=()=>d.querySelectorAll('#tgAssistResults tbody tr').length;
- assert.equal(Number(button('').querySelector('strong').textContent),4);assert.equal(button('').getAttribute('aria-pressed'),'true');
- for(const state of ['aberta','andamento','resolvida','fechada']){button(state).querySelector('strong').click();assert.equal(results(),1);assert.equal(d.getElementById('assistFiltroEstado').value,state);assert.equal(button(state).getAttribute('aria-pressed'),'true');}
- const select=d.getElementById('assistFiltroEstado');select.value='andamento';select.dispatchEvent(new w.Event('change'));assert.equal(button('andamento').getAttribute('aria-pressed'),'true');
- const search=d.getElementById('tgAssistSearch');search.value='sem correspondência';search.dispatchEvent(new w.Event('input'));assert.equal(results(),0);assert.equal(button('andamento').querySelector('strong').textContent,'1');
- search.value='';search.dispatchEvent(new w.Event('input'));button('').click();assert.equal(results(),4);
- w.dados.assistencias.find(a=>a.id==='state0').estado='resolvida';w.TGAssistNative.render();assert.equal(button('andamento').querySelector('strong').textContent,'0');assert.equal(button('resolvida').querySelector('strong').textContent,'2');
+ assert.deepEqual([...d.querySelectorAll('#tgAssistMetrics button')].map(b=>b.dataset.state),['sem_atribuicao','atribuidas','resolvida','']);
+ assert.equal(count(''),7);assert.equal(count('sem_atribuicao'),3);assert.equal(count('atribuidas'),2);assert.equal(count('resolvida'),2);
+ assert.deepEqual([...d.querySelectorAll('#assistFiltroEstado option')].map(o=>o.value),['','aberta','resolvida']);
+ for(const [state,n] of [['sem_atribuicao',3],['atribuidas',2],['resolvida',2],['',7]]){button(state).querySelector('strong').click();assert.equal(results(),n);assert.equal(button(state).getAttribute('aria-pressed'),'true');}
+ const select=d.getElementById('assistFiltroEstado');select.value='aberta';select.dispatchEvent(new w.Event('change'));assert.equal(results(),5);
+ button('atribuidas').click();const search=d.getElementById('tgAssistSearch');search.value='Com OS';search.dispatchEvent(new w.Event('input'));assert.equal(results(),1);assert.equal(count('atribuidas'),2);
+ search.value='';search.dispatchEvent(new w.Event('input'));
+ w.dados.assistencias.find(a=>a.id==='assigned').estado='resolvida';w.TGAssistNative.render();assert.equal(count('atribuidas'),1);assert.equal(count('resolvida'),3);assert.equal(results(),1);
+ await w.TGAssistNative.abrirModalAssistencia('a');assert.deepEqual([...d.querySelectorAll('#assist_estado option')].map(o=>o.value),['aberta','resolvida']);d.getElementById('assist_estado').value='resolvida';await w.TGAssistNative.guardarAssistencia('a');assert.equal(w.dados.assistencias[0].estado,'resolvida');
+}finally{dom.window.close()}});
+
+test('host persistence reads and writes only the two canonical assistance states',()=>{const {dom,w}=setup();try{
+ w.eval(source.match(/function _assistEstado\(value\) \{[\s\S]*?\n\}/)[0]);w.isoToMs=v=>v;w.msToISO=v=>v;
+ const start=source.indexOf('            assistencias: {'),end=source.indexOf('\n            },',start);
+ const mapping=w.eval('({'+source.slice(start,end)+'}}).assistencias');
+ for(const [old,expected] of [['aberta','aberta'],['andamento','aberta'],['em_tratamento','aberta'],['resolvida','resolvida'],['fechada','resolvida'],[null,'aberta']]){
+  assert.equal(mapping.from({estado:old}).estado,expected);assert.equal(mapping.to({estado:old}).estado,expected);
+ }
+ const fo=source.match(/<select id="fo_estado_assistencia"[\s\S]*?<\/select>/)[0];assert.match(fo,/value="aberta"/);assert.match(fo,/value="resolvida"/);assert.doesNotMatch(fo,/value="andamento"|value="fechada"/);
 }finally{dom.window.close()}});

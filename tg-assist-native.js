@@ -1,7 +1,7 @@
 /* Native Assist workspace. Uses the TG session, shared data, forms and sync queue. */
 (function(){
 'use strict';
-let identity='', modalIdentity='', tab='assistencias';
+let identity='', modalIdentity='', tab='assistencias', assistBucket='';
 const actor=()=>typeof usuarioLogado==='undefined'||!usuarioLogado?'':JSON.stringify([_tenantId(),usuarioLogado.id]);
 const allowed=()=>!!window.TGModules?.allowed('assistencias');
 function assertAccess(expected){if(!allowed()||(expected&&expected!==actor()))throw Error('A sessão ou o acesso às Assistências mudou. Volta a abrir o módulo.');}
@@ -22,9 +22,12 @@ function setupForm(){
  actions.innerHTML='<button type="button" class="btn btn-outline" onclick="_fecharModalGenerico()">Cancelar</button><button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar</button>';
 }
 function guard(fn,record=false,form=false){return function(...args){try{assertAccess(form?modalIdentity:undefined);if(record&&args[0]&&!item(args[0]))return;return fn(...args);}catch(e){alert(e.message);}}}
+function _assistEstado(value) {
+    return ['resolvida', 'fechada', 'concluida', 'concluido', 'terminada', 'terminado'].includes(String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()) ? 'resolvida' : 'aberta';
+}
         const ASSIST_PRIORIDADES = { baixa: { label: 'Baixa', cor: '#64748b' }, normal: { label: 'Normal', cor: '#2456d8' }, alta: { label: 'Alta', cor: '#b0650a' }, urgente: { label: 'Urgente', cor: '#d1342f' } };
-        const ASSIST_ESTADOS = { aberta: { label: 'Aberta', cor: '#2456d8', bg: 'var(--blue-bg)' }, andamento: { label: 'Em atendimento', cor: '#b0650a', bg: 'var(--yellow-bg)' }, resolvida: { label: 'Resolvida', cor: '#178a4c', bg: 'var(--green-bg)' }, fechada: { label: 'Fechada', cor: '#828ba3', bg: 'var(--border-soft)' } };
-const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> Assistências</h2><button type=\"button\" class=\"btn btn-primary\" data-assist-action=\"new\"><i class=\"fas fa-plus\"></i> Nova assistência</button></div><div class=\"tg-assist-tabs\"><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"assistencias\" aria-pressed=\"true\">Assistências</button><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"dashboard\" aria-pressed=\"false\">Indicadores</button></div><p id=\"tgAssistStatus\" role=\"status\" hidden></p><div id=\"tgAssistListPane\"><div id=\"tgAssistMetrics\" class=\"tg-assist-metrics\" role=\"group\" aria-label=\"Filtrar assistências por estado\"></div><div class=\"tg-assist-filters\"><label>Pesquisar<input id=\"tgAssistSearch\" type=\"search\" placeholder=\"Cliente, instalação ou pedido\"></label><label>Estado<select id=\"assistFiltroEstado\"><option value=\"\">Todos os estados</option><option value=\"aberta\">Aberta</option><option value=\"andamento\">Em atendimento</option><option value=\"resolvida\">Resolvida</option><option value=\"fechada\">Fechada</option></select></label><label>Prioridade<select id=\"assistFiltroPrioridade\"><option value=\"\">Todas as prioridades</option><option value=\"baixa\">Baixa</option><option value=\"normal\">Normal</option><option value=\"alta\">Alta</option><option value=\"urgente\">Urgente</option></select></label></div><p id=\"tgAssistCount\" class=\"help-text\"></p><div id=\"tgAssistResults\"></div></div><div id=\"tgAssistDashboardPane\" hidden>                    <div class=\"stat-row\">\n                        <div class=\"stat-card\"><div class=\"lbl\">Assistências abertas</div><div class=\"val\" id=\"assistDashAbertas\">0</div></div>\n                        <div class=\"stat-card warn\"><div class=\"lbl\">Em atendimento</div><div class=\"val\" id=\"assistDashAndamento\">0</div></div>\n                        <div class=\"stat-card good\"><div class=\"lbl\">Resolvidas (30 dias)</div><div class=\"val\" id=\"assistDashResolvidas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">OS geradas (30 dias)</div><div class=\"val\" id=\"assistDashOsGeradas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">Tempo médio de resolução</div><div class=\"val\" id=\"assistDashTempoMedio\">—</div></div>\n                        <div class=\"stat-card\" id=\"assistDashForaSlaCard\" style=\"border-left:3px solid #d1342f;\"><div class=\"lbl\">Fora do SLA (+48h)</div><div class=\"val\" id=\"assistDashForaSla\">0</div></div>\n                    </div>\n                    <div id=\"assistDashAlertaSla\" style=\"display:none;margin-bottom:14px;padding:10px 14px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:600;font-size:.85rem;cursor:pointer;\" onclick=\"TGAssistNative.mudarTabCRM('assistencias')\"></div>\n                    <div style=\"display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;\">\n                        <div class=\"table-wrapper\" style=\"flex:1;min-width:260px;padding:16px 18px;\">\n                            <h4 style=\"margin-bottom:10px;color:var(--navy);\">Por prioridade (em aberto)</h4>\n                            <div id=\"assistDashPrioridades\"></div>\n                        </div>\n                    </div>\n                    <div class=\"orc-secao-titulo\" style=\"margin-top:6px;\">Assistências mais recentes</div>\n                    <div class=\"table-wrapper scroll\">\n                        <table>\n                            <thead><tr><th>Nº</th><th>Cliente</th><th>Assunto</th><th>Prioridade</th><th>Estado</th><th>Data</th></tr></thead>\n                            <tbody id=\"tabelaDashAssist\"></tbody>\n                        </table>\n                    </div>\n                    <p id=\"emptyDashAssist\" class=\"text-muted text-center mt-10\" style=\"display:none;\">Ainda não há assistências registadas.</p></div>";
+        const ASSIST_ESTADOS = { aberta: { label: 'Aberta', cor: '#2456d8', bg: 'var(--blue-bg)' }, resolvida: { label: 'Resolvida', cor: '#178a4c', bg: 'var(--green-bg)' } };
+const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> Assistências</h2><button type=\"button\" class=\"btn btn-primary\" data-assist-action=\"new\"><i class=\"fas fa-plus\"></i> Nova assistência</button></div><div class=\"tg-assist-tabs\"><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"assistencias\" aria-pressed=\"true\">Assistências</button><button type=\"button\" class=\"btn btn-outline\" data-assist-tab=\"dashboard\" aria-pressed=\"false\">Indicadores</button></div><p id=\"tgAssistStatus\" role=\"status\" hidden></p><div id=\"tgAssistListPane\"><div id=\"tgAssistMetrics\" class=\"tg-assist-metrics\" role=\"group\" aria-label=\"Filtrar assistências por estado\"></div><div class=\"tg-assist-filters\"><label>Pesquisar<input id=\"tgAssistSearch\" type=\"search\" placeholder=\"Cliente, instalação ou pedido\"></label><label>Estado<select id=\"assistFiltroEstado\"><option value=\"\">Todos os estados</option><option value=\"aberta\">Aberta</option><option value=\"resolvida\">Resolvida</option></select></label><label>Prioridade<select id=\"assistFiltroPrioridade\"><option value=\"\">Todas as prioridades</option><option value=\"baixa\">Baixa</option><option value=\"normal\">Normal</option><option value=\"alta\">Alta</option><option value=\"urgente\">Urgente</option></select></label></div><p id=\"tgAssistCount\" class=\"help-text\"></p><div id=\"tgAssistResults\"></div></div><div id=\"tgAssistDashboardPane\" hidden>                    <div class=\"stat-row\">\n                        <div class=\"stat-card\"><div class=\"lbl\">Assistências abertas</div><div class=\"val\" id=\"assistDashAbertas\">0</div></div>\n                        <div class=\"stat-card warn\"><div class=\"lbl\">Abertas atribuídas</div><div class=\"val\" id=\"assistDashAndamento\">0</div></div>\n                        <div class=\"stat-card good\"><div class=\"lbl\">Resolvidas (30 dias)</div><div class=\"val\" id=\"assistDashResolvidas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">OS geradas (30 dias)</div><div class=\"val\" id=\"assistDashOsGeradas\">0</div></div>\n                        <div class=\"stat-card\"><div class=\"lbl\">Tempo médio de resolução</div><div class=\"val\" id=\"assistDashTempoMedio\">—</div></div>\n                        <div class=\"stat-card\" id=\"assistDashForaSlaCard\" style=\"border-left:3px solid #d1342f;\"><div class=\"lbl\">Fora do SLA (+48h)</div><div class=\"val\" id=\"assistDashForaSla\">0</div></div>\n                    </div>\n                    <div id=\"assistDashAlertaSla\" style=\"display:none;margin-bottom:14px;padding:10px 14px;border-radius:8px;background:var(--red-bg);color:var(--red);font-weight:600;font-size:.85rem;cursor:pointer;\" onclick=\"TGAssistNative.mudarTabCRM('assistencias')\"></div>\n                    <div style=\"display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;\">\n                        <div class=\"table-wrapper\" style=\"flex:1;min-width:260px;padding:16px 18px;\">\n                            <h4 style=\"margin-bottom:10px;color:var(--navy);\">Por prioridade (em aberto)</h4>\n                            <div id=\"assistDashPrioridades\"></div>\n                        </div>\n                    </div>\n                    <div class=\"orc-secao-titulo\" style=\"margin-top:6px;\">Assistências mais recentes</div>\n                    <div class=\"table-wrapper scroll\">\n                        <table>\n                            <thead><tr><th>Nº</th><th>Cliente</th><th>Assunto</th><th>Prioridade</th><th>Estado</th><th>Data</th></tr></thead>\n                            <tbody id=\"tabelaDashAssist\"></tbody>\n                        </table>\n                    </div>\n                    <p id=\"emptyDashAssist\" class=\"text-muted text-center mt-10\" style=\"display:none;\">Ainda não há assistências registadas.</p></div>";
         function gerarNumeroAssistencia() {
             const iniciais = _empresaIniciais((dados.administradores?.find(a => a.id === _tenantId())?.empresa) || (dados.administradores?.find(a => a.id === _tenantId())?.nome) || '');
             const agora = new Date();
@@ -38,14 +41,14 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const tid = _tenantId();
             const lista = (dados.assistencias || []).filter(a => a.adminId === tid).sort((a, b) => (b.dataCriacao || 0) - (a.dataCriacao || 0));
             const trintaDias = Date.now() - 30 * 24 * 60 * 60 * 1000;
-            const emAberto = lista.filter(a => a.estado === 'aberta' || a.estado === 'andamento');
-            document.getElementById('assistDashAbertas').textContent = lista.filter(a => a.estado === 'aberta').length;
-            document.getElementById('assistDashAndamento').textContent = lista.filter(a => a.estado === 'andamento').length;
-            document.getElementById('assistDashResolvidas').textContent = lista.filter(a => (a.estado === 'resolvida' || a.estado === 'fechada') && (a.dataModificacao || a.dataCriacao || 0) >= trintaDias).length;
+            const emAberto = lista.filter(a => _assistEstado(a.estado) === 'aberta');
+            document.getElementById('assistDashAbertas').textContent = lista.filter(a => _assistEstado(a.estado) === 'aberta').length;
+            document.getElementById('assistDashAndamento').textContent = lista.filter(a => _assistEstado(a.estado) === 'aberta' && assistAssigned(a)).length;
+            document.getElementById('assistDashResolvidas').textContent = lista.filter(a => (_assistEstado(a.estado) === 'resolvida') && (a.dataModificacao || a.dataCriacao || 0) >= trintaDias).length;
             document.getElementById('assistDashOsGeradas').textContent = lista.filter(a => a.osGeradaId && (a.dataCriacao || 0) >= trintaDias).length;
 
             // Tempo médio de resolução (últimos 30 dias)
-            const resolvidasRecentes = lista.filter(a => ['resolvida', 'fechada'].includes(a.estado) && a.dataModificacao && a.dataCriacao && a.dataModificacao >= trintaDias);
+            const resolvidasRecentes = lista.filter(a => (_assistEstado(a.estado) === 'resolvida') && a.dataModificacao && a.dataCriacao && a.dataModificacao >= trintaDias);
             const tempoMedioH = resolvidasRecentes.length ? resolvidasRecentes.reduce((s, a) => s + (a.dataModificacao - a.dataCriacao), 0) / resolvidasRecentes.length / 3600000 : null;
             document.getElementById('assistDashTempoMedio').textContent = tempoMedioH == null ? '—' : (tempoMedioH < 24 ? Math.round(tempoMedioH) + 'h' : Math.round(tempoMedioH / 24) + ' dias');
 
@@ -73,7 +76,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const recentes = lista.slice(0, 8);
             document.getElementById('emptyDashAssist').style.display = recentes.length ? 'none' : 'block';
             document.getElementById('tabelaDashAssist').innerHTML = recentes.map(a => {
-                const est = ASSIST_ESTADOS[a.estado] || ASSIST_ESTADOS.aberta;
+                const est = ASSIST_ESTADOS[_assistEstado(a.estado)] || ASSIST_ESTADOS.aberta;
                 const pri = ASSIST_PRIORIDADES[a.prioridade] || ASSIST_PRIORIDADES.normal;
                 return `<tr style="cursor:pointer;" onclick="TGAssistNative.mudarTabCRM('assistencias');setTimeout(()=>TGAssistNative.abrirModalAssistencia('${a.id}'),60);">
                     <td>${escapeHtmlSimples(a.numero || '—')}</td>
@@ -257,7 +260,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                         <select id="assist_prioridade">${Object.entries(ASSIST_PRIORIDADES).map(([k, v]) => `<option value="${k}" ${(item?.prioridade || 'normal') === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
                     </div>
                     <div class="form-group" style="flex:1;"><label>Estado</label>
-                        <select id="assist_estado">${Object.entries(ASSIST_ESTADOS).map(([k, v]) => `<option value="${k}" ${(item?.estado || 'aberta') === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
+                        <select id="assist_estado">${Object.entries(ASSIST_ESTADOS).map(([k, v]) => `<option value="${k}" ${_assistEstado(item?.estado) === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select>
                     </div>
                 </div>
                 <div class="form-group"><label>Atribuído a</label>
@@ -276,7 +279,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
         }
         function _assistBadgeSLA(item) {
             const portal = item.origem === 'portal' ? '<div style="padding:8px 12px;background:#e0f2fe;color:#075985;border-radius:8px;margin-bottom:8px;">Pedido recebido pelo Portal do Cliente</div>' : '';
-            if (['resolvida', 'fechada'].includes(item.estado)) {
+            if ((_assistEstado(item.estado) === 'resolvida')) {
                 const horas = item.dataModificacao ? Math.round((item.dataModificacao - item.dataCriacao) / 3600000) : null;
                 return portal + (horas != null ? `<div class="help-text" style="margin-bottom:10px;"><i class="fas fa-check-circle" style="color:var(--green);"></i> Resolvida em ${horas < 24 ? horas + 'h' : Math.round(horas / 24) + ' dia(s)'}.</div>` : '');
             }
@@ -360,7 +363,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             item.assunto = assunto;
             item.descricao = document.getElementById('assist_descricao').value.trim() || null;
             item.prioridade = document.getElementById('assist_prioridade').value;
-            item.estado = document.getElementById('assist_estado').value;
+            item.estado = _assistEstado(document.getElementById('assist_estado').value);
             const atribuidoNovo = document.getElementById('assist_atribuido').value || null;
             const atribuidoMudou = item.atribuidoId !== atribuidoNovo;
             item.atribuidoId = atribuidoNovo;
@@ -379,7 +382,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             setupForm();
             const a = dados.assistencias?.find(x => x.id === assistId);
             if (!a) return;
-            if(a.osGeradaId || a.estado==='fechada') return alert('Esta assistência já tem uma OS ou está fechada.');
+            if(a.osGeradaId || _assistEstado(a.estado)==='resolvida') return alert('Esta assistência já tem uma OS ou está resolvida.');
             const tid = _tenantId();
             const cliente = a.clienteId ? dados.clientes?.find(c => c.id === a.clienteId) : null;
             const clientesTenant = (dados.clientes || []).filter(c => c.adminId === tid);
@@ -421,7 +424,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             try { numeroOS = await gerarNumeroRegistoServidor(); } catch (e) { numeroOS = gerarNumeroRegisto(); }
             assertAccess(identityBeforeNumber);
             const currentAssist = item(assistId);
-            if(!currentAssist || currentAssist.osGeradaId || currentAssist.estado==='fechada') return;
+            if(!currentAssist || currentAssist.osGeradaId || _assistEstado(currentAssist.estado)==='resolvida') return;
             const novaOS = {
                 id: gerarId(), adminId: tid, clienteId: clienteIdEscolhido,
                 funcionarioId: funcionariosIds[0] || null, funcionariosIds,
@@ -466,6 +469,12 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                 finally { if (btn) { btn.disabled = false; btn.innerHTML = original; } }
             };
         }
+function assistAssigned(a){
+ if(a.atribuidoId)return true;
+ const os=(dados.servicos||[]).find(s=>s.id===a.osGeradaId&&s.adminId===a.adminId);
+ return !!(os&&(os.funcionarioId||(os.funcionariosIds||[]).some(Boolean)));
+}
+function assistGroup(a){return _assistEstado(a.estado)==='resolvida'?'resolvida':assistAssigned(a)?'atribuidas':'sem_atribuicao';}
 function renderizarAssistencias(){
  const root=document.getElementById('secao-assistencias');if(!root)return;
  const state=document.getElementById('assistFiltroEstado').value,priority=document.getElementById('assistFiltroPrioridade').value;
@@ -473,33 +482,34 @@ function renderizarAssistencias(){
  const all=(dados.assistencias||[]).filter(a=>a.adminId===_tenantId()&&!a.apagadoSuperAdmin);
  const list=all.filter(a=>{
   const d=_assistResumoDados(a);const text=[a.numero,a.assunto,d.cliente,d.local,obterNomeFuncionario(a.atribuidoId)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  return (!state||(a.estado||'aberta')===state)&&(!priority||(a.prioridade||'normal')===priority)&&(!query||text.includes(query));
+  return (!state||_assistEstado(a.estado)===state)&&(!assistBucket||assistGroup(a)===assistBucket)&&(!priority||(a.prioridade||'normal')===priority)&&(!query||text.includes(query));
  }).sort((a,b)=>(b.dataCriacao||0)-(a.dataCriacao||0));
  document.getElementById('tgAssistCount').textContent=`${list.length} de ${all.length} assistências`;
- document.getElementById('tgAssistMetrics').innerHTML=[['aberta','Abertas'],['andamento','Em atendimento'],['resolvida','Resolvidas'],['fechada','Fechadas'],['','Todas']].map(([value,label])=>{
-  const n=value?all.filter(a=>(a.estado||'aberta')===value).length:all.length;
-  return `<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="filter" data-state="${value}" aria-pressed="${state===value}"><strong>${n}</strong><span>${label}</span></button>`;
+ document.getElementById('tgAssistMetrics').innerHTML=[['sem_atribuicao','Abertas sem atribuição'],['atribuidas','Abertas atribuídas a técnico'],['resolvida','Resolvidas'],['','Todas']].map(([value,label])=>{
+  const n=value?all.filter(a=>assistGroup(a)===value).length:all.length;
+  const active=value?assistBucket===value:!assistBucket&&!state;
+  return `<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="filter" data-state="${value}" aria-pressed="${active}"><strong>${n}</strong><span>${label}</span></button>`;
  }).join('');
  document.getElementById('tgAssistResults').innerHTML=list.length?`<div class="table-wrapper tg-assist-table"><table><thead><tr><th>Pedido / Cliente / Instalação</th><th>Prioridade</th><th>Estado</th><th>Técnico</th><th>Criada em</th><th>Ações</th></tr></thead><tbody>${list.map(a=>`<tr><td>${_assistResumoHtml(a)}</td><td>${priorityBadge(a)}</td><td>${stateBadge(a)}</td><td>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</td><td>${a.dataCriacao?new Date(a.dataCriacao).toLocaleDateString('pt-PT'):'—'}</td><td>${actions(a)}</td></tr>`).join('')}</tbody></table></div><div class="tg-assist-cards">${list.map(a=>`<article class="tg-assist-card"><div class="tg-assist-card-top"><span>${escapeHtmlSimples(a.numero||'Assistência')}</span>${priorityBadge(a)}</div>${_assistResumoHtml(a)}<div class="tg-assist-card-state">${stateBadge(a)}<span>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</span></div><div class="tg-assist-card-actions">${actions(a)}</div></article>`).join('')}</div>`:'<p class="help-text tg-assist-empty">Sem assistências para os filtros selecionados.</p>';
 }
-function stateBadge(a){const s=ASSIST_ESTADOS[a.estado]||ASSIST_ESTADOS.aberta;return `<span class="tg-assist-badge" style="--assist-color:${s.cor}">${s.label}</span>`;}
+function stateBadge(a){const s=ASSIST_ESTADOS[_assistEstado(a.estado)]||ASSIST_ESTADOS.aberta;return `<span class="tg-assist-badge" style="--assist-color:${s.cor}">${s.label}</span>`;}
 function priorityBadge(a){const p=ASSIST_PRIORIDADES[a.prioridade]||ASSIST_PRIORIDADES.normal;return `<span class="tg-assist-badge" style="--assist-color:${p.cor}">${p.label}</span>`;}
-function actions(a){const id=escapeHtmlSimples(a.id);return `<button type="button" class="btn btn-sm btn-outline" data-assist-action="edit" data-id="${id}"><i class="fas fa-pen"></i> Ver / editar</button>${!a.osGeradaId&&a.estado!=='fechada'?`<button type="button" class="btn btn-sm btn-primary" data-assist-action="os" data-id="${id}"><i class="fas fa-helmet-safety"></i> Criar OS</button>`:a.osGeradaId?`<button type="button" class="btn btn-sm btn-outline" data-assist-action="viewOS" data-id="${id}"><i class="fas fa-file-lines"></i> Ver OS</button>`:''}<button type="button" class="btn btn-sm btn-outline" data-assist-action="delete" data-id="${id}" aria-label="Eliminar assistência"><i class="fas fa-trash"></i></button>`;}
+function actions(a){const id=escapeHtmlSimples(a.id);return `<button type="button" class="btn btn-sm btn-outline" data-assist-action="edit" data-id="${id}"><i class="fas fa-pen"></i> Ver / editar</button>${!a.osGeradaId&&_assistEstado(a.estado)!=='resolvida'?`<button type="button" class="btn btn-sm btn-primary" data-assist-action="os" data-id="${id}"><i class="fas fa-helmet-safety"></i> Criar OS</button>`:a.osGeradaId?`<button type="button" class="btn btn-sm btn-outline" data-assist-action="viewOS" data-id="${id}"><i class="fas fa-file-lines"></i> Ver OS</button>`:''}<button type="button" class="btn btn-sm btn-outline" data-assist-action="delete" data-id="${id}" aria-label="Eliminar assistência"><i class="fas fa-trash"></i></button>`;}
 function mudarTabCRM(value){tab=value==='dashboard'?'dashboard':'assistencias';document.querySelectorAll('#secao-assistencias [data-assist-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.assistTab===tab)));document.getElementById('tgAssistListPane').hidden=tab!=='assistencias';document.getElementById('tgAssistDashboardPane').hidden=tab!=='dashboard';render();}
 function render(){if(!allowed())return;const section=document.getElementById('secao-assistencias');if(!section)return;renderizarAssistencias();if(tab==='dashboard')renderizarDashboardAssist();}
 function prepare(id){
  if(!allowed())return false;
  const identityNow=actor();let section=document.getElementById('secao-assistencias');
- if(identity!==identityNow){section?.remove();identity=identityNow;modalIdentity='';}
+ if(identity!==identityNow){section?.remove();identity=identityNow;modalIdentity='';assistBucket='';}
  section=document.getElementById('secao-assistencias');
  if(!section){section=document.createElement('section');section.id='secao-assistencias';section.className='section-container tg-assist-native';section.setAttribute('aria-label','Assistências');section.innerHTML=SHELL;document.body.appendChild(section);
   section.addEventListener('click',event=>{
    const b=event.target.closest('[data-assist-action],[data-assist-tab]');if(!b)return;
    if(b.dataset.assistTab){mudarTabCRM(b.dataset.assistTab);return;}
-   if(b.dataset.assistAction==='filter'){document.getElementById('assistFiltroEstado').value=b.dataset.state;render();return;}
+   if(b.dataset.assistAction==='filter'){assistBucket=b.dataset.state;document.getElementById('assistFiltroEstado').value=assistBucket==='resolvida'?'resolvida':assistBucket?'aberta':'';render();return;}
    const a=item(b.dataset.id);switch(b.dataset.assistAction){case 'new':window.TGAssistNative.abrirModalAssistencia(null);break;case 'edit':window.TGAssistNative.abrirModalAssistencia(a?.id);break;case 'os':if(a)window.TGAssistNative.criarOSDeAssistencia(a.id);break;case 'delete':if(a)window.TGAssistNative.excluirAssistencia(a.id);break;case 'viewOS':if(a?.osGeradaId&&(dados.servicos||[]).some(s=>s.id===a.osGeradaId&&s.adminId===_tenantId()))abrirVerOS(a.osGeradaId);break;}
   });
-  section.querySelectorAll('select').forEach(e=>e.addEventListener('change',render));section.querySelector('#tgAssistSearch').addEventListener('input',render);
+  section.querySelectorAll('select').forEach(e=>e.addEventListener('change',()=>{if(e.id==='assistFiltroEstado')assistBucket=e.value==='resolvida'?'resolvida':'';render();}));section.querySelector('#tgAssistSearch').addEventListener('input',render);
  }
  render();if(id&&item(id))setTimeout(()=>{if(allowed()&&actor()===identityNow)window.TGAssistNative.criarOSDeAssistencia(id)},0);
  return true;

@@ -3,6 +3,10 @@ function _assistLerNotas(value) {
     try { const parsed=JSON.parse(value||'[]'); return Array.isArray(parsed)?parsed:[]; } catch (_) { return []; }
 }
 
+function _assistEstado(value) {
+    return ['resolvida', 'fechada', 'concluida', 'concluido', 'terminada', 'terminado'].includes(String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()) ? 'resolvida' : 'aberta';
+}
+
         // =============================================================
         //  CONFIGURAÇÃO SUPABASE  ── PREENCHER ESTES DOIS VALORES ──
         //  Encontras em: Supabase → Project Settings → API
@@ -311,8 +315,8 @@ function _assistLerNotas(value) {
             },
             assistencias: {
                 tabela: 'assistencias',
-                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: r.estado || 'aberta', atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, ...(r.notas!==undefined ? {notas:_assistLerNotas(r.notas)} : {}), apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
-                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: o.estado || 'aberta', atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, ...(o.notas!==undefined ? {notas:_assistLerNotas(o.notas)} : {}), apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
+                from: r => ({ id: r.id, adminId: r.admin_id, numero: r.numero, clienteId: r.cliente_id, localId: r.local_id || null, origem: r.origem || null, assunto: r.assunto, descricao: r.descricao, prioridade: r.prioridade || 'normal', estado: _assistEstado(r.estado), atribuidoId: r.atribuido_id || null, criadoPor: r.criado_por || null, osGeradaId: r.os_gerada_id || null, ...(r.notas!==undefined ? {notas:_assistLerNotas(r.notas)} : {}), apagadoSuperAdmin: r.apagado_superadmin === true, dataCriacao: isoToMs(r.data_criacao), dataModificacao: isoToMs(r.data_modificacao) }),
+                to:   o => ({ id: o.id, admin_id: o.adminId, numero: o.numero || null, cliente_id: o.clienteId || null, local_id: o.localId || null, origem: o.origem || null, assunto: o.assunto || null, descricao: o.descricao || null, prioridade: o.prioridade || 'normal', estado: _assistEstado(o.estado), atribuido_id: o.atribuidoId || null, criado_por: o.criadoPor || null, os_gerada_id: o.osGeradaId || null, ...(o.notas!==undefined ? {notas:_assistLerNotas(o.notas)} : {}), apagado_superadmin: o.apagadoSuperAdmin === true, data_criacao: msToISO(o.dataCriacao), data_modificacao: msToISO(o.dataModificacao) })
             },
             garantias: {
                 tabela: 'garantias',
@@ -5558,7 +5562,7 @@ function _assistLerNotas(value) {
             return `<div style="white-space:normal;line-height:1.45;text-align:left;padding:4px 0;"><strong>${escapeHtmlSimples(a.assunto || a.numero || 'Assistência')}</strong><div style="font-size:.75rem;color:var(--hsub,#64748b);">${escapeHtmlSimples(d.cliente)}</div><div style="font-size:.72rem;">${escapeHtmlSimples(d.local)} · Urgência: <b>${escapeHtmlSimples(d.urgencia)}</b></div>${a.origem === 'portal' ? '<span style="display:inline-block;margin-top:4px;background:#e0f2fe;color:#075985;border-radius:6px;padding:2px 6px;font-size:.68rem;">Portal do Cliente</span>' : ''}</div>`;
         }
         function _assistPortalPorTratar(adminId) {
-            return (dados.assistencias || []).filter(a => a.adminId === adminId && a.origem === 'portal' && !a.apagadoSuperAdmin && (a.estado || 'aberta') === 'aberta' && !a.osGeradaId && !a.atribuidoId);
+            return (dados.assistencias || []).filter(a => a.adminId === adminId && a.origem === 'portal' && !a.apagadoSuperAdmin && _assistEstado(a.estado) === 'aberta' && !a.osGeradaId && !a.atribuidoId);
         }
         function _wsGerarNumeroAssistencia() {
             const admin = dados.administradores?.find(a => a.id === _tenantId());
@@ -6188,7 +6192,7 @@ function _assistLerNotas(value) {
             // (ex.: ligação feita depois de a OS já existir). Agora procura-se sempre a
             // assistência associada, por qualquer uma das duas pontas da ligação.
             const _assistLigada = (dados.assistencias || []).find(a => (osv.assistenciaId && a.id === osv.assistenciaId) || a.osGeradaId === osv.id);
-            if (_assistLigada && _assistLigada.estado !== 'resolvida' && _assistLigada.estado !== 'fechada') {
+            if (_assistLigada && _assistEstado(_assistLigada.estado) !== 'resolvida') {
                 _assistLigada.estado = 'resolvida';
                 _assistLigada.dataModificacao = Date.now();
             }
@@ -19390,8 +19394,8 @@ function _assistLerNotas(value) {
                         // Assistências ainda sem OS (precisam de decisão) vs. já convertidas em
                         // OS (em curso, só a acompanhar). Excluí sempre as já resolvidas/fechadas.
                         const _assistTodas = (dados.assistencias || []).filter(a => a.adminId === adminId && !a.apagadoSuperAdmin);
-                        const _assistConcluidas = _assistTodas.filter(a => ['resolvida', 'fechada'].includes(a.estado || 'aberta'));
-                        const _assistTodasAbertas = _assistTodas.filter(a => !['resolvida', 'fechada'].includes(a.estado || 'aberta'));
+                        const _assistConcluidas = _assistTodas.filter(a => (_assistEstado(a.estado) === 'resolvida'));
+                        const _assistTodasAbertas = _assistTodas.filter(a => !(_assistEstado(a.estado) === 'resolvida'));
                         const _assistSemOS = _assistTodasAbertas.filter(a => !a.osGeradaId);
                         const _assistComOS = _assistTodasAbertas.filter(a => a.osGeradaId);
                         const _assistUrgentes = _assistSemOS.filter(a => (a.prioridade || '').toLowerCase() === 'urgente' || (a.prioridade || '').toLowerCase() === 'alta').length;
@@ -19879,8 +19883,8 @@ function _assistLerNotas(value) {
                 openServices: oss.filter(s => !['concluído','concluido','cancelado','recusado','por aprovar'].includes(s.status)).length,
                 signatures: folhas.filter(f => !(f.assinatura || f.assinaturaPath)).length,
                 assistAtivo,
-                pendingRequests: pedidosAssist.filter(a => a.estado === 'aberta').length,
-                requests: pedidosAssist.map(a => ({numero:a.numero, data:new Date(a.dataCriacao).toLocaleDateString('sv-SE'),descricao:a.descricao,status:({aberta:'Aberto',andamento:'Em atendimento',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[a.estado] || a.estado}))
+                pendingRequests: pedidosAssist.filter(a => _assistEstado(a.estado) === 'aberta').length,
+                requests: pedidosAssist.map(a => ({numero:a.numero, data:new Date(a.dataCriacao).toLocaleDateString('sv-SE'),descricao:a.descricao,status:(_assistEstado(a.estado) === 'resolvida' ? 'Resolvida' : 'Aberta')}))
             });
         }
 
@@ -27487,7 +27491,7 @@ async function salvarAdmin(e) {
                     const _osDaFolha = dados.servicos?.find(s => s.id === obj.servicoId);
                     if (_osDaFolha?.origem === 'assistencia') {
                         _foNovoEstadoAssistencia = document.getElementById('fo_estado_assistencia')?.value || '';
-                        if (!_foNovoEstadoAssistencia) { alert('Indica o estado da assistência — é obrigatório para OS geradas a partir do Total Gest Assist.'); return; }
+                        if (!['aberta', 'resolvida'].includes(_foNovoEstadoAssistencia)) { alert('Indica o estado da assistência — é obrigatório para OS geradas a partir do Total Gest Assist.'); return; }
                         _foAssistenciaParaAtualizar = (dados.assistencias || []).find(a => a.id === _osDaFolha.assistenciaId || a.osGeradaId === _osDaFolha.id);
                     }
                 }
@@ -29677,7 +29681,7 @@ window._relPrefill = function(msg){
             }
             const linhas = pedidos.length ? pedidos.map(p => {
                 let estadoTxt, estadoCor, estadoFundo;
-                estadoTxt = ({aberta:'Aberto',andamento:'Em atendimento',em_tratamento:'Em tratamento',resolvida:'Resolvida',fechada:'Fechada'})[p.estado] || p.estado; estadoCor='#1e40af'; estadoFundo='#dbeafe';
+                estadoTxt = (_assistEstado(p.estado) === 'resolvida' ? 'Resolvida' : 'Aberta'); estadoCor='#1e40af'; estadoFundo='#dbeafe';
                 const desc = (p.descricao || '').replace(/^\[Pedido do cliente\]\s*/, '');
                 return `<div style="border:1px solid #e6eaf2;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
@@ -30878,9 +30882,8 @@ window._relPrefill = function(msg){
                         <label><i class="fas fa-headset"></i> Estado da Assistência *</label>
                         <select id="fo_estado_assistencia" required>
                             <option value="">— Escolher —</option>
-                            <option value="andamento">Em atendimento</option>
+                            <option value="aberta">Aberta</option>
                             <option value="resolvida">Resolvida</option>
-                            <option value="fechada">Fechada</option>
                         </select>
                         <span class="help-text">Esta OS foi gerada a partir de um pedido de assistência — o estado atualiza-se automaticamente no Total Gest Assist.</span>
                     </div>` : ''}

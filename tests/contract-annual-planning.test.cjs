@@ -22,9 +22,9 @@ test('deduplicate completed maintenance registers per original OS and scope by c
 test('overdue warning is read-only',()=>{const x=context([],[{data:'2026-09-01',plan:{id:'p'}}]);assert.equal(x.warn(ct).type,'late');});
 test('assets agree on cache version and no production deployment scripts added',()=>{
  const index=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- assert.match(index,/tg-contract-maintenance\.js\?v=1\.7\.0/);
- assert.match(sw,/tg-contract-maintenance\.js\?v=1\.7\.0/);
- assert.match(index,/ct-final-polish/);
+ assert.match(index,/tg-contract-maintenance\.js\?v=1\.9\.0/);
+ assert.match(sw,/tg-contract-maintenance\.js\?v=1\.9\.0/);
+ assert.match(index,/app-principal\.js\?v=assist-contratos-20261028/);
 });
 
 test('completed equipment maintenance is not also shown as pending for identical date and location',()=>{

@@ -252,6 +252,8 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                         onblur="TGAssistNative.clienteBuscaEsconder('assist_cliente_busca')">
                     <input type="hidden" id="assist_cliente" value="${item?.clienteId || ''}">
                 </div>
+                <div class="form-group"><label for="assist_local">Instalação *</label><select id="assist_local" required></select></div>
+                <div id="assistContractSummary" class="tg-assist-contract-summary"></div>
                 <div id="assist_contactos_rapidos">${_assistContactosRapidosHTML(cliente)}</div>
                 <div class="form-group"><label>Assunto *</label><input type="text" id="assist_assunto" value="${item ? escapeHtmlSimples(item.assunto || '') : ''}" placeholder="Ex: Alarme a disparar sem motivo" required></div>
                 <div class="form-group"><label>Descrição do problema</label><textarea id="assist_descricao" rows="4" placeholder="Detalhes reportados pelo cliente...">${item ? escapeHtmlSimples(item.descricao || '') : ''}</textarea></div>
@@ -267,6 +269,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                 ${item?.osGeradaId ? `<div class="help-text" style="color:var(--green);"><i class="fas fa-check-circle"></i> Já tem uma OS criada a partir desta assistência.</div>` : ''}
                 ${item ? _assistNotasHTML(item) : ''}
             `;
+            window.TGAssistContracts?.form(item);
             document.getElementById('modalGenericoForm').onsubmit = _protegerSubmit(() => guardarAssistencia(id));
             document.getElementById('modalGenericoOverlay').classList.add('open');
         }
@@ -296,6 +299,7 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const cid = document.getElementById('assist_cliente').value;
             const cliente = cid ? dados.clientes?.find(c => c.id === cid) : null;
             document.getElementById('assist_contactos_rapidos').innerHTML = _assistContactosRapidosHTML(cliente);
+            window.TGAssistContracts?.syncForm(true);
         }
         function _assistNotasHTML(item) {
             const notas = item.notas || [];
@@ -345,12 +349,19 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             if (!assunto) { alert('Indica o assunto da assistência.'); return; }
             let item = id ? dados.assistencias?.find(a => a.id === id) : null;
             const novo = !item;
+            let context=null,visit=null;
+            if(window.TGAssistContracts){
+                context=TGAssistContracts.selected();
+                if(!context.chosen)return alert('Escolhe a instalação do cliente.');
+                try{visit=TGAssistContracts.booking(item,clientId,context.localId);}catch(e){return alert(e.message);}
+            }
             if (novo) {
                 item = { id: gerarId(), adminId: tid, numero: gerarNumeroAssistencia(), criadoPor: usuarioLogado?.id || null, dataCriacao: Date.now(), notas: [] };
                 if (!dados.assistencias) dados.assistencias = [];
                 dados.assistencias.push(item);
             }
             item.clienteId = document.getElementById('assist_cliente').value || null;
+            if(context){item.localId=context.localId;Object.assign(item,visit);}
             item.assunto = assunto;
             item.descricao = document.getElementById('assist_descricao').value.trim() || null;
             item.prioridade = document.getElementById('assist_prioridade').value;
@@ -375,9 +386,10 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             document.getElementById('modalGenericoTitulo').innerHTML = '<i class="fas fa-hard-hat"></i> Criar OS a partir da assistência';
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="form-group"><label>Cliente</label>
-                    <select id="assistOsCliente"><option value="">— Sem cliente —</option>${clientesTenant.map(c => `<option value="${c.id}" ${a.clienteId === c.id ? 'selected' : ''}>${escapeHtmlSimples(c.nome)}</option>`).join('')}</select>
+                    <select id="assistOsCliente" disabled><option value="">— Sem cliente —</option>${clientesTenant.map(c => `<option value="${c.id}" ${a.clienteId === c.id ? 'selected' : ''}>${escapeHtmlSimples(c.nome)}</option>`).join('')}</select>
                 </div>
-                <div class="form-group"><label>Morada</label><input type="text" id="assistOsMorada" value="${cliente?.morada || ''}"></div>
+                <div class="form-group"><label>Instalação</label><input type="text" id="assistOsLocalNome" value="${escapeHtmlSimples((dados.locais||[]).find(l=>l.id===a.localId&&l.adminId===tid&&l.clienteId===a.clienteId)?.nome || 'Sede')}" readonly><input type="hidden" id="assistOsLocal" value="${escapeHtmlSimples(a.localId||'')}"></div>
+                <div class="form-group"><label>Morada</label><input type="text" id="assistOsMorada" value="${escapeHtmlSimples((dados.locais||[]).find(l=>l.id===a.localId&&l.adminId===tid&&l.clienteId===a.clienteId)?.morada || cliente?.morada || '')}" readonly></div>
                 <div class="form-group"><label>Data</label><input type="date" id="assistOsData" value="${getDataHoje()}"></div>
                 <div class="form-group"><label>Hora</label><input type="time" id="assistOsHora" value="09:00"></div>
                 <div class="form-group"><label>Descrição</label><textarea id="assistOsDescricao" rows="3">${escapeHtmlSimples((a.assunto || '') + (a.descricao ? ' — ' + a.descricao : ''))}</textarea></div>
@@ -399,9 +411,12 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             const a = dados.assistencias?.find(x => x.id === assistId);
             if (!a) return;
             const tid = _tenantId();
-            const clienteIdEscolhido = document.getElementById('assistOsCliente')?.value || null;
+            const clienteIdEscolhido = a.clienteId || null;
+            if((document.getElementById('assistOsCliente')?.value||null)!==clienteIdEscolhido)return alert('O cliente é o da assistência e não pode ser alterado aqui.');
+            if((document.getElementById('assistOsLocal')?.value||null)!==(a.localId||null))return alert('A instalação é a da assistência e não pode ser alterada aqui.');
+            if(a.localId&&!(dados.locais||[]).some(l=>l.id===a.localId&&l.clienteId===a.clienteId&&l.adminId===tid))return alert('A instalação da assistência já não está disponível.');
             const funcionariosIds = [...document.querySelectorAll('.assist-os-func-chk:checked')].map(el => el.value);
-            const identityBeforeNumber = actor();
+            const identityBeforeNumber = actor(),localBeforeNumber=a.localId||null;
             if(clienteIdEscolhido && !(dados.clientes||[]).some(c=>c.id===clienteIdEscolhido&&c.adminId===tid))return alert('Seleciona um cliente da empresa.');
             if(funcionariosIds.some(id=>!(dados.funcionarios||[]).some(f=>f.id===id&&f.adminId===tid&&!f.suspenso)))return alert('Seleciona técnicos da empresa.');
             if(_bloquearSeAusenteEmOS(funcionariosIds,document.getElementById('assistOsData').value))return;
@@ -410,12 +425,14 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
             assertAccess(identityBeforeNumber);
             const currentAssist = item(assistId);
             if(!currentAssist || currentAssist.osGeradaId || _assistEstado(currentAssist.estado)==='resolvida') return;
+            if(currentAssist.clienteId!==clienteIdEscolhido||(currentAssist.localId||null)!==localBeforeNumber)throw Error('O cliente ou a instalação da assistência mudou. Volta a abrir a criação da OS.');
             const novaOS = {
                 id: gerarId(), adminId: tid, clienteId: clienteIdEscolhido,
                 funcionarioId: funcionariosIds[0] || null, funcionariosIds,
                 assistenciaId: a.id,
-                localId: clienteIdEscolhido===currentAssist.clienteId ? (currentAssist.localId || null) : null,
-                morada: document.getElementById('assistOsMorada')?.value || '',
+                localId: currentAssist.localId || null,
+                contratoId: currentAssist.testeContratoId || null,
+                morada: (dados.locais||[]).find(l=>l.id===currentAssist.localId&&l.adminId===tid&&l.clienteId===currentAssist.clienteId)?.morada || (dados.clientes||[]).find(c=>c.id===currentAssist.clienteId&&c.adminId===tid)?.morada || '',
                 data: document.getElementById('assistOsData')?.value || getDataHoje(),
                 hora: document.getElementById('assistOsHora')?.value || '09:00',
                 duracao: Number(document.getElementById('assistOsDuracao')?.value)||90,
@@ -491,16 +508,16 @@ function renderizarAssistencias(){
  document.getElementById('tgAssistCount').textContent=`${list.length} de ${all.length} assistências`;
  document.getElementById('tgAssistMetrics').innerHTML=[['sem_atribuicao','Abertas sem atribuição'],['atribuidas','Abertas atribuídas a técnico'],['resolvida','Resolvidas'],['','Todas']].map(([value,label])=>{
   const n=value?all.filter(a=>assistGroup(a)===value).length:all.length;
-  const active=value?assistBucket===value:!assistBucket&&!state;
+  const active=tab!=='potential'&&(value?assistBucket===value:!assistBucket&&!state);
   return `<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="filter" data-state="${value}" aria-pressed="${active}"><strong>${n}</strong><span>${label}</span></button>`;
- }).join('');
+ }).join('')+(window.TGAssistContracts?`<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="potential" aria-pressed="${tab==='potential'}"><strong>${TGAssistContracts.potential().length}</strong><span>Potencial para contrato</span></button>`:'');
  document.getElementById('tgAssistResults').innerHTML=list.length?`<div class="table-wrapper tg-assist-table"><table><thead><tr><th>Pedido / Cliente / Instalação</th><th>Prioridade</th><th>Estado</th><th>Técnico</th><th>Criada em</th><th>Ações</th></tr></thead><tbody>${list.map(a=>`<tr><td>${_assistResumoHtml(a)}</td><td>${priorityBadge(a)}</td><td>${stateBadge(a)}</td><td>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</td><td>${a.dataCriacao?new Date(a.dataCriacao).toLocaleDateString('pt-PT'):'—'}</td><td>${actions(a)}</td></tr>`).join('')}</tbody></table></div><div class="tg-assist-cards">${list.map(a=>`<article class="tg-assist-card"><div class="tg-assist-card-top"><span>${escapeHtmlSimples(a.numero||'Assistência')}</span>${priorityBadge(a)}</div>${_assistResumoHtml(a)}<div class="tg-assist-card-state">${stateBadge(a)}<span>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</span></div><div class="tg-assist-card-actions">${actions(a)}</div></article>`).join('')}</div>`:'<p class="help-text tg-assist-empty">Sem assistências para os filtros selecionados.</p>';
 }
 function stateBadge(a){const s=ASSIST_ESTADOS[_assistEstado(a.estado)]||ASSIST_ESTADOS.aberta;return `<span class="tg-assist-badge" style="--assist-color:${s.cor}">${s.label}</span>`;}
 function priorityBadge(a){const p=ASSIST_PRIORIDADES[a.prioridade]||ASSIST_PRIORIDADES.normal;return `<span class="tg-assist-badge" style="--assist-color:${p.cor}">${p.label}</span>`;}
 function actions(a){const id=escapeHtmlSimples(a.id);return `<button type="button" class="btn btn-sm btn-outline" data-assist-action="edit" data-id="${id}"><i class="fas fa-pen"></i> Ver / editar</button>${!a.osGeradaId&&_assistEstado(a.estado)!=='resolvida'?`<button type="button" class="btn btn-sm btn-primary" data-assist-action="os" data-id="${id}"><i class="fas fa-helmet-safety"></i> Criar OS</button>`:a.osGeradaId?`<button type="button" class="btn btn-sm btn-outline" data-assist-action="viewOS" data-id="${id}"><i class="fas fa-file-lines"></i> Ver OS</button>`:''}<button type="button" class="btn btn-sm btn-outline" data-assist-action="delete" data-id="${id}" aria-label="Eliminar assistência"><i class="fas fa-trash"></i></button>`;}
-function mudarTabCRM(value){tab=value==='dashboard'?'dashboard':'assistencias';document.querySelectorAll('#secao-assistencias [data-assist-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.assistTab===tab)));document.getElementById('tgAssistListPane').hidden=tab!=='assistencias';document.getElementById('tgAssistDashboardPane').hidden=tab!=='dashboard';render();}
-function render(){if(!allowed())return;const section=document.getElementById('secao-assistencias');if(!section)return;renderizarAssistencias();if(tab==='dashboard')renderizarDashboardAssist();}
+function mudarTabCRM(value){tab=['dashboard','potential'].includes(value)?value:'assistencias';document.querySelectorAll('#secao-assistencias [data-assist-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.assistTab===tab)));document.getElementById('tgAssistListPane').hidden=tab!=='assistencias';document.getElementById('tgAssistDashboardPane').hidden=tab!=='dashboard';render();}
+function render(){if(!allowed())return;const section=document.getElementById('secao-assistencias');if(!section)return;renderizarAssistencias();if(tab==='dashboard')renderizarDashboardAssist();if(tab==='potential'){window.TGAssistContracts?.renderPotential();document.getElementById('tgAssistListPane').hidden=false;document.getElementById('tgAssistResults').hidden=true;document.querySelector('#secao-assistencias .tg-assist-filters').hidden=true;document.getElementById('tgAssistCount').hidden=true;}else{document.getElementById('tgAssistResults').hidden=false;document.querySelector('#secao-assistencias .tg-assist-filters').hidden=false;document.getElementById('tgAssistCount').hidden=false;}const potential=document.getElementById('tgAssistPotentialPane');if(potential)potential.hidden=tab!=='potential';}
 function prepare(id){
  if(!allowed())return false;
  const identityNow=actor();let section=document.getElementById('secao-assistencias');
@@ -509,8 +526,9 @@ function prepare(id){
  if(!section){section=document.createElement('section');section.id='secao-assistencias';section.className='section-container tg-assist-native';section.setAttribute('aria-label','Assistências');section.innerHTML=SHELL;document.body.appendChild(section);
   section.addEventListener('click',event=>{
    const b=event.target.closest('[data-assist-action],[data-assist-tab]');if(!b)return;
+   if(b.dataset.assistAction==='potential'){mudarTabCRM('potential');return;}
    if(b.dataset.assistTab){mudarTabCRM(b.dataset.assistTab);return;}
-   if(b.dataset.assistAction==='filter'){assistBucket=b.dataset.state;document.getElementById('assistFiltroEstado').value=assistBucket==='resolvida'?'resolvida':assistBucket?'aberta':'';render();return;}
+   if(b.dataset.assistAction==='filter'){assistBucket=b.dataset.state;document.getElementById('assistFiltroEstado').value=assistBucket==='resolvida'?'resolvida':assistBucket?'aberta':'';mudarTabCRM('assistencias');return;}
    const a=item(b.dataset.id);switch(b.dataset.assistAction){case 'new':window.TGAssistNative.abrirModalAssistencia(null);break;case 'edit':window.TGAssistNative.abrirModalAssistencia(a?.id);break;case 'os':if(a)window.TGAssistNative.criarOSDeAssistencia(a.id);break;case 'delete':if(a)window.TGAssistNative.excluirAssistencia(a.id);break;case 'viewOS':if(a?.osGeradaId&&(dados.servicos||[]).some(s=>s.id===a.osGeradaId&&s.adminId===_tenantId()))abrirVerOS(a.osGeradaId);break;}
   });
   section.querySelectorAll('select').forEach(e=>e.addEventListener('change',()=>{if(e.id==='assistFiltroEstado')assistBucket=e.value==='resolvida'?'resolvida':'';render();}));section.querySelector('#tgAssistSearch').addEventListener('input',render);

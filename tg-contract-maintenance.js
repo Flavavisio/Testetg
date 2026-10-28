@@ -256,6 +256,8 @@
         os.observacoes=[os.observacoes,'Sistemas: '+available.map(planLabel).join(', ')].filter(Boolean).join('\n');
     }
     function registerMaintenance(os,sheet) {
+        // A repair visit can consume contract allowance without completing scheduled equipment maintenance.
+        if(os?.origem==='assistencia'&&!os.planoManutencao?.sistemasIds?.length)return false;
         if(!os || !sheet || os.adminId!==sheet.adminId || sheet.servicoId!==os.id || !completedTasks(os) || window.TGEquipmentReports?.pending(os).length)return false;
         const c=(dados.contratos || []).find(c=>c.id===os.contratoId && c.adminId===os.adminId && c.clienteId===os.clienteId);
         if(!c || (dados.registosManutencao || []).some(r=>r.adminId===os.adminId && r.servicoId===os.id))return false;
@@ -285,10 +287,11 @@
     }
     async function loadHistory(c) {
         const q=t=>supa.from(t).select('*').eq('admin_id',c.adminId).eq('contrato_id',c.id).order('id',{ascending:false});
-        const responses=await Promise.all([_buscarPaginadoGenerico(q('servicos')),_buscarPaginadoGenerico(q('registos_manutencao')),_buscarPaginadoGenerico(q('folhas_obra'))]);
+        const responses=await Promise.all([_buscarPaginadoGenerico(q('servicos')),_buscarPaginadoGenerico(q('registos_manutencao')),_buscarPaginadoGenerico(q('folhas_obra')),_buscarPaginadoGenerico(supa.from('assistencias').select('*').eq('admin_id',c.adminId).eq('teste_tg_contrato_id',c.id).order('id',{ascending:false}))]);
         if(!manager(c))throw Error('Sem acesso ao contrato.');
         let incomplete=responses.some(r=>r.error);
         ['servicos','registosManutencao','folhasObra'].forEach((key,i)=>cache(key,responses[i].data,r=>r.adminId===c.adminId && r.contratoId===c.id));
+        cache('assistencias',responses[3].data,a=>a.adminId===c.adminId&&a.testeContratoId===c.id);
         const ids=(dados.servicos || []).filter(os=>os.adminId===c.adminId && os.contratoId===c.id).map(os=>os.id);
         for(let i=0;i<ids.length;i+=100){
             const subset=ids.slice(i,i+100),r=await _buscarPaginadoGenerico(supa.from('folhas_obra').select('*').eq('admin_id',c.adminId).in('servico_id',subset).order('id',{ascending:false}));
@@ -315,23 +318,36 @@
             const key=r.servicoId ? 'os:'+r.servicoId : (r.id ? 'reg:'+r.id : 'legacy:'+records.indexOf(r));
             if(!unique.has(key))unique.set(key,r);
         }
-        const completed=unique.size;
-        return {year:Number(year),planned,completed,remaining:planned===null?null:Math.max(0,planned-completed),
-            excess:planned===null?null:Math.max(0,completed-planned),known:planned!==null,
+        // Teste TG requests reserve one annual visit. A linked completed OS replaces the
+        // reservation instead of consuming another visit, even if completed next year.
+        const bookings=(dados.assistencias||[]).filter(a=>a.adminId===tenant&&a.testeContratoId===c.id&&a.testeVisitaAno&&!a.apagadoSuperAdmin);
+        for(const [key,r] of unique){if(bookings.some(a=>a.osGeradaId===r.servicoId&&String(a.testeVisitaAno)!==yr))unique.delete(key);}
+        let reserved=0;
+        for(const a of bookings.filter(a=>String(a.testeVisitaAno)===yr)){
+            const completedRecord=a.osGeradaId&&(dados.registosManutencao||[]).find(r=>r.adminId===tenant&&r.contratoId===c.id&&r.servicoId===a.osGeradaId&&r.dataRealizacao);
+            const completedOS=a.osGeradaId&&(dados.servicos||[]).find(os=>os.id===a.osGeradaId&&os.adminId===tenant&&os.contratoId===c.id&&['concluído','concluido'].includes(os.status));
+            if(completedRecord)unique.set('os:'+a.osGeradaId,completedRecord);
+            else if(completedOS)unique.set('os:'+a.osGeradaId,{id:'assistencia:'+a.id,adminId:tenant,contratoId:c.id,servicoId:completedOS.id,dataRealizacao:completedOS.data});
+            else reserved++;
+        }
+        const completed=unique.size,used=completed+reserved;
+        return {year:Number(year),planned,completed,reserved,used,remaining:planned===null?null:Math.max(0,planned-used),
+            excess:planned===null?null:Math.max(0,used-planned),known:planned!==null,
             records:[...unique.values()]};
     }
     function yearlyVisitsHTML(c,year=new Date().getFullYear()) {
         const v=yearlyVisits(c,year);if(!v)return '';
-        const pct=v.planned>0?Math.min(100,Math.round(v.completed/v.planned*100)):0;
+        const pct=v.planned>0?Math.min(100,Math.round(v.used/v.planned*100)):0;
         return '<section class="ct-year-visits" style="padding:14px;border:1px solid #dce5f1;border-radius:12px;margin:12px 0;background:#f8fafc">'+
             '<strong>Visitas de manutenção — '+esc(v.year)+'</strong>'+
             '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">'+
             '<span>Previstas: <b>'+esc(v.planned===null?'Não definido':v.planned)+'</b></span>'+
             '<span>Realizadas: <b>'+esc(v.completed)+'</b></span>'+
-            '<span>Por realizar: <b>'+esc(v.remaining===null?'—':v.remaining)+'</b></span></div>'+
-            (v.planned>0?'<div role="progressbar" aria-valuenow="'+esc(Math.min(v.completed,v.planned))+'" aria-valuemin="0" aria-valuemax="'+esc(v.planned)+'" style="height:7px;border-radius:6px;background:#dfe7f2;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#2860a6"></div></div>':'')+
+            '<span>Reservadas por assistências: <b>'+esc(v.reserved)+'</b></span>'+
+            '<span>Disponíveis: <b>'+esc(v.remaining===null?'—':v.remaining)+'</b></span></div>'+
+            (v.planned>0?'<div role="progressbar" aria-valuenow="'+esc(Math.min(v.used,v.planned))+'" aria-valuemin="0" aria-valuemax="'+esc(v.planned)+'" style="height:7px;border-radius:6px;background:#dfe7f2;margin-top:10px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#2860a6"></div></div>':'')+
             (v.excess>0?'<p class="help-text">Visitas adicionais: '+esc(v.excess)+'</p>':'')+
-            '<p class="help-text">Contagem baseada nos registos de manutenção concluídos deste contrato. Não inclui OS sem manutenção confirmada; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
+            '<p class="help-text">As assistências reservam uma visita no ano da criação; a manutenção confirmada substitui essa reserva. Sem reserva, contam os registos de manutenção concluídos; registos antigos sem ligação à OS podem precisar de conferência.</p></section>';
     }
     // Read-only annual calendar: completed events from confirmed maintenance logs;
     // future events from existing next-maintenance calculations (not fabricated yearly dates).
@@ -546,7 +562,7 @@
                 const strong=document.createElement('strong');strong.textContent=value;cell.appendChild(strong);
                 const small=document.createElement('small');small.textContent=sub;small.style.cssText='display:block;font-size:.72rem;color:#64748b';cell.appendChild(small);
                 if(warning){const note=document.createElement('small');note.textContent=warning.text;note.style.cssText='display:block;font-size:.7rem;color:'+(warning.type==='late'?'#b91c1c':'#a16207');cell.appendChild(note);}
-                if(v?.planned>0){const bar=document.createElement('div');bar.style.cssText='height:4px;margin-top:5px;background:#e5eaf2;border-radius:6px;overflow:hidden';const inner=document.createElement('div');inner.style.cssText='height:100%;background:#2563eb;width:'+Math.min(100,Math.round(v.completed/v.planned*100))+'%';bar.appendChild(inner);cell.appendChild(bar);}
+                if(v?.planned>0){const bar=document.createElement('div');bar.style.cssText='height:4px;margin-top:5px;background:#e5eaf2;border-radius:6px;overflow:hidden';const inner=document.createElement('div');inner.style.cssText='height:100%;background:#2563eb;width:'+Math.min(100,Math.round(v.used/v.planned*100))+'%';bar.appendChild(inner);cell.appendChild(bar);}
             }
         }
     }

@@ -104,3 +104,36 @@ test('request creation cannot assign a technician; assignment is made when creat
  await w.TGAssistNative._confirmarCriarOSDeAssistencia(request.id);assert.equal(request.atribuidoId,'f');assert(w.dados.servicos.some(os=>os.id===request.osGeradaId&&os.funcionariosIds.includes('f')));assert(w.calls.some(c=>c[0]==='notify'&&c[1]==='f'));
  await w.TGAssistNative.abrirModalAssistencia(request.id);assert.equal(d.getElementById('assist_atribuido'),null);await w.TGAssistNative.guardarAssistencia(request.id);assert.equal(request.atribuidoId,'f');
 }finally{dom.window.close()}});
+
+function contractFeature(w){
+ w.dados.contratos=[];w.adminAtual=()=>w.admin;w.moduloContratosAtivo=()=>true;
+ w.eval(fs.readFileSync('tg-assist-contracts.js','utf8'));
+}
+test('customer installation is required, contract reserves once, and OS context is immutable',async()=>{const {dom,w}=setup();try{
+ contractFeature(w);const d=w.document;
+ w.dados.contratos=[{id:'ct',adminId:'admin',clienteId:'c',localId:'l',numero:'CT-1',dataInicio:'2026-01-01',validadeContrato:'2026-12-31'}];
+ w.dados.clientes.push({id:'other-client',adminId:'admin',nome:'Outro'});
+ w.TGModules.open('assistencias');await w.TGAssistNative.abrirModalAssistencia(null);
+ d.getElementById('assist_cliente').value='c';w.TGAssistNative._assistAtualizarContactosRapidos();
+ const local=d.getElementById('assist_local');assert.deepEqual([...local.options].map(o=>o.value),['','__sede__','l']);assert.equal(local.value,'');
+ d.getElementById('assist_assunto').value='Visita incluída';await w.TGAssistNative.guardarAssistencia(null);assert.equal(w.dados.assistencias.length,2);
+ local.value='l';local.dispatchEvent(new w.Event('change'));assert.equal(d.getElementById('assist_contrato').value,'ct');
+ await w.TGAssistNative.guardarAssistencia(null);const a=w.dados.assistencias.find(a=>a.assunto==='Visita incluída');assert.equal(a.localId,'l');assert.equal(a.testeContratoId,'ct');assert.equal(a.testeVisitaAno,2026);assert.equal(a.atribuidoId,null);
+ await w.TGAssistNative.abrirModalAssistencia(a.id);await w.TGAssistNative.guardarAssistencia(a.id);assert.equal(a.testeVisitaAno,2026);assert.equal(w.dados.assistencias.filter(x=>x.testeContratoId==='ct').length,1);
+ w.TGAssistNative.criarOSDeAssistencia(a.id);assert(d.getElementById('assistOsCliente').disabled);assert(d.getElementById('assistOsLocalNome').readOnly);assert.equal(d.getElementById('assistOsLocal').value,'l');
+ d.getElementById('assistOsCliente').value='other-client';await w.TGAssistNative._confirmarCriarOSDeAssistencia(a.id);assert.equal(w.dados.servicos.length,0);
+ d.getElementById('assistOsCliente').value='c';d.getElementById('assistOsLocal').value='';await w.TGAssistNative._confirmarCriarOSDeAssistencia(a.id);assert.equal(w.dados.servicos.length,0);
+ d.getElementById('assistOsLocal').value='l';await w.TGAssistNative._confirmarCriarOSDeAssistencia(a.id);assert.equal(w.dados.servicos.length,1);assert.equal(w.dados.servicos[0].localId,'l');assert.equal(w.dados.servicos[0].clienteId,'c');assert.equal(w.dados.servicos[0].contratoId,'ct');assert.equal(a.testeVisitaAno,2026);
+}finally{dom.window.close()}});
+
+test('potential lists tenant customers and sites without active contracts; popup opens the prefilled contract',async()=>{const {dom,w}=setup();try{
+ contractFeature(w);const d=w.document;w._clienteLabel=c=>c.nome;let prompted=0;w.confirm=()=>{prompted++;return false;};
+ w.dados.clientes.push({id:'foreign',adminId:'other',nome:'Segredo'});w.dados.locais.push({id:'l2',adminId:'admin',clienteId:'c',nome:'Outra loja'});
+ w.dados.contratos=[{id:'ct',adminId:'admin',clienteId:'c',localId:'l',dataInicio:'2026-01-01',validadeContrato:'2026-12-31'},{id:'expired',adminId:'admin',clienteId:'c',localId:'l2',validadeContrato:'2025-12-31'}];
+ assert.deepEqual(Array.from(w.TGAssistContracts.potential(),r=>r.local.id),['l2','']);
+ w.TGModules.open('assistencias');d.querySelector('[data-assist-action=potential]').click();assert.match(d.getElementById('tgAssistPotentialPane').textContent,/Sede/);assert(!d.getElementById('tgAssistPotentialPane').textContent.includes('Segredo'));
+ d.querySelector('#tgAssistMetrics [data-state=""]').click();assert(d.getElementById('tgAssistPotentialPane').hidden);assert(!d.getElementById('tgAssistResults').hidden);
+ await w.TGAssistNative.abrirModalAssistencia(null);d.getElementById('assist_cliente').value='c';w.TGAssistNative._assistAtualizarContactosRapidos();const local=d.getElementById('assist_local');local.value='l2';local.dispatchEvent(new w.Event('change'));assert.equal(prompted,1);assert.match(d.getElementById('assistContractSummary').textContent,/Potencial para contrato/);
+ w.abrirModalContrato=()=>{d.body.insertAdjacentHTML('beforeend','<input id="ct_cliente"><input id="ct_cliente_busca"><select id="ct_local"><option value=""></option><option value="l2"></option></select>')};w.onClienteContratoChange=()=>{};w.onLocalContratoChange=()=>{};
+ d.getElementById('assistCreateContract').click();assert.equal(d.getElementById('ct_cliente').value,'c');assert.equal(d.getElementById('ct_local').value,'l2');
+}finally{dom.window.close()}});

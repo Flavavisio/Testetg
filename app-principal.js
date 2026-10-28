@@ -8020,10 +8020,11 @@ function _assistEstado(value) {
         }
         // Custo/hora de um técnico ou encarregado — ordenado bruto ÷ (horas semanais × 4,33
         // semanas/mês) — mesma fórmula já usada no relatório em PDF da folha de obra.
-        function _custoHoraPessoa(id) {
+        function _custoHoraPessoa(id, adminId) {
             if (!id) return null;
-            const p = dados.funcionarios?.find(x => x.id === id) || dados.encarregados?.find(x => x.id === id);
-            if (!p || !p.ordenadoBruto || !p.horasSemanais) return null;
+            const pessoas = [...(dados.funcionarios || []), ...(dados.encarregados || []), ...(dados.administradores || [])];
+            const p = pessoas.find(x => x.id === id && (!adminId || x.adminId === adminId || x.id === adminId));
+            if (!p || p.ordenadoBruto === '' || p.ordenadoBruto == null || !Number.isFinite(Number(p.ordenadoBruto)) || Number(p.ordenadoBruto) < 0 || !Number.isFinite(Number(p.horasSemanais)) || Number(p.horasSemanais) <= 0) return null;
             return Number(p.ordenadoBruto) / (Number(p.horasSemanais) * 4.33);
         }
         // Rentabilidade de um contrato: valor cobrado vs. custo real (mão de obra + materiais)
@@ -14396,39 +14397,79 @@ function _assistEstado(value) {
             // Devolve { funcionarioId: horas }. A chave existe mesmo com 0h se a pessoa tiver
             // uma entrada em aberto, para não desaparecer da lista.
             const mapa = {};
+            const obra = (dados.obras || []).find(o => o.id === obraId);
+            const own = x => !obra?.adminId || x.adminId === obra.adminId;
             const marcar = fid => { if (!(fid in mapa)) mapa[fid] = 0; };
             // Tal como em _horasObraPorFuncionarioNoPeriodo: uma sessão de obraPontoLonga só
             // conta aqui enquanto ainda estiver ABERTA — assim que fecha, o fluxo pede logo para
             // preencher a folha de obra correspondente, que passa a ser a fonte oficial dessas
             // horas. Contar as duas juntas duplicava qualquer sessão já fechada (bug real que
             // também estava a inflacionar o "Custo de mão de obra" no Relatório de Obra).
-            (dados.obraPontoLonga || []).filter(p => p.obraId === obraId && p.entrada && !p.saida && !p.pausaAlmoco).forEach(p => {
+            (dados.obraPontoLonga || []).filter(p => own(p) && p.obraId === obraId && p.entrada && !p.saida && !p.pausaAlmoco).forEach(p => {
                 marcar(p.funcionarioId);
                 mapa[p.funcionarioId] += calcularHoras(p.entrada, new Date().toTimeString().slice(0, 5));
             });
-            const osIdsObra = new Set((dados.servicos || []).filter(s => s.obraId === obraId).map(s => s.id));
+            const osIdsObra = new Set((dados.servicos || []).filter(s => own(s) && s.obraId === obraId).map(s => s.id));
             if (osIdsObra.size) {
-                (dados.ponto || []).filter(p => p.servicoId && osIdsObra.has(p.servicoId)).forEach(p => {
+                (dados.ponto || []).filter(p => own(p) && p.servicoId && osIdsObra.has(p.servicoId)).forEach(p => {
                     marcar(p.funcionarioId);
                     if (p.entrada && p.saida && !p.pausaAlmoco) mapa[p.funcionarioId] += calcularHoras(p.entrada, p.saida);
                 });
             }
             return mapa;
         }
+        function _horasContabilizadasObraPorPessoa(obraId) {
+            // The same ledger is used by the work total, both PDF tables and costs.
+            // Historic sheets linked only to an OS belong to the work too.
+            const obra = (dados.obras || []).find(o => o.id === obraId);
+            const own = x => !obra?.adminId || x.adminId === obra.adminId;
+            const osIds = new Set((dados.servicos || []).filter(x => x.obraId === obraId && own(x)).map(x => x.id));
+            const folhas = (dados.folhasObra || []).filter(f => own(f) && f.descricao && (f.obraId === obraId || osIds.has(f.servicoId)));
+            const mapa = {};
+            folhas.forEach(f => {
+                const id = f.funcionarioId || '__sem_pessoa__';
+                mapa[id] = (mapa[id] || 0) + Math.max(0, Number(f.horasTrabalhadas) || 0);
+            });
+            const ponto = _horasObraPorFuncionario(obraId);
+            Object.keys(ponto).forEach(id => {
+                // Sheets are authoritative for a person: never sum the corresponding
+                // clock records again. Preserve the established total for old works.
+                if (!(id in mapa)) mapa[id] = Math.max(0, Number(ponto[id]) || 0);
+            });
+            return mapa;
+        }
         function totalHorasObra(obraId) {
-            // Contabiliza folhas ligadas diretamente à obra e folhas ligadas a uma OS
-            // pertencente à obra. Alguns registos (incluindo folhas criadas pelo Admin)
-            // ficam associados à OS e não têm obraId, embora sejam trabalho dessa obra.
-            const osIdsObra = new Set((dados.servicos || []).filter(os => os.obraId === obraId).map(os => os.id));
-            const folhas = (dados.folhasObra || []).filter(f =>
-                f.descricao && (f.obraId === obraId || (f.servicoId && osIdsObra.has(f.servicoId)))
-            );
-            const horasFolhas = folhas.reduce((s, f) => s + Math.max(0, Number(f.horasTrabalhadas) || 0), 0);
-            const idsComFolha = new Set(folhas.map(f => f.funcionarioId).filter(Boolean));
-            const mapaHoras = _horasObraPorFuncionario(obraId);
-            let horasPontoOutros = 0;
-            Object.keys(mapaHoras).forEach(fid => { if (!idsComFolha.has(fid)) horasPontoOutros += mapaHoras[fid]; });
-            return horasFolhas + horasPontoOutros;
+            return Object.values(_horasContabilizadasObraPorPessoa(obraId)).reduce((total, h) => total + h, 0);
+        }
+        function _custosContabilizadosObra(obraId, materiais) {
+            const obra = (dados.obras || []).find(o => o.id === obraId);
+            if (!obra) return null;
+            const dinheiro = n => Math.round((n + Number.EPSILON) * 100) / 100;
+            const valido = n => n !== null && n !== undefined && n !== '' && Number.isFinite(Number(n)) && Number(n) >= 0;
+            const mapa = _horasContabilizadasObraPorPessoa(obraId);
+            const ids = [...new Set([...Object.keys(mapa), obra.responsavelId, ...(obra.responsaveisIds || [])].filter(Boolean))];
+            const pessoas = [...(dados.funcionarios || []), ...(dados.encarregados || []), ...(dados.administradores || [])];
+            const linhas = ids.map(id => {
+                const pessoa = pessoas.find(x => x.id === id && (x.adminId === obra.adminId || x.id === obra.adminId));
+                const pessoal = _custoHoraPessoa(id, obra.adminId);
+                const taxa = pessoal != null ? pessoal : valido(obra.custoHora) ? Number(obra.custoHora) : null;
+                const horas = mapa[id] || 0;
+                return { id, nome: pessoa?.nome || 'Pessoa não identificada', horas, taxa,
+                    origem: pessoal != null ? 'Ficha da pessoa' : taxa != null ? 'Custo/hora da obra' : 'Por definir',
+                    custo: horas === 0 ? 0 : taxa != null ? dinheiro(horas * taxa) : null };
+            });
+            const semCusto = linhas.filter(x => x.horas > 0 && x.taxa == null);
+            const subtotalPessoal = dinheiro(linhas.reduce((n, x) => n + (x.custo || 0), 0));
+            const rows = materiais || _obraMatRows(obraId).filter(x => x.cons > 0 || x.prev > 0);
+            const semPreco = rows.filter(x => Number(x.cons) > 0 && !valido(x.precoUnit));
+            const subtotalMateriais = dinheiro(rows.reduce((n, x) => n + (valido(x.precoUnit) && Number(x.cons) > 0 ? Number(x.valorConsumido) || 0 : 0), 0));
+            const completo = !semCusto.length && !semPreco.length;
+            const avisos = [];
+            if (semCusto.length) avisos.push('Custo/hora por definir: ' + semCusto.map(x => x.nome).join(', ') + '.');
+            if (semPreco.length) avisos.push('Material sem preço: ' + semPreco.map(x => x.artigo).join(', ') + '.');
+            return { linhas, horas: Object.values(mapa).reduce((n, h) => n + h, 0), semCusto, semPreco,
+                subtotalPessoal, subtotalMateriais, maoDeObra: semCusto.length ? null : subtotalPessoal,
+                total: completo ? dinheiro(subtotalPessoal + subtotalMateriais) : null, completo, avisos };
         }
         function _obraLongaPontoAberto(obraId) {
             if (!usuarioLogado) return null;
@@ -14497,6 +14538,10 @@ function _assistEstado(value) {
         }
         function gerarReportFinalObra(obraId, paraCliente) {
             const obra = (dados.obras || []).find(o => o.id === obraId); if (!obra) return;
+            const matRows = _obraMatRows(obraId).filter(r => r.cons > 0 || r.prev > 0);
+            const custos = _custosContabilizadosObra(obraId, matRows);
+            const totalMateriais = custos.subtotalMateriais;
+            const horas = custos.horas;
             const doc = _novoPdf(false); if (!doc) return;
             const _concluidaTitulo = obra.estado === 'concluida';
             let y = _pdfArmHeader(doc, (paraCliente ? 'Relatório de Obra — ' : (_concluidaTitulo ? 'Relatório Final de Obra (interno) — ' : 'Relatório de Obra em curso (interno) — ')) + (_concluidaTitulo ? 'Concluída' : 'Em curso'), obra.nome);
@@ -14504,9 +14549,8 @@ function _assistEstado(value) {
 
             // Folhas sem descrição são tratadas como dados corrompidos/de teste — ficam de fora
             // deste relatório, tal como já acontece no Auto de Medição e no "Total de horas".
-            const _osIdsObraRel = new Set((dados.servicos || []).filter(os => os.obraId === obraId).map(os => os.id));
-            const folhas = (dados.folhasObra || []).filter(f => f.descricao && (f.obraId === obraId || (f.servicoId && _osIdsObraRel.has(f.servicoId))));
-            const horas = totalHorasObra(obraId);
+            const _osIdsObraRel = new Set((dados.servicos || []).filter(os => os.obraId === obraId && os.adminId === obra.adminId).map(os => os.id));
+            const folhas = (dados.folhasObra || []).filter(f => f.adminId === obra.adminId && f.descricao && (f.obraId === obraId || (f.servicoId && _osIdsObraRel.has(f.servicoId))));
             const responsavelNome = obra.responsavelId ? (obterNomeFuncionario(obra.responsavelId) || '—') : '—';
             const funcionariosEnvolvidos = [...new Set(folhas.map(f => f.funcionarioId))];
             const idsAtribuidosObraHdr = (obra.responsaveisIds && obra.responsaveisIds.length) ? obra.responsaveisIds : [obra.responsavelId].filter(Boolean);
@@ -14542,23 +14586,23 @@ function _assistEstado(value) {
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
 
-            const matRows = _obraMatRows(obraId).filter(r => r.cons > 0 || r.prev > 0);
-            const totalMateriais = matRows.reduce((s, r) => s + (r.valorConsumido || 0), 0);
 
             if ((usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') && !paraCliente) {
                 const valorFaturado = obra.valor != null ? Number(obra.valor) : (dados.servicos || []).filter(s => s.obraId === obraId).reduce((s, x) => s + (Number(x.valor) || 0), 0);
-                const custoMaoDeObra = obra.custoHora != null ? horas * Number(obra.custoHora) : null;
-                const custoTotal = custoMaoDeObra != null ? custoMaoDeObra + totalMateriais : null;
+                const custoMaoDeObra = custos.maoDeObra;
+                const custoTotal = custos.total;
                 if (y > 250) { doc.addPage(); y = 20; }
                 doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Financeiro (uso interno — não incluir em relatórios ao cliente)', 14, y); y += 4;
                 const linhasFin = [
                     ['Valor faturado', _finEur(valorFaturado)],
-                    ['Mão de obra / h', obra.custoHora != null ? _finEur(obra.custoHora) + '/h' : '— não definido —'],
-                    ['Custo de mão de obra (horas × custo/hora)', custoMaoDeObra != null ? _finEur(custoMaoDeObra) : '— sem custo/hora definido —'],
-                    ['Custo de materiais consumidos', _finEur(totalMateriais)],
+                    ['Base do custo de mão de obra', 'Por pessoa; custo/hora da obra como alternativa'],
+                    [custoMaoDeObra != null ? 'Custo de mão de obra (horas × custo/hora por pessoa)' : 'Subtotal de mão de obra — incompleto', _finEur(custos.subtotalPessoal)],
+                    [custos.semPreco.length ? 'Subtotal de materiais — incompleto' : 'Custo de materiais consumidos', _finEur(totalMateriais)],
                     ['Km percorridos (equipa)', _kmPercorridosObra(obraId).toLocaleString('pt-PT') + ' km'],
-                    ['Custo total da obra (mão de obra + materiais)', custoTotal != null ? _finEur(custoTotal) : '— sem custo/hora definido —']
+                    ['Custo total da obra (mão de obra + materiais)', custoTotal != null ? _finEur(custoTotal) : 'Total incompleto — faltam custos']
                 ];
+                custos.avisos.forEach(aviso => linhasFin.push(['Custo em falta', aviso]));
+                linhasFin.push(['Valores de referência', 'Custos/hora e preços atualmente definidos nas fichas.']);
                 if (custoTotal != null) {
                     const margem = valorFaturado - custoTotal;
                     linhasFin.push(['Margem de lucro bruta (faturado - custo total)', _finEur(margem) + (valorFaturado ? ' (' + Math.round((margem / valorFaturado) * 100) + '%)' : '')]);
@@ -14573,37 +14617,17 @@ function _assistEstado(value) {
             }
 
             if ((usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') && !paraCliente) {
-                // Horas automáticas: junta picagem direta na obra + picagem via OS associada à obra
-                // (não depende de a folha de obra ter sido preenchida) — soma-se ao que vier das folhas,
-                // sem duplicar (evita contar duas vezes a mesma sessão).
-                const mapaHoras = _horasObraPorFuncionario(obraId);
-                const idsAtribuidosObra = (obra.responsaveisIds && obra.responsaveisIds.length) ? obra.responsaveisIds : [obra.responsavelId].filter(Boolean);
-                const idsTodos = [...new Set([...funcionariosEnvolvidos, ...Object.keys(mapaHoras), ...idsAtribuidosObra])];
-                const _custoHoraFunc = id => {
-                    const f = dados.funcionarios?.find(x => x.id === id);
-                    if (!f || !f.ordenadoBruto || !f.horasSemanais) return null;
-                    return Number(f.ordenadoBruto) / (Number(f.horasSemanais) * 4.33);
-                };
-                if (idsTodos.length) {
+                if (custos.linhas.length) {
                     if (y > 240) { doc.addPage(); y = 20; }
-                    doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas e custo por funcionário (uso interno)', 14, y); y += 4;
-                    let custoTotalPessoal = 0;
-                    const porFuncCusto = idsTodos.map(fid => {
-                        const semPicagem = !(fid in mapaHoras) && !funcionariosEnvolvidos.includes(fid);
-                        const hPonto = mapaHoras[fid] || 0;
-                        const custoHora = _custoHoraFunc(fid);
-                        const custo = custoHora != null ? hPonto * custoHora : null;
-                        if (custo != null) custoTotalPessoal += custo;
-                        return [obterNomeFuncionario(fid) || '—', semPicagem ? '0.0h — sem picagem registada nesta obra' : hPonto.toFixed(1) + 'h', custoHora != null ? _finEur(custoHora) + '/h' : '—', custo != null ? _finEur(custo) : '—'];
-                    });
-                    porFuncCusto.push(['TOTAL', '', '', _finEur(custoTotalPessoal)]);
+                    doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas e custo por pessoa (uso interno)', 14, y); y += 4;
+                    const porFuncCusto = custos.linhas.map(x => [x.nome, x.horas.toFixed(1) + 'h',
+                        x.taxa != null ? _finEur(x.taxa) + '/h' : 'Por definir', x.origem,
+                        x.custo != null ? _finEur(x.custo) : 'Custo em falta']);
+                    porFuncCusto.push([custos.semCusto.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL', horas.toFixed(1) + 'h', '', '', _finEur(custos.subtotalPessoal)]);
                     doc.autoTable({
-                        startY: y, head: [['Funcionário', 'Horas (picagem real)', 'Custo/hora', 'Custo total']], body: porFuncCusto,
+                        startY: y, head: [['Pessoa', 'Horas contabilizadas', 'Custo/hora', 'Origem do custo', 'Custo']], body: porFuncCusto,
                         styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel },
-                        didParseCell: function (d) {
-                            if (d.section === 'body' && d.row.index === porFuncCusto.length - 1) d.cell.styles.fontStyle = 'bold';
-                            if (d.section === 'body' && d.column.index === 1 && typeof d.cell.raw === 'string' && d.cell.raw.includes('sem picagem')) { d.cell.styles.textColor = [217, 119, 6]; d.cell.styles.fontStyle = 'italic'; }
-                        }
+                        didParseCell: function (d) { if (d.section === 'body' && d.row.index === porFuncCusto.length - 1) d.cell.styles.fontStyle = 'bold'; }
                     });
                     y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
                 }
@@ -14625,11 +14649,11 @@ function _assistEstado(value) {
                 doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Custo de materiais (uso interno)', 14, y); y += 4;
                 const linhasMat = matRows.map(r => [
                     r.artigo,
-                    r.precoUnit != null ? _finEur(r.precoUnit) : 'Sem preço definido',
+                    custos.semPreco.includes(r) || r.precoUnit == null ? 'Sem preço definido' : _finEur(r.precoUnit),
                     String(r.cons),
-                    r.precoUnit != null ? _finEur(r.valorConsumido) : '—'
+                    custos.semPreco.includes(r) || r.precoUnit == null ? '—' : _finEur(r.valorConsumido)
                 ]);
-                linhasMat.push(['TOTAL', '', '', _finEur(totalMateriais)]);
+                linhasMat.push([custos.semPreco.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL', '', '', _finEur(totalMateriais)]);
                 doc.autoTable({
                     startY: y, head: [['Artigo', 'Preço de custo (un.)', 'Consumido', 'Valor total']], body: linhasMat,
                     styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel },
@@ -14641,7 +14665,7 @@ function _assistEstado(value) {
                     }
                 });
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
-                const semPreco = matRows.filter(r => r.precoUnit == null).length;
+                const semPreco = custos.semPreco.length;
                 if (semPreco) {
                     doc.setFontSize(8); doc.setTextColor(217, 119, 6);
                     doc.text('* ' + semPreco + ' artigo(s) sem preço médio definido na ficha — o total acima não os inclui.', 14, y);
@@ -14649,24 +14673,14 @@ function _assistEstado(value) {
                 }
             }
 
-            const _mapaHorasFinal = _horasObraPorFuncionario(obraId);
-            if (funcionariosEnvolvidos.length || Object.keys(_mapaHorasFinal).length || (obra.responsaveisIds || []).length || obra.responsavelId) {
-                const idsComFolha2 = new Set(folhas.map(f => f.funcionarioId));
-                const idsAtribuidosObra2 = (obra.responsaveisIds && obra.responsaveisIds.length) ? obra.responsaveisIds : [obra.responsavelId].filter(Boolean);
-                const idsTodosHoras = [...new Set([...funcionariosEnvolvidos, ...Object.keys(_mapaHorasFinal), ...idsAtribuidosObra2])];
+            if (custos.linhas.length) {
                 if (y > 250) { doc.addPage(); y = 20; }
-                doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas por funcionário', 14, y); y += 4;
-                const porFunc = idsTodosHoras.map(fid => {
-                    const hFolha = folhas.filter(f => f.funcionarioId === fid).reduce((s, f) => s + (Number(f.horasTrabalhadas) || 0), 0);
-                    const hPonto = idsComFolha2.has(fid) ? 0 : (_mapaHorasFinal[fid] || 0);
-                    const total = hFolha + hPonto;
-                    const semRegisto = total === 0 && !idsComFolha2.has(fid) && !(fid in _mapaHorasFinal);
-                    return [obterNomeFuncionario(fid) || '—', semRegisto ? '0.0h — sem picagem registada' : total.toFixed(1) + 'h'];
-                });
-                doc.autoTable({
-                    startY: y, head: [['Funcionário', 'Horas']], body: porFunc, styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel },
-                    didParseCell: function (d) { if (d.section === 'body' && d.column.index === 1 && typeof d.cell.raw === 'string' && d.cell.raw.includes('sem picagem')) { d.cell.styles.textColor = [217, 119, 6]; d.cell.styles.fontStyle = 'italic'; } }
-                });
+                doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas por pessoa', 14, y); y += 4;
+                const porFunc = custos.linhas.map(x => [x.nome, x.horas.toFixed(1) + 'h']);
+                porFunc.push(['TOTAL', horas.toFixed(1) + 'h']);
+                doc.autoTable({startY: y, head: [['Pessoa', 'Horas']], body: porFunc,
+                    styles: {fontSize:9, cellPadding:2}, headStyles: {fillColor:_corRel},
+                    didParseCell: function(d) {if (d.section === 'body' && d.row.index === porFunc.length - 1) d.cell.styles.fontStyle = 'bold';}});
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
             }
 
@@ -16260,12 +16274,12 @@ function _assistEstado(value) {
             const obra = (dados.obras || []).find(o => o.id === obraId); if (!obra) return;
             const cont = document.getElementById('verObraConteudo');
             if (!cont) return;
-            const horas = totalHorasObra(obraId);
             const matRows = _obraMatRows(obraId).filter(r => r.cons > 0 || r.prev > 0);
-            const totalMateriais = matRows.reduce((s, r) => s + (r.valorConsumido || 0), 0);
+            const custos = _custosContabilizadosObra(obraId, matRows);
+            const totalMateriais = custos.subtotalMateriais;
+            const horas = custos.horas;
             const valorFaturado = obra.valor != null ? Number(obra.valor) : (dados.servicos || []).filter(s => s.obraId === obraId).reduce((s, x) => s + (Number(x.valor) || 0), 0);
-            const custoMaoDeObra = obra.custoHora != null ? horas * Number(obra.custoHora) : null;
-            const custoTotal = custoMaoDeObra != null ? custoMaoDeObra + totalMateriais : null;
+            const custoTotal = custos.total;
             const margem = custoTotal != null ? (valorFaturado - custoTotal) : null;
             const margemPct = (margem != null && valorFaturado) ? Math.round((margem / valorFaturado) * 100) : null;
             const corMargem = margem != null ? (margem >= 0 ? '#16a34a' : '#dc2626') : '#94a3b8';
@@ -16276,11 +16290,11 @@ function _assistEstado(value) {
                         <div style="font-size:1.15rem;font-weight:700;">${_finEur(valorFaturado)}</div>
                     </div>
                     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
-                        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;color:#64748b;margin-bottom:4px;">Custo mão de obra</div>
-                        <div style="font-size:1.15rem;font-weight:700;">${custoMaoDeObra != null ? _finEur(custoMaoDeObra) : '—'}</div>
+                        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;color:#64748b;margin-bottom:4px;">${custos.semCusto.length ? 'Subtotal mão de obra — incompleto' : 'Custo mão de obra'}</div>
+                        <div style="font-size:1.15rem;font-weight:700;">${_finEur(custos.subtotalPessoal)}</div>
                     </div>
                     <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
-                        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;color:#64748b;margin-bottom:4px;">Custo materiais</div>
+                        <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;color:#64748b;margin-bottom:4px;">${custos.semPreco.length ? 'Subtotal materiais — incompleto' : 'Custo materiais'}</div>
                         <div style="font-size:1.15rem;font-weight:700;">${_finEur(totalMateriais)}</div>
                     </div>
                     <div style="background:${margem != null ? (margem >= 0 ? '#f0fdf4' : '#fef2f2') : '#f8fafc'};border:1px solid ${margem != null ? (margem >= 0 ? '#bbf7d0' : '#fecaca') : '#e2e8f0'};border-radius:8px;padding:10px 12px;">
@@ -16288,14 +16302,15 @@ function _assistEstado(value) {
                         <div style="font-size:1.15rem;font-weight:700;color:${corMargem};">${margem != null ? _finEur(margem) + (margemPct != null ? ` (${margemPct}%)` : '') : '—'}</div>
                     </div>
                 </div>
-                ${obra.custoHora == null ? `<div class="help-text" style="color:#b3492f;"><i class="fas fa-triangle-exclamation"></i> Esta obra não tem "Custo/hora" definido — o custo de mão de obra e a margem não podem ser calculados. Define-o na edição da obra.</div>` : ''}
+                ${custos.avisos.map(aviso => `<p class="help-text">${escapeHtmlSimples(aviso)}</p>`).join('')}
+                <p class="help-text">Custos calculados por pessoa com os valores atualmente definidos. O custo/hora da obra é usado quando não existe custo individual.</p>
                 ${obra.valor == null ? `<div class="help-text" style="color:#b3492f;"><i class="fas fa-triangle-exclamation"></i> Esta obra não tem um valor de orçamento/faturação definido — está a ser usada a soma das OS ligadas a esta obra como valor faturado.</div>` : ''}
                 <table style="width:100%;font-size:.86rem;margin-top:8px;">
                     <tbody>
                         <tr><td style="padding:4px 0;color:#64748b;">Total de horas trabalhadas</td><td style="padding:4px 0;text-align:right;font-weight:600;">${horas.toFixed(1)}h</td></tr>
-                        <tr><td style="padding:4px 0;color:#64748b;">Mão de obra / h</td><td style="padding:4px 0;text-align:right;font-weight:600;">${obra.custoHora != null ? _finEur(obra.custoHora) + '/h' : '—'}</td></tr>
+                        <tr><td style="padding:4px 0;color:#64748b;">Custo/hora da obra (alternativa)</td><td style="padding:4px 0;text-align:right;font-weight:600;">${obra.custoHora != null ? _finEur(obra.custoHora) + '/h' : '—'}</td></tr>
                         <tr><td style="padding:4px 0;color:#64748b;">Km percorridos (equipa)</td><td style="padding:4px 0;text-align:right;font-weight:600;color:#0ea5e9;">${_kmPercorridosObra(obraId).toLocaleString('pt-PT')} km</td></tr>
-                        <tr><td style="padding:4px 0;color:#64748b;">Custo total da obra</td><td style="padding:4px 0;text-align:right;font-weight:600;">${custoTotal != null ? _finEur(custoTotal) : '—'}</td></tr>
+                        <tr><td style="padding:4px 0;color:#64748b;">Custo total da obra</td><td style="padding:4px 0;text-align:right;font-weight:600;">${custoTotal != null ? _finEur(custoTotal) : 'Total incompleto — faltam custos'}</td></tr>
                     </tbody>
                 </table>
                 <button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="_fecharModalGenerico();abrirModalObraLonga('${obraId}')"><i class="fas fa-pen"></i> Editar orçamento / custo-hora desta obra</button>

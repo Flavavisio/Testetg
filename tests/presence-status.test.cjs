@@ -77,7 +77,7 @@ test('Admin sheet linked through OS counts once in worksite hours', () => {
     },
     calcularHoras: (a, b) => { const h = t => Number(t.slice(0, 2)) + Number(t.slice(3)) / 60; return h(b) - h(a); }
   });
-  vm.runInContext(fn('_horasObraPorFuncionario') + '\n' + fn('totalHorasObra'), ctx);
+  vm.runInContext(fn('_horasObraPorFuncionario') + '\n' + fn('_horasContabilizadasObraPorPessoa') + '\n' + fn('totalHorasObra'), ctx);
   assert.equal(ctx.totalHorasObra('obra'), 4);
   delete ctx.dados.folhasObra[0].obraId;
   assert.equal(ctx.totalHorasObra('obra'), 4);

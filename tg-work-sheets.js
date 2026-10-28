@@ -143,15 +143,21 @@
             filtros.forEach(k => { const el = document.getElementById('folhasFiltro_' + k); if (el) el.value = ''; });
             contaFiltros = identidade();
         }
-        for (const campo of filtros.filter(k => k !== 'validacao')) {
+        // Cada filtro usa apenas as folhas que passaram pelos anteriores.
+        // Uma escolha incompatível é limpa antes de construir o filtro seguinte.
+        let disponiveis = linhas;
+        for (const campo of filtros) {
             const select = document.getElementById('folhasFiltro_' + campo);
             if (!select) continue;
             const anterior = select.value;
-            const opcoes = new Map(linhas.map(l => [l.ctx[campo].chave, l.ctx[campo].nome]));
-            select.replaceChildren(new Option('Todos', ''));
+            const chave = l => campo === 'validacao' ? (l.f.validada === true ? 'validada' : 'nao_validada') : l.ctx[campo].chave;
+            const nome = l => campo === 'validacao' ? (l.f.validada === true ? 'Validadas' : 'Não validadas') : l.ctx[campo].nome;
+            const opcoes = new Map(disponiveis.map(l => [chave(l), nome(l)]));
+            select.replaceChildren(new Option(campo === 'validacao' ? 'Todas' : 'Todos', ''));
             [...opcoes].sort((a, b) => a[1].localeCompare(b[1], 'pt', { sensitivity: 'base', numeric: true }))
                 .forEach(([id, nome]) => select.add(new Option(nome, id)));
             select.value = opcoes.has(anterior) ? anterior : '';
+            if (select.value) disponiveis = disponiveis.filter(l => chave(l) === select.value);
         }
     }
 
@@ -181,10 +187,11 @@
             void carregarEstado();
             renderizarGrupos(linhas);
         }
-        if (!funcionario) atualizarFiltros(linhas);
-        const valores = Object.fromEntries(filtros.map(k => [k, document.getElementById('folhasFiltro_' + k)?.value || '']));
         const doGrupo = comGrupos ? linhas.filter(({ f, sit }) => sit.grupo === grupo && (grupo !== 'concluidas' ||
             (faturacaoPronta && estadoFolha(f).faturada === (faturacao === 'faturadas')))) : linhas;
+        // Não limpar escolhas enquanto o estado de faturação ainda está a carregar.
+        if (!funcionario && (!comGrupos || grupo !== 'concluidas' || faturacaoPronta)) atualizarFiltros(doGrupo);
+        const valores = Object.fromEntries(filtros.map(k => [k, document.getElementById('folhasFiltro_' + k)?.value || '']));
         const filtradas = doGrupo.filter(({ f, ctx }) => filtros.every(k => !valores[k] ||
             (k === 'validacao' ? (f.validada === true ? 'validada' : 'nao_validada') === valores[k] : ctx[k].chave === valores[k])));
         filtradas.sort((a, b) => _folhasOrdem === 'desc' ? (b.f.data || '').localeCompare(a.f.data || '') : (a.f.data || '').localeCompare(b.f.data || ''));

@@ -85,3 +85,27 @@ test('real employee screen renders cards with no groups, filters or count and re
   w.dados.folhasObra.find(f=>f.id==='ana').descricao='<img src=x onerror=alert(1)>';w.renderizarFolhas();assert.equal(w.document.querySelector('#tabelaFolhas img'),null);
  }finally{w.close();}
 });
+
+test('filters cascade from client through installation, work, technician and validation',()=>{
+ const {c,nodes,rows,options}=setup();c.usuarioLogado={id:'tenant',role:'admin'};
+ c.dados.locais=[{id:'l1',adminId:'tenant',clienteId:'c1',nome:'Loja'},{id:'l2',adminId:'tenant',clienteId:'c2',nome:'Armazém'}];
+ c.dados.obras=[{id:'w1',adminId:'tenant',clienteId:'c1',localId:'l1',nome:'Obra A'},{id:'w2',adminId:'tenant',clienteId:'c1',nome:'Obra B'},{id:'w3',adminId:'tenant',clienteId:'c2',localId:'l2',nome:'Obra C'}];
+ c.dados.folhasObra=[
+ {id:'a',adminId:'tenant',obraId:'w1',funcionarioId:'f1'},
+ {id:'b',adminId:'tenant',obraId:'w2',funcionarioId:'f2',validada:true},
+ {id:'c',adminId:'tenant',obraId:'w3',funcionarioId:'f3'}];
+ c.renderizarFolhas();nodes.folhasFiltro_cliente.value='c1';c.tgFolhasFiltrar();
+ assert.deepEqual(options('instalacao'),['l1','sede:c1']);assert.deepEqual(options('obra'),['w1','w2']);assert.deepEqual(options('tecnico'),['f1','f2']);assert.deepEqual(rows(),['a','b']);
+ nodes.folhasFiltro_obra.value='w1';c.tgFolhasFiltrar();assert.deepEqual(options('tecnico'),['f1']);assert.deepEqual(options('validacao'),['nao_validada']);assert.deepEqual(rows(),['a']);
+ nodes.folhasFiltro_tecnico.value='f1';nodes.folhasFiltro_validacao.value='nao_validada';nodes.folhasFiltro_cliente.value='c2';c.tgFolhasFiltrar();
+ assert.equal(nodes.folhasFiltro_obra.value,'');assert.equal(nodes.folhasFiltro_tecnico.value,'');assert.deepEqual(options('instalacao'),['l2']);assert.deepEqual(options('obra'),['w3']);assert.deepEqual(options('tecnico'),['f3']);assert.deepEqual(rows(),['c']);
+ c.tgFolhasLimpar();assert.deepEqual(rows(),['a','b','c']);assert.deepEqual(options('obra'),['w1','w2','w3']);
+ nodes.folhasFiltro_instalacao.value='l1';c.tgFolhasFiltrar();assert.deepEqual(options('obra'),['w1']);assert.deepEqual(options('tecnico'),['f1']);
+});
+test('filter options follow the active work or service group',async()=>{
+ const {c,nodes,options}=setup();nodes.folhasGrupos={};
+ c.dados.servicos=[{id:'os1',adminId:'tenant',clienteId:'c2',status:'pendente'}];
+ c.dados.folhasObra=[{id:'work',adminId:'tenant',funcionarioId:'f1',clienteId:'c1'},{id:'service',adminId:'tenant',funcionarioId:'f2',servicoId:'os1'}];
+ c.renderizarFolhas();assert.deepEqual(options('cliente'),['c1']);nodes.folhasFiltro_cliente.value='c1';c.tgFolhasGrupo('os');assert.deepEqual(options('cliente'),['c2']);assert.equal(nodes.folhasFiltro_cliente.value,'');assert.deepEqual(options('tecnico'),['f2']);
+ await new Promise(resolve=>setImmediate(resolve));
+});

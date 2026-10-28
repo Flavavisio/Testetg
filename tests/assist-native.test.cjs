@@ -201,3 +201,12 @@ test('OS staff drives assistance names, search and counters after reload and rea
  w.dados.assistencias[0].atribuidoId=null;w.dados.assistencias[0].osGeradaId=null;os.funcionariosIds=['g'];w.TGAssistNative.render();assert.equal(names(),'Ana Técnica');assert.equal(count('atribuidas'),1);
  os.adminId='other';os.funcionariosIds=['h'];w.TGAssistNative.render();assert.equal(count('atribuidas'),0);assert.equal(names(),'Por atribuir');assert(!d.getElementById('tgAssistResults').textContent.includes('Segredo Técnico'));
 }finally{dom.window.close()}});
+
+
+test('assistance table and mobile cards display the scoped installation locality',()=>{const {dom,w}=setup();try{
+ const d=w.document;w.dados.locais[0].cidade='Lisboa <Centro>';w.dados.clientes[0].cidade='Porto';w.TGModules.open('assistencias');
+ const header=[...d.querySelectorAll('#tgAssistResults th')].map(el=>el.textContent);assert(header.includes('Localidade'));
+ const index=header.indexOf('Localidade');const cell=()=>d.querySelector('#tgAssistResults tbody tr').children[index];assert.equal(cell().textContent,'Lisboa <Centro>');assert.equal(cell().querySelector('centro'),null);assert.match(d.querySelector('.tg-assist-card-locality').textContent,/Lisboa <Centro>/);
+ w.dados.locais[0].cidade='';w.TGAssistNative.render();assert.equal(cell().textContent,'Sem localidade indicada');
+ w.dados.assistencias[0].localId=null;w.TGAssistNative.render();assert.equal(cell().textContent,'Porto');
+}finally{dom.window.close()}});

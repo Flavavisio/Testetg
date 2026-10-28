@@ -23,3 +23,16 @@ body.dark-mode .tg-assist-native .btn-outline{color:#e2e8f0!important;border-col
 
 .tg-assist-potential-customer{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}.tg-assist-potential-customer strong,.tg-assist-potential-customer span{display:block}.tg-assist-potential-customer span{margin-top:10px;font-size:13px;color:var(--assist-muted)}.tg-assist-potential-customer:hover,.tg-assist-potential-customer:focus-visible{border-color:#087b9d;outline:2px solid #087b9d;outline-offset:2px}
 .tg-assist-contract-summary label{display:block;font-weight:600;margin-bottom:6px}.tg-assist-contract-summary select{display:block;width:100%;min-height:44px;padding:10px;border:1px solid var(--assist-line,#cbd5e1);border-radius:8px;font:inherit;font-size:max(16px,1em)}
+
+/* Counter colours retain their meaning in both themes, including selection. */
+.tg-assist-native{--assist-count-red-bg:#fef2f2;--assist-count-red:#991b1b;--assist-count-orange-bg:#fff7ed;--assist-count-orange:#9a3412;--assist-count-green-bg:#f0fdf4;--assist-count-green:#166534;--assist-count-blue-bg:#eff6ff;--assist-count-blue:#1e40af;--assist-count-neutral:#334155}
+body.dark-mode .tg-assist-native{--assist-count-red-bg:#3e2028;--assist-count-red:#fca5a5;--assist-count-orange-bg:#3d2d1e;--assist-count-orange:#fdba74;--assist-count-green-bg:#18382c;--assist-count-green:#86efac;--assist-count-blue-bg:#1d3153;--assist-count-blue:#93c5fd;--assist-count-neutral:#cbd5e1}
+#tgAssistMetrics [data-state="sem_atribuicao"]{--metric-bg:var(--assist-count-red-bg);--metric-ink:var(--assist-count-red)}
+#tgAssistMetrics [data-state="atribuidas"]{--metric-bg:var(--assist-count-orange-bg);--metric-ink:var(--assist-count-orange)}
+#tgAssistMetrics [data-state="resolvida"]{--metric-bg:var(--assist-count-green-bg);--metric-ink:var(--assist-count-green)}
+#tgAssistMetrics [data-assist-action="potential"]{--metric-bg:var(--assist-count-blue-bg);--metric-ink:var(--assist-count-blue)}
+#tgAssistMetrics .tg-assist-metric{background:var(--metric-bg,var(--assist-surface));color:var(--metric-ink,var(--assist-count-neutral));border-color:currentColor;box-shadow:none}
+#tgAssistMetrics .tg-assist-metric span{color:inherit}
+#tgAssistMetrics .tg-assist-metric[aria-pressed="true"]{box-shadow:inset 0 0 0 2px currentColor}
+#tgAssistMetrics .tg-assist-metric:focus-visible{outline:3px solid currentColor;outline-offset:3px}
+.tg-assist-card-locality{font-size:13px;color:var(--assist-muted);margin:10px 0;overflow-wrap:anywhere}.tg-assist-card-locality strong{font-size:inherit}

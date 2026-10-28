@@ -181,3 +181,23 @@ test('Sim in the TG popup opens a maintenance contract prefilled for the selecte
 test('a contract created after the assistance can be linked when its OS is created, without a completion debit',async()=>{const {dom,w}=setup();try{
  contractFeature(w);w.dados.contratos=[{id:'new-ct',adminId:'admin',clienteId:'c',localId:'l',numero:'Novo contrato'}];w.TGModules.open('assistencias');w.TGAssistNative.criarOSDeAssistencia('a');assert.equal(w.document.getElementById('assistOsContrato').value,'new-ct');await w.TGAssistNative._confirmarCriarOSDeAssistencia('a');assert.equal(w.dados.servicos[0].contratoId,'new-ct');assert.equal(w.dados.assistencias[0].testeContratoId,'new-ct');assert(!w.dados.assistencias[0].testeVisitaConcluidaEm);assert.equal(w.dados.servicos[0].status,'pendente');
 }finally{dom.window.close()}});
+
+
+test('OS staff drives assistance names, search and counters after reload and reassignment',()=>{const {dom,w}=setup();try{
+ const d=w.document,a=w.dados.assistencias[0];
+ a.osGeradaId='os';a.atribuidoId=null;
+ w.dados.funcionarios.push({id:'g',adminId:'admin',nome:'Ana Técnica'},{id:'h',adminId:'other',nome:'Segredo Técnico'});
+ w.dados.servicos.push({id:'os',adminId:'admin',clienteId:'c',assistenciaId:'a',funcionariosIds:['f','g','g'],funcionarioId:'f'});
+ w.TGModules.open('assistencias');
+ const count=state=>Number(d.querySelector(`[data-state="${state}"] strong`).textContent);
+ const names=()=>d.querySelector('#tgAssistResults tbody tr td:nth-child(4)').textContent;
+ assert.equal(count('atribuidas'),1);assert.equal(count('sem_atribuicao'),0);assert.equal(names(),'Técnico, Ana Técnica');
+ assert.match(d.querySelector('.tg-assist-card-state').textContent,/Técnico, Ana Técnica/);
+ // Simulate a reload from persisted data, with an old missing assignment copy.
+ w.dados=JSON.parse(JSON.stringify(w.dados));w.TGAssistNative.render();assert.equal(names(),'Técnico, Ana Técnica');
+ const search=d.getElementById('tgAssistSearch');search.value='Ana Técnica';search.dispatchEvent(new w.Event('input'));assert.equal(d.querySelectorAll('#tgAssistResults tbody tr').length,1);search.value='';search.dispatchEvent(new w.Event('input'));
+ const os=w.dados.servicos[0];w.dados.assistencias[0].atribuidoId='f';os.funcionariosIds=['g'];os.funcionarioId='g';w.TGAssistNative.render();assert.equal(names(),'Ana Técnica');assert.equal(count('atribuidas'),1);
+ os.funcionariosIds=[];os.funcionarioId=null;w.TGAssistNative.render();assert.equal(names(),'Por atribuir');assert.equal(count('sem_atribuicao'),1);assert.equal(count('atribuidas'),0);
+ w.dados.assistencias[0].atribuidoId=null;w.dados.assistencias[0].osGeradaId=null;os.funcionariosIds=['g'];w.TGAssistNative.render();assert.equal(names(),'Ana Técnica');assert.equal(count('atribuidas'),1);
+ os.adminId='other';os.funcionariosIds=['h'];w.TGAssistNative.render();assert.equal(count('atribuidas'),0);assert.equal(names(),'Por atribuir');assert(!d.getElementById('tgAssistResults').textContent.includes('Segredo Técnico'));
+}finally{dom.window.close()}});

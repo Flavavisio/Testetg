@@ -480,11 +480,19 @@ const SHELL="<div class=\"section-header\"><h2><i class=\"fas fa-headset\"></i> 
                 finally { if (btn) { btn.disabled = false; btn.innerHTML = original; } }
             };
         }
-function assistAssigned(a){
- if(a.atribuidoId)return true;
- const os=(dados.servicos||[]).find(s=>s.id===a.osGeradaId&&s.adminId===a.adminId);
- return !!(os&&(os.funcionarioId||(os.funcionariosIds||[]).some(Boolean)));
+function assistTechnicianIds(a){
+ // The current OS is authoritative, including reassignment or removal of staff.
+ // Older records may only retain the reverse assistanceId link.
+ const services=(dados.servicos||[]).filter(s=>s.adminId===a.adminId&&s.clienteId===a.clienteId);
+ const os=services.find(s=>s.id===a.osGeradaId)||services.find(s=>s.assistenciaId===a.id);
+ const ids=os?(Array.isArray(os.funcionariosIds)&&os.funcionariosIds.length?os.funcionariosIds:[os.funcionarioId]):[a.atribuidoId];
+ return [...new Set(ids.filter(Boolean))];
 }
+function assistTechnicians(a){
+ const people=[...(dados.funcionarios||[]),...(dados.encarregados||[])];
+ return assistTechnicianIds(a).map(id=>people.find(p=>p.id===id&&p.adminId===a.adminId)?.nome||'Técnico indisponível').join(', ')||'Por atribuir';
+}
+function assistAssigned(a){return assistTechnicianIds(a).length>0;}
 function assistGroup(a){return _assistEstado(a.estado)==='resolvida'?'resolvida':assistAssigned(a)?'atribuidas':'sem_atribuicao';}
 function assistLocality(a){
  const os=(dados.servicos||[]).find(s=>s.id===a.osGeradaId&&s.adminId===a.adminId);
@@ -510,7 +518,7 @@ function renderizarAssistencias(){
  const all=(dados.assistencias||[]).filter(a=>a.adminId===_tenantId()&&!a.apagadoSuperAdmin);
  const locality=assistLocalityOptions(all);
  const list=all.filter(a=>{
-  const d=_assistResumoDados(a);const text=[a.numero,a.assunto,d.cliente,d.local,assistLocality(a).name,obterNomeFuncionario(a.atribuidoId)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const d=_assistResumoDados(a);const text=[a.numero,a.assunto,d.cliente,d.local,assistLocality(a).name,assistTechnicians(a)].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   return (!locality||assistLocality(a).key===locality)&&(!state||_assistEstado(a.estado)===state)&&(!assistBucket||assistGroup(a)===assistBucket)&&(!priority||(a.prioridade||'normal')===priority)&&(!query||text.includes(query));
  }).sort((a,b)=>(b.dataCriacao||0)-(a.dataCriacao||0));
  document.getElementById('tgAssistCount').textContent=`${list.length} de ${all.length} assistências`;
@@ -519,7 +527,7 @@ function renderizarAssistencias(){
   const active=tab!=='potential'&&(value?assistBucket===value:!assistBucket&&!state);
   return `<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="filter" data-state="${value}" aria-pressed="${active}"><strong>${n}</strong><span>${label}</span></button>`;
  }).join('')+(window.TGAssistContracts?`<button type="button" class="obras-estado-contador tg-assist-metric" data-assist-action="potential" aria-pressed="${tab==='potential'}"><strong>${TGAssistContracts.potential().length}</strong><span>Potencial para contrato</span></button>`:'');
- document.getElementById('tgAssistResults').innerHTML=list.length?`<div class="table-wrapper tg-assist-table"><table><thead><tr><th>Pedido / Cliente / Instalação</th><th>Prioridade</th><th>Estado</th><th>Técnico</th><th>Criada em</th><th>Ações</th></tr></thead><tbody>${list.map(a=>`<tr><td>${_assistResumoHtml(a)}</td><td>${priorityBadge(a)}</td><td>${stateBadge(a)}</td><td>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</td><td>${a.dataCriacao?new Date(a.dataCriacao).toLocaleDateString('pt-PT'):'—'}</td><td>${actions(a)}</td></tr>`).join('')}</tbody></table></div><div class="tg-assist-cards">${list.map(a=>`<article class="tg-assist-card"><div class="tg-assist-card-top"><span>${escapeHtmlSimples(a.numero||'Assistência')}</span>${priorityBadge(a)}</div>${_assistResumoHtml(a)}<div class="tg-assist-card-state">${stateBadge(a)}<span>${escapeHtmlSimples(obterNomeFuncionario(a.atribuidoId)||'Por atribuir')}</span></div><div class="tg-assist-card-actions">${actions(a)}</div></article>`).join('')}</div>`:'<p class="help-text tg-assist-empty">Sem assistências para os filtros selecionados.</p>';
+ document.getElementById('tgAssistResults').innerHTML=list.length?`<div class="table-wrapper tg-assist-table"><table><thead><tr><th>Pedido / Cliente / Instalação</th><th>Prioridade</th><th>Estado</th><th>Técnico</th><th>Criada em</th><th>Ações</th></tr></thead><tbody>${list.map(a=>`<tr><td>${_assistResumoHtml(a)}</td><td>${priorityBadge(a)}</td><td>${stateBadge(a)}</td><td>${escapeHtmlSimples(assistTechnicians(a))}</td><td>${a.dataCriacao?new Date(a.dataCriacao).toLocaleDateString('pt-PT'):'—'}</td><td>${actions(a)}</td></tr>`).join('')}</tbody></table></div><div class="tg-assist-cards">${list.map(a=>`<article class="tg-assist-card"><div class="tg-assist-card-top"><span>${escapeHtmlSimples(a.numero||'Assistência')}</span>${priorityBadge(a)}</div>${_assistResumoHtml(a)}<div class="tg-assist-card-state">${stateBadge(a)}<span>${escapeHtmlSimples(assistTechnicians(a))}</span></div><div class="tg-assist-card-actions">${actions(a)}</div></article>`).join('')}</div>`:'<p class="help-text tg-assist-empty">Sem assistências para os filtros selecionados.</p>';
 }
 function stateBadge(a){const s=ASSIST_ESTADOS[_assistEstado(a.estado)]||ASSIST_ESTADOS.aberta;return `<span class="tg-assist-badge" style="--assist-color:${s.cor}">${s.label}</span>`;}
 function priorityBadge(a){const p=ASSIST_PRIORIDADES[a.prioridade]||ASSIST_PRIORIDADES.normal;return `<span class="tg-assist-badge" style="--assist-color:${p.cor}">${p.label}</span>`;}

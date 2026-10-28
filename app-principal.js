@@ -5933,6 +5933,26 @@ function _assistLerNotas(value) {
             }, 150);
         }
 
+        let _servicosEstadoFiltro = 'todos', _servicosEstadoConta = '';
+        function _servicosGrupoEstado(servico) {
+            const estado = (servico.status || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            if (estado === 'concluido') return 'concluidos';
+            return estado === 'cancelado' ? 'cancelados' : 'pendentes';
+        }
+        function servicosFiltrarEstado(estado) {
+            if (!['todos', 'pendentes', 'concluidos'].includes(estado)) return;
+            _servicosEstadoFiltro = estado;
+            renderizarServicos();
+        }
+        function _servicosContadores(lista) {
+            const cont = document.getElementById('servicosContadores');
+            if (!cont) return;
+            cont.innerHTML = [['pendentes', 'Pendentes'], ['concluidos', 'Concluídos'], ['todos', 'Todos']].map(([estado, nome]) => {
+                const numero = estado === 'todos' ? lista.length : lista.filter(s => _servicosGrupoEstado(s) === estado).length;
+                return `<button type="button" class="obras-estado-contador" data-servicos-estado="${estado}" aria-pressed="${_servicosEstadoFiltro === estado}" onclick="servicosFiltrarEstado('${estado}')"><strong>${numero}</strong><span>${nome}</span></button>`;
+            }).join('');
+        }
+
         _registarTabela('servicos', renderizarServicos);
         function renderizarServicos() {
             const tbody = document.getElementById('tabelaServicos');
@@ -5995,6 +6015,9 @@ function _assistLerNotas(value) {
                 filtroKpiHtml.innerHTML = '';
             }
 
+            const contaOS = JSON.stringify([usuarioLogado?.id, usuarioLogado?.adminId, usuarioLogado?.role]);
+            if (_servicosEstadoConta !== contaOS) { _servicosEstadoConta = contaOS; _servicosEstadoFiltro = 'todos'; }
+            _servicosContadores(servicos);
             const totalGeralOS = servicos.length;
 
             const avisoDiv = document.getElementById('servicosAvisoEspecialidade');
@@ -6019,6 +6042,7 @@ function _assistLerNotas(value) {
                 </div>`;
             }
 
+            if (_servicosEstadoFiltro !== 'todos') servicos = servicos.filter(s => _servicosGrupoEstado(s) === _servicosEstadoFiltro);
             servicos = _aplicarFiltroOrdenacao('servicos', servicos,
                 ['numeroRegisto', 'descricao', 'status', s => obterNomeCliente(s.clienteId)],
                 {
@@ -6029,7 +6053,7 @@ function _assistLerNotas(value) {
             const tbOS = document.getElementById('servicosToolbar');
             if (tbOS) tbOS.innerHTML = totalGeralOS ? _toolbarHtml('servicos', 'Pesquisar por Nº, cliente, descrição, estado…', servicos.length, totalGeralOS) : '';
             if (servicos.length === 0) {
-                tbody.innerHTML = totalGeralOS ? '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">Sem resultados para essa pesquisa.</td></tr>' : '';
+                tbody.innerHTML = totalGeralOS ? '<tr><td colspan="9" style="text-align:center;color:#94a3b8;">Sem ordens de serviço para os filtros selecionados.</td></tr>' : '';
                 empty.style.display = totalGeralOS ? 'none' : 'block';
                 return;
             }

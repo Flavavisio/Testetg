@@ -41,3 +41,17 @@ test('legacy cached records load their history with a tenant-scoped read before 
  await w.TGAssistNative.abrirModalAssistencia('a');assert.match(w.document.getElementById('assist_notas_lista').textContent,/Histórico já guardado/);
  assert.deepEqual(query,[['from','assistencias'],['select','notas'],['eq','id','a'],['eq','admin_id','admin']]);
 }finally{dom.window.close()}});
+
+test('assistance counters filter by state, stay in sync with the dropdown and combine with search',()=>{const {dom,w}=setup();try{
+ const d=w.document;w.dados.assistencias.push(...['andamento','resolvida','fechada'].map((estado,i)=>({id:'state'+i,adminId:'admin',estado,assunto:'Pedido '+estado,prioridade:'normal'})));
+ w.dados.assistencias.push({id:'deleted',adminId:'admin',estado:'aberta',apagadoSuperAdmin:true});
+ w.TGModules.open('assistencias');
+ const button=state=>d.querySelector(`#tgAssistMetrics [data-state="${state}"]`);
+ const results=()=>d.querySelectorAll('#tgAssistResults tbody tr').length;
+ assert.equal(Number(button('').querySelector('strong').textContent),4);assert.equal(button('').getAttribute('aria-pressed'),'true');
+ for(const state of ['aberta','andamento','resolvida','fechada']){button(state).querySelector('strong').click();assert.equal(results(),1);assert.equal(d.getElementById('assistFiltroEstado').value,state);assert.equal(button(state).getAttribute('aria-pressed'),'true');}
+ const select=d.getElementById('assistFiltroEstado');select.value='andamento';select.dispatchEvent(new w.Event('change'));assert.equal(button('andamento').getAttribute('aria-pressed'),'true');
+ const search=d.getElementById('tgAssistSearch');search.value='sem correspondência';search.dispatchEvent(new w.Event('input'));assert.equal(results(),0);assert.equal(button('andamento').querySelector('strong').textContent,'1');
+ search.value='';search.dispatchEvent(new w.Event('input'));button('').click();assert.equal(results(),4);
+ w.dados.assistencias.find(a=>a.id==='state0').estado='resolvida';w.TGAssistNative.render();assert.equal(button('andamento').querySelector('strong').textContent,'0');assert.equal(button('resolvida').querySelector('strong').textContent,'2');
+}finally{dom.window.close()}});

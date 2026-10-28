@@ -55,6 +55,19 @@ const pages = ['index.html', 'login.html', 'TOTALGEST_CRM.html', 'TOTALGEST_ASSI
    await frame.locator('body').evaluate(body=>{const f=body.ownerDocument.createElement('iframe');f.id='nested';f.style.width='100%';f.srcdoc='<input id="nested-input" style="font-size:10px" value="Preservado">';body.append(f)});
    await page.waitForFunction(()=>document.querySelector('#report-frame').contentDocument.querySelector('#nested').contentDocument.querySelector('#tg-form-focus-style')?.sheet);
    assert.equal(await frame.frameLocator('#nested').locator('#nested-input').evaluate(el=>getComputedStyle(el).fontSize),mobile?'16px':'10px');
+   if (mobile) {
+    // iPad landscape reports a portrait screen width on some Safari versions.
+    // Keyboard/split view resize must not inflate fields or retain inflation.
+    await page.setViewportSize({width:1366,height:768});
+    await page.evaluate(()=>Object.defineProperty(screen,'width',{configurable:true,value:768}));
+    for (const height of [400,768,400,768]) {
+     await page.setViewportSize({width:1366,height});
+     for (const target of [page.locator('#text'),frame.locator('#report'),frame.frameLocator('#nested').locator('#nested-input')]) {
+      await target.dispatchEvent('pointerdown');
+      assert.equal(await target.evaluate(el=>getComputedStyle(el).fontSize),'16px','Landscape/keyboard must not enlarge fields');
+     }
+    }
+   }
    await page.emulateMedia({media:'print'});
    assert.equal(await frame.locator('#report').evaluate(el=>getComputedStyle(el).fontSize),'8px');
    assert.equal(await frame.locator('#report').inputValue(),'Relatório em curso');

@@ -2,7 +2,7 @@
 (function () {
     'use strict';
     const source = document.currentScript?.src || location.href;
-    const stylesheet = new URL('tg-form-focus.css?v=1.2.0', source).href;
+    const stylesheet = new URL('tg-form-focus.css?v=1.2.1', source).href;
     const documents = new WeakSet();
     const originalSizes = new WeakMap();
     const controls = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]):not([type=file]),select,textarea,[contenteditable="true"],[contenteditable="plaintext-only"],[contenteditable=""]';
@@ -32,10 +32,11 @@
         }
         const viewport = topWindow.visualViewport;
         if (viewport) {
-            // Page zoom / fit-to-screen can expose more CSS pixels than the screen.
-            const screenWidth = topWindow.screen.width;
-            const pageScale = screenWidth > 0 && viewport.width > 0 ? screenWidth / viewport.width : 1;
-            scale *= Math.min(1, viewport.scale || 1, pageScale);
+            // screen.width is not the layout viewport: iPad landscape, desktop
+            // windows and the on-screen keyboard can give unrelated dimensions.
+            // Dividing those widths inflated normal fields (and kept them large).
+            // Use only the browser's actual scale, independent of orientation.
+            scale *= Math.min(1, viewport.scale || 1);
         }
         if (!originalSizes.has(field)) originalSizes.set(field, parseFloat(win.getComputedStyle(field).fontSize) || 16);
         const minimum = Math.max(originalSizes.get(field), Math.ceil(16 / Math.min(1, scale) * 100) / 100);

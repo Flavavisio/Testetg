@@ -5,8 +5,8 @@ const functions = ['criarFolhaDaObra', 'criarFolhaDaOS', '_horasBloqueadasHTML',
   .map(name => source.match(new RegExp('        function ' + name + '\\([^]*?\\n        \\}'))[0]).join('\n');
 const shell = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="responsive-device.css">
-<link id="tg-form-focus-style" rel="stylesheet" href="tg-form-focus.css?v=1.2.0">
-<script src="tg-form-focus.js?v=1.2.0"></script></head><body>
+<link id="tg-form-focus-style" rel="stylesheet" href="tg-form-focus.css?v=1.2.1">
+<script src="tg-form-focus.js?v=1.2.1"></script></head><body>
 <div class="modal-overlay" id="modalOverlay"><div class="modal"><h3 id="modalTitulo"></h3>
 <form><div id="modalCampos"></div><button id="modalSubmitBtn">Criar Folha</button></form></div></div></body></html>`;
 (async () => {
@@ -56,19 +56,19 @@ const shell = `<!doctype html><html><head><meta name="viewport" content="width=d
         }
       }
       if (mobile) {
-        // Model a browser page reduced to 80%, separately from CSS container zoom.
+        // Landscape/split screen dimensions must not be mistaken for zoom.
         await page.evaluate(()=>{
           document.querySelector('.modal').style.zoom=1;
           Object.defineProperty(screen,'width',{configurable:true,value:visualViewport.width*.8});
         });
         await page.locator('#fo_descricao').dispatchEvent('pointerdown');
-        assert.equal(await page.locator('#fo_descricao').evaluate(el=>getComputedStyle(el).fontSize),'20px');
+        assert.equal(await page.locator('#fo_descricao').evaluate(el=>getComputedStyle(el).fontSize),'16px');
         await page.emulateMedia({media:'print'});
         assert.equal(await page.locator('#fo_descricao').evaluate(el=>getComputedStyle(el).fontSize),'16px');
       }
       assert(!/maximum-scale|user-scalable/.test(await page.locator('meta[name=viewport]').getAttribute('content')));
       await context.close();
     }
-    console.log('PASS: actual Obra/OS/Assistance sheet renderers and assistance status, dynamic materials, 100/90/80% sizing before focus, simulated page reduction, preserved zoom/drafts/quantities/printing.');
+    console.log('PASS: actual Obra/OS/Assistance sheet renderers and assistance status, dynamic materials, 100/90/80% sizing before focus, orientation-independent sizing, preserved zoom/drafts/quantities/printing.');
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

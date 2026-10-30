@@ -143,5 +143,28 @@ const date=new Date().toISOString().slice(0,10);doc.save('relatorio_avac_'+date+
 }catch(e){status.textContent='Erro ao gerar PDF: '+e.message;}
 }
 window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
-const observer=new MutationObserver(insert);function init(){insert();observer.observe(document.body,{subtree:true,childList:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+
+/* An OS using AVAC work types must offer the adaptive report directly in its Reports tab. */
+const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria/i.test(String(t||''));
+function osByVisibleHeading(panel){
+ const text=(panel?.closest('.modal,.modal-content,[role="dialog"],dialog')?.textContent||panel?.parentElement?.textContent||'').slice(0,900);
+ return listOS().find(s=>[s.numero,s.numeroOS,s.id].filter(Boolean).some(n=>String(text).includes(String(n))))||null;
+}
+function mountOSReport(){
+ if(!isAVAC())return;
+ const candidates=[...document.querySelectorAll('p,div,span')].filter(el=>el.children.length===0&&/Esta OS n[aã]o tem tipos de trabalho com relat[oó]rio de especialidade associados/i.test(el.textContent||''));
+ for(const empty of candidates){
+   if(empty.dataset.avacHandled)return;
+   const panel=empty.closest('.modal-content,[role="dialog"],dialog,.modal')||empty.parentElement;
+   const os=osByVisibleHeading(empty);
+   if(!os||!(os.tiposTrabalho||[]).some(avacWorkType))continue;
+   empty.dataset.avacHandled='1';
+   const b=document.createElement('button');b.type='button';b.className='btn btn-primary';b.textContent='Preencher relatório AVAC';b.style.cssText='display:block;margin:12px auto;padding:12px 18px;max-width:100%';
+   b.onclick=()=>{open();$('avac_os').value=String(os.id);selectOS();const modes=(os.tiposTrabalho||[]).map(String);$('avac_mode').value=modes.some(t=>/recarga de g[aá]s/i.test(t))?'refrigerante':'normal';toggle()};
+   empty.textContent='Esta OS tem trabalhos AVAC. O relatório técnico adaptativo está disponível:';
+   empty.insertAdjacentElement('afterend',b);
+ }
+}
+
+const observer=new MutationObserver(()=>{insert();mountOSReport();});function init(){insert();mountOSReport();observer.observe(document.body,{subtree:true,childList:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

@@ -9,19 +9,22 @@
     const card = id => [...document.querySelectorAll('#cardsGrid .card-principal[data-card]')].find(el => el.dataset.card === id);
     const permitted = el => active() && el && !el.hidden && !el.classList.contains('hidden-card') && !el.classList.contains('card-bloqueado') && el.style.display !== 'none';
     const visible = el => permitted(el) && !el.hasAttribute('data-tgn-secondary');
+    // A estrutura é comum a Admin e Sub-Admin; permissões apenas filtram acessos.
     const groups = [
-        ['operacoes','Operações','fa-gears',['obras-longa','servicos','assistencias','folhas','agenda-obras','agenda','rondas','ferramentas']],
-        ['comercial','Clientes e Comercial','fa-handshake-angle',['clientes','crm','contratos','distribuicao']],
-        ['equipa','Equipa','fa-users-gear',['funcionarios','encarregados','ponto','assiduidade','pedidos','calendario-equipa','mapa-equipa','frota','alertas-geofence','quiosque']],
-        ['armazem','Armazém','fa-warehouse',['artigos','encomendas','fornecedores','requisicoes','levantamento-qr']],
+        ['comercial','Comercial','fa-handshake-angle',['clientes','crm','contratos','distribuicao']],
+        ['equipa','Equipa','fa-users-gear',['funcionarios','encarregados','ponto','assiduidade','pedidos','calendario-equipa','mapa-equipa','alertas-geofence','quiosque']],
+        ['operacoes','Obras e Serviços','fa-gears',['obras-longa','servicos','assistencias','folhas','agenda-obras','agenda']],
+        ['frota','Frota','fa-car',['frota']],
+        ['rondas','Rondas','fa-route',['rondas']],
+        ['armazem','Armazém','fa-warehouse',['artigos','encomendas','fornecedores','requisicoes','levantamento-qr','ferramentas']],
         ['financeiro','Financeiro','fa-landmark',['financeiro','despesas','dashboard-analitico']],
         ['relatorios','Relatórios','fa-file-lines',['relatorio-os']],
-        ['configuracoes','Configurações','fa-gear',['relatorios-personalizados','minha-licenca','auditoria','exportar-dados','guia','ajuda-peticoes']],
+        ['configuracoes','Sistema e Suporte','fa-gear',['relatorios-personalizados','minha-licenca','auditoria','exportar-dados','guia','ajuda-peticoes']],
         ['sistema','Administração do Sistema','fa-shield-halved',['superadmin','reports','analytics','licencas','licencas-vencer','pedidos-renovacao','licencas-distribuidor','historico-licencas','uso-cards','online-admins','contactos']]
     ];
     const calendars = [['agenda-obras','Planeamento'],['calendario-equipa','Equipa'],['agenda','Prazos e vencimentos']];
     const originalCards = new Map(), originalGroups = [];
-    const legacyMobile = () => innerWidth <= 900 || !!window.TGTechnician?.enabled();
+    const legacyMobile = () => !!window.TGTechnician?.enabled() || (innerWidth <= 900 && !(['admin','subadmin'].includes(user()?.role) && typeof obterLayout === 'function' && obterLayout() === 'aurora'));
     const originalVisibility = window.ajustarVisibilidadeCards;
     let groupedMode = null, originalReportsTitle = '', pendingLayoutRefresh = false;
     let identity = '', current = 'home', returnToMore = false, moreGroup = '', refreshing = false;
@@ -93,7 +96,7 @@
         parent.querySelectorAll('.grupo-cards').forEach(group=>{group.hidden=![...group.querySelectorAll('.card-principal')].some(visible);});
         if(heading)heading.textContent='Visão Global';
     }
-    function entries(key) {return [...document.querySelectorAll(`#cardsGrid .grupo-cards[data-grupo="${key}"] .card-principal`)].filter(visible);}
+    function entries(key) { const group=groups.find(g=>g[0]===key); if(!group)return []; return group[3].map(id=>card(id)).filter(visible); }
     function openCard(id) {
         const el = card(id); if (!visible(el)) return false;
         $('tgnSettings')?.close(); el.click(); return false;
@@ -121,7 +124,7 @@
     }
     function mark(name) {current=name;document.querySelectorAll('#menuInferiorMobile [data-tgn-nav]').forEach(el=>{el.classList.toggle('ativo',el.dataset.tgnNav===name);el.setAttribute('aria-current',el.dataset.tgnNav===name?'page':'false');});}
     function more() {
-        if(!active()||legacyMobile())return;
+        if(!active()||(legacyMobile()&&!['admin','subadmin'].includes(user()?.role)))return;
         _fecharSecaoAbertaMobile();const panel=$('painelGrupoMobile'),content=$('painelGrupoMobileConteudo');if(!panel||!content)return;
         if($('omeudia'))$('omeudia').style.display='none';if($('tgHome'))$('tgHome').style.display='none';if($('cardsGrid'))$('cardsGrid').style.display='';
         if(typeof _ultimoGrupoMobileAberto!=='undefined')_ultimoGrupoMobileAberto=null;
@@ -132,6 +135,13 @@
             const button=document.createElement('button');button.type='button';button.className='btn btn-outline';button.dataset.tgnDashboard='';button.textContent='Dashboard Central';head.append(button);
         }
         returnToMore=true;mark('more');window.scrollTo({top:0,behavior:'smooth'});
+    }
+    function workMenu() {
+        if(!['admin','subadmin'].includes(user()?.role))return _abrirGrupoMobile('operacoes');
+        more();const content=$('painelGrupoMobileConteudo');if(!content)return;
+        const head=content.querySelector('.tgn-more-title');if(head)head.querySelector('h2').textContent='Obras e Serviços';
+        const body=content.querySelector('.tgn-menu-section')?.parentElement;
+        if(body)sectionList(body,['operacoes']);returnToMore=true;mark('work');
     }
     function agenda(preferred) {
         const target=calendars.find(([id])=>id===preferred&&permitted(card(id))) || calendars.find(([id])=>permitted(card(id)));
@@ -160,6 +170,15 @@
     }
     function mobile() {
         const nav=$('menuInferiorMobile');if(!nav)return;
+        const managerMobile=active()&&['admin','subadmin'].includes(user()?.role)&&innerWidth<=900;
+        document.body.classList.toggle('tgn-manager-sidebar-mobile',managerMobile);
+        if(managerMobile){
+            // Admin e Sub-Admin usam o menu lateral Nexus, nunca a barra inferior.
+            nav.classList.remove('tgn-mobile');
+            nav.style.display='none';
+            return;
+        }
+        nav.style.removeProperty('display');
         if(!active()||legacyMobile()||!_ehPerfilMobile()){nav.classList.remove('tgn-mobile');return;}
         const items=[['home','fa-sun','O Meu Dia',true],['agenda','fa-calendar-days','Agenda',calendars.some(([id])=>permitted(card(id)))],['work','fa-briefcase','Trabalhos',entries('operacoes').length>0],['alerts','fa-bell','Alertas',true],['more','fa-bars','Mais',true]];
         nav.classList.add('tgn-mobile');nav.innerHTML=items.map(([id,icon,label,enabled])=>`<button type="button" class="menu-inf-item" data-tgn-nav="${id}" ${id==='home'?'id="menuInfHome"':''} ${enabled?'':'disabled'}><i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span></button>`).join('');mark(current);
@@ -267,10 +286,18 @@
         if(control.hasAttribute('data-tgn-dashboard')){returnToMore=true;return _abrirDashboardCentralMobile();}
         if(control.dataset.tgnCard)return openCard(control.dataset.tgnCard);
         if(control.dataset.tgnCalendar)return agenda(control.dataset.tgnCalendar);
-        switch(control.dataset.tgnNav){case 'home':return _voltarMeuDia();case 'agenda':return agenda();case 'work':returnToMore=false;return _abrirGrupoMobile('operacoes');case 'alerts':return alerts();case 'more':return more();}
+        switch(control.dataset.tgnNav){case 'home':return _voltarMeuDia();case 'agenda':return agenda();case 'work':returnToMore=false;return workMenu();case 'alerts':return alerts();case 'more':return more();}
     });
     document.addEventListener('tg:interface-updated',refresh);
-    let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(()=>{_montarMenuInferiorMobile();if(active()&&!document.querySelector('.section-container.active')&&current==='home'&&typeof _mostrarInicioConteudo==='function')_mostrarInicioConteudo();refresh();},100);});
+    let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(()=>{
+        _montarMenuInferiorMobile();
+        // Safari changes the viewport height as its toolbar expands on scroll.
+        // The technician workspace owns its active tab; a resize must never navigate.
+        const technician=!!window.TGTechnician?.enabled();
+        const panel=$('painelGrupoMobile'),panelOpen=panel && panel.style.display!=='none' && getComputedStyle(panel).display!=='none';
+        if(active()&&!technician&&!panelOpen&&!document.querySelector('.section-container.active')&&current==='home'&&typeof _mostrarInicioConteudo==='function')_mostrarInicioConteudo();
+        refresh();
+    },100);});
     window.TGNavigation={refresh,agenda,settings,more,openCard,entries,workContext};
     refresh();
 })();

@@ -12,6 +12,15 @@ body.tg-nexus #tgSidebarNav .tg-nav-item i,body.tg-nexus #tgSidebarNav .tg-nav-g
 body.tg-nexus #tgSidebarNav .tg-nav-item:hover,body.tg-nexus #tgSidebarNav .tg-nav-grupo-btn:hover{background:#1c2d47!important}
 body.tg-nexus #tgSidebarNav .tg-nav-item.ativo,body.tg-nexus #tgSidebarNav .tg-nav-grupo-btn.ativo{background:#294b8b!important;color:#fff!important}
 body.tg-nexus #tgSidebarNav .tg-nav-item.ativo i,body.tg-nexus #tgSidebarNav .tg-nav-grupo-btn.ativo i:not(.chev){color:#b5ccff!important}
+/* Parent groups keep their alerts visible even with a closed or collapsed menu. */
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn).tg-luz-vermelho{--nx-alert-bg:#4b2330;--nx-alert-ink:#ffb4b4}
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn).tg-luz-amarelo{--nx-alert-bg:#473917;--nx-alert-ink:#ffe08a}
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn).tg-luz-verde{--nx-alert-bg:#173e35;--nx-alert-ink:#9cf0c5}
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn):is(.tg-luz-vermelho,.tg-luz-amarelo,.tg-luz-verde){background:var(--nx-alert-bg)!important;color:var(--nx-alert-ink)!important;box-shadow:inset 3px 0 var(--nx-alert-ink);font-weight:700}
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn):is(.tg-luz-vermelho,.tg-luz-amarelo,.tg-luz-verde)>i{color:var(--nx-alert-ink)!important}
+body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn).tg-luz-pisca{animation:nxNavAlertPulse 1.4s ease-in-out infinite}
+@keyframes nxNavAlertPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+@media(prefers-reduced-motion:reduce){body.tg-nexus #tgSidebarNav :is(.tg-nav-item,.tg-nav-grupo-btn).tg-luz-pisca{animation:none}}
 body.tg-nexus #tgSidebarNav .tg-nav-submenu{border-left:1px solid #35465f;margin:0 0 0 18px;padding-left:8px}
 body.tg-nexus .tg-side-foot{border-color:#293950;color:#bdc9df;font-size:.8rem;padding:16px}
 body.tg-nexus.com-sidebar>header.header,body.tg-nexus.com-sidebar>#cardsGrid,body.tg-nexus.com-sidebar>.section-container,body.tg-nexus.com-sidebar>#tgHome{margin-left:228px}

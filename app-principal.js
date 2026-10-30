@@ -1452,30 +1452,30 @@ function _assistEstado(value) {
             avac: {
                 label: 'AVAC / Climatização',
                 servicos: [
-                    { v: 'Manutenção AC', l: 'Manutenção de ar condicionado', relatorio: false },
-                    { v: 'Instalação AVAC', l: 'Instalação', relatorio: false },
-                    { v: 'Recarga de gás', l: 'Recarga de gás refrigerante', relatorio: false },
-                    { v: 'Limpeza de filtros', l: 'Limpeza de filtros/condutas', relatorio: false },
-                    { v: 'Diagnóstico AVAC', l: 'Diagnóstico de avaria', relatorio: false },
+                    { v: 'Manutenção AC', l: 'Manutenção de ar condicionado', relatorio: true },
+                    { v: 'Instalação AVAC', l: 'Instalação', relatorio: true },
+                    { v: 'Recarga de gás', l: 'Recarga de gás refrigerante', relatorio: true },
+                    { v: 'Limpeza de filtros', l: 'Limpeza de filtros/condutas', relatorio: true },
+                    { v: 'Diagnóstico AVAC', l: 'Diagnóstico de avaria', relatorio: true },
                 ],
             },
             eletricidade: {
                 label: 'Eletricidade',
                 servicos: [
-                    { v: 'Instalação elétrica', l: 'Instalação elétrica', relatorio: false },
-                    { v: 'Certificação elétrica', l: 'Certificação / vistoria', relatorio: false },
-                    { v: 'Quadro elétrico', l: 'Quadro elétrico', relatorio: false },
-                    { v: 'Iluminação', l: 'Iluminação', relatorio: false },
-                    { v: 'Avaria elétrica', l: 'Avaria elétrica', relatorio: false },
+                    { v: 'Instalação elétrica', l: 'Instalação elétrica', relatorio: true },
+                    { v: 'Certificação elétrica', l: 'Certificação / vistoria', relatorio: true },
+                    { v: 'Quadro elétrico', l: 'Quadro elétrico', relatorio: true },
+                    { v: 'Iluminação', l: 'Iluminação', relatorio: true },
+                    { v: 'Avaria elétrica', l: 'Avaria elétrica', relatorio: true },
                 ],
             },
             limpeza: {
                 label: 'Limpeza',
                 servicos: [
-                    { v: 'Limpeza regular', l: 'Limpeza regular', relatorio: false },
-                    { v: 'Limpeza profunda', l: 'Limpeza profunda', relatorio: false },
-                    { v: 'Limpeza pós-obra', l: 'Limpeza pós-obra', relatorio: false },
-                    { v: 'Desinfeção', l: 'Desinfeção', relatorio: false },
+                    { v: 'Limpeza regular', l: 'Limpeza regular', relatorio: true },
+                    { v: 'Limpeza profunda', l: 'Limpeza profunda', relatorio: true },
+                    { v: 'Limpeza pós-obra', l: 'Limpeza pós-obra', relatorio: true },
+                    { v: 'Desinfeção', l: 'Desinfeção', relatorio: true },
                 ],
             },
             elevadores: {
@@ -6421,7 +6421,7 @@ function _assistEstado(value) {
             if (aba === 'relatorios') {
                 const tiposDaOS = window.TGEquipmentReports?.requirements(os) || (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t)).map(tipo=>({tipo,equipamentoId:null}));
                 const relatoriosDaOS = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId);
-                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', AVAC: 'Relatório Técnico AVAC' };
+                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', AVAC: 'Relatório Técnico AVAC', RAVAC: 'Intervenção e Manutenção AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Intervenção e Verificação Elétrica' };
                 if (!tiposDaOS.length) {
                     cont.innerHTML = '<p class="help-text">Esta OS não tem tipos de trabalho com relatório de especialidade associados.</p>';
                 } else {
@@ -28421,7 +28421,7 @@ async function salvarAdmin(e) {
         // Agrupamento visual dos tipos de trabalho: Incêndio (esquerda) vs Segurança (direita)
         const TIPOS_TRABALHO_GRUPO_INCENDIO = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP'];
         const TIPOS_TRABALHO_GRUPO_SEGURANCA = ['RCCTV', 'RIN', 'RDI'];
-        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI', 'AVAC'];
+        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI', 'AVAC', 'RAVAC', 'RELE', 'RLIM'];
 
         function _sTiposDisponiveis() {
             const tid = _tenantId();
@@ -28434,7 +28434,9 @@ async function salvarAdmin(e) {
             const baseFiltrada = (!admin || !admin.areasNegocio) ? TIPOS_TRABALHO_BASE
                 : admin.areasNegocio.includes('seguranca') ? TIPOS_TRABALHO_BASE
                 : TIPOS_TRABALHO_BASE.filter(t => t.codigo === 'RDI'); // RDI (Declaração de Instalação) é genérico, mantém-se sempre
-            return [...baseFiltrada, ...customs.map(t => ({ codigo: t.codigo, nome: t.nome }))];
+            const nativos = (window.TGSpecialtyCatalog?.available() || []).flatMap(c => c.work.map(([codigo,nome]) => ({codigo,nome,especialidade:c.title})));
+            const codigos = new Set([...baseFiltrada,...nativos].map(t=>t.codigo));
+            return [...baseFiltrada, ...nativos, ...customs.filter(t=>!codigos.has(t.codigo)).map(t => ({ codigo: t.codigo, nome: t.nome }))];
         }
 
         function _tiposTrabalhoGrupoHtml(checkboxClass, selecionados, onchangeAttr) {
@@ -28451,7 +28453,7 @@ async function salvarAdmin(e) {
                 // "sem relatório desenhado ainda" — avisa logo aqui, no sítio onde se escolhem os
                 // tipos de trabalho, para o admin lembrar-se de o configurar.
                 const custom = !codigosBaseSet.has(t.codigo) ? (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t.codigo && c.adminId === _tenantId()) : null;
-                const semRelatorio = custom && !(custom.campos || []).length;
+                const semRelatorio = custom && !(custom.campos || []).length && !window.TGSpecialtyCatalog?.workType(t.codigo);
                 return `<label style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:20px;cursor:pointer;font-size:.85rem;margin-bottom:6px;">
                 <input type="checkbox" class="${checkboxClass}" value="${t.codigo}" ${sel.includes(t.codigo) ? 'checked' : ''} ${onchangeAttr || ''} style="width:auto;" />
                 ${t.nome}
@@ -28476,7 +28478,7 @@ async function salvarAdmin(e) {
                     ` : ''}
                 </div>
                 ` : ''}
-                ${outros.length ? `<div style="margin-top:10px;width:100%;"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.4px;margin-bottom:8px;">Outros</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${outros.map(linha).join('')}</div></div>` : ''}
+                ${[...new Set(outros.map(t=>t.especialidade||'Outros'))].map(grupo=>`<div style="margin-top:10px;width:100%;"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.4px;margin-bottom:8px;">${grupo}</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${outros.filter(t=>(t.especialidade||'Outros')===grupo).map(linha).join('')}</div></div>`).join('')}
             `;
         }
         function _sRenderTiposTrabalho(selecionados) {
@@ -28505,7 +28507,7 @@ async function salvarAdmin(e) {
             const funcCont = document.getElementById('s_func_checkboxes');
             if (!cont || !sel) return;
             const tiposMarcados = tiposCont ? [...tiposCont.querySelectorAll('.s-tipo-trabalho-chk:checked')].map(c => c.value) : [];
-            const precisaRelatorio = tiposMarcados.some(t => TIPOS_ESPECIALIDADE.includes(t));
+            const precisaRelatorio = tiposMarcados.some(t => TIPOS_ESPECIALIDADE.includes(t) || window.TGSpecialtyCatalog?.workType(t));
             const idsAtribuidos = funcCont ? [...funcCont.querySelectorAll('input.s-func-check:checked')].map(c => c.value) : [];
             if (!precisaRelatorio && idsAtribuidos.length <= 1) { cont.style.display = 'none'; return; }
             cont.style.display = 'block';
@@ -28791,7 +28793,7 @@ async function salvarAdmin(e) {
         function _rpRenderListaTipos() {
             document.getElementById('rpPreviewFlutuante')?.classList.remove('open');
             const tid = _tenantId();
-            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid && !(window.TGEquipmentReports?.avacWork && window.TGAVACReport?.isAVAC() && ['Manutenção AC','Instalação AVAC','Recarga de gás','Limpeza de filtros','Diagnóstico AVAC'].includes(t.codigo)));
+            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid && !window.TGSpecialtyCatalog?.nativeCustom(t));
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="rp-editor-scroll" style="height:100%;overflow-y:auto;display:flex;flex-direction:column;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -29467,6 +29469,9 @@ window._relPrefill = function(msg){
 
         // ===== Relatórios de Especialidade (REX/RBI/RSI/RCM/RIE/RCP) =====
         const REPORT_TYPE_DEFS = {
+            RAVAC: { nome: 'Intervenção e Manutenção AVAC', campos: [] },
+            RLIM: { nome: 'Limpeza e Desinfeção', campos: [] },
+            RELE: { nome: 'Intervenção e Verificação Elétrica', campos: [] },
             RDI: { nome: 'Declaração de Instalação', campos: [
                 { id: 'tipo_sistema', label: 'Tipo de sistema instalado', tipo: 'select', opts: ['', 'Alarme de intrusão', 'Videovigilância', 'Controlo de acessos'] },
                 { id: 'norma', label: 'Norma técnica aplicável', tipo: 'text' },
@@ -29901,7 +29906,7 @@ window._relPrefill = function(msg){
 
         async function _verRelatorioEspecialidadeSnapshot(relatorioId, autoImprimir) {
             const r = (dados.relatoriosEspecialidade || []).find(x => x.id === relatorioId);
-            if (r?.tipo === 'AVAC' && window.TGAVACReport?.openForOS) { window.TGAVACReport.openForOS(r.servicoId); return; }
+            if (r?.tipo === 'AVAC' && !r.campos?.htmlSnapshot && window.TGSpecialtyReports) { window.TGSpecialtyReports.open(r.servicoId, 'RAVAC'); return; }
             if (!r || !r.campos) { alert('Este relatório não tem um snapshot guardado para visualizar.'); return; }
 
             // Abre a janela já aqui, ainda dentro do clique do utilizador (síncrono),
@@ -30205,11 +30210,10 @@ window._relPrefill = function(msg){
         async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null) {
             const os = dados.servicos?.find(s => s.id === osId);
             if(!os)return;
-            if(tipo === 'AVAC') {
-                if(!window.TGAVACReport?.openForOS){ alert('O formulário técnico AVAC não está disponível. Atualiza a aplicação.');return; }
+            if (['AVAC','RAVAC','RLIM','RELE'].includes(tipo)) {
+                if (!window.TGSpecialtyReports) { alert('O formulário da especialidade ainda não carregou. Volta a abrir a aplicação.'); return; }
                 _fecharModalGenerico();
-                window.TGAVACReport.openForOS(osId);
-                return;
+                return window.TGSpecialtyReports.open(osId, tipo, onGuardado, equipamentoId);
             }
             const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId);
             equipamentoId=requisito?.equipamentoId || null;

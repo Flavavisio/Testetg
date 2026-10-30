@@ -1,0 +1,305 @@
+<!doctype html><html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>__TITLE__</title><style>
+  :root{
+    --ink:#1c2b2d;
+    --paper:#f7f6f2;
+    --line:#d8d3c4;
+    --accent:#0f6b5c;
+    --accent-soft:#e4efec;
+    --warn:#b3492f;
+    --muted:#6b6a63;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    padding:24px 12px 80px;
+  }
+  .sheet{
+    max-width:900px;
+    margin:0 auto;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+  }
+  header.top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding:22px 28px 18px;
+    border-bottom:2px solid var(--accent);
+  }
+  header.top .brand{
+    font-weight:800;
+    font-size:1.4rem;
+    color:var(--accent);
+    letter-spacing:.5px;
+  }
+  header.top .brand span{
+    display:block;
+    font-size:.62rem;
+    font-weight:600;
+    letter-spacing:1.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  header.top .brand .anepc{
+    margin-top:8px;
+    font-size:.68rem;
+    font-weight:400;
+    letter-spacing:normal;
+    text-transform:none;
+    color:var(--muted);
+  }
+  header.top .titlebox{
+    text-align:right;
+  }
+  header.top .titlebox h1{
+    font-size:1rem;
+    margin:0;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+  }
+  header.top .titlebox p{
+    margin:4px 0 0;
+    font-size:.8rem;
+    color:var(--muted);
+  }
+
+  .meta-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--line);
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .meta-grid .cell{
+    background:var(--card);
+    padding:10px 12px;
+  }
+  .meta-grid .cell.wide{grid-column:span 2;}
+  .meta-grid label{
+    display:block;
+    font-size:.68rem;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .meta-grid input, .meta-grid select{
+    width:100%;
+    border:none;
+    border-bottom:1px solid var(--line);
+    background:transparent;
+    padding:2px 0;
+    font-size:.9rem;
+    font-family:inherit;
+  }
+  .meta-grid input:focus, .meta-grid select:focus{
+    outline:none;
+    border-bottom:1px solid var(--accent);
+  }
+
+  main{padding:8px 24px 24px;}
+
+  .section{
+    margin-top:22px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .section-head{
+    background:var(--accent);
+    color:#fff;
+    padding:10px 16px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:.88rem;
+    font-weight:700;
+    letter-spacing:.3px;
+    text-transform:uppercase;
+  }
+  .section-head .num{
+    background:rgba(255,255,255,.18);
+    border-radius:5px;
+    padding:2px 9px;
+    font-size:.8rem;
+  }
+
+  .config-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px 26px;
+    padding:14px 16px;
+    background:var(--accent-soft);
+    border-bottom:1px solid var(--line);
+  }
+  .config-field{
+    display:flex;
+    flex-direction:column;
+    min-width:120px;
+    flex:1 1 140px;
+  }
+  .config-field label{
+    font-size:.68rem;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:3px;
+    letter-spacing:.3px;
+  }
+  .config-field input, .config-field select{
+    border:none;
+    border-bottom:1px solid #b7c9c4;
+    background:transparent;
+    padding:3px 0;
+    font-size:.88rem;
+    font-family:inherit;
+  }
+  .config-field input:focus, .config-field select:focus{outline:none;border-bottom:1px solid var(--accent);}
+
+  table.checklist{
+    width:100%;
+    border-collapse:collapse;
+  }
+  table.checklist tr{border-top:1px solid var(--line);}
+  table.checklist tr:first-child{border-top:none;}
+  table.checklist td{
+    padding:9px 14px;
+    font-size:.87rem;
+    vertical-align:middle;
+  }
+  table.checklist td.code{
+    width:42px;
+    color:var(--muted);
+    font-weight:700;
+    font-size:.78rem;
+  }
+  table.checklist td.desc{width:auto;}
+  table.checklist td.result{
+    width:190px;
+    white-space:nowrap;
+  }
+
+  .seg{
+    display:inline-flex;
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .seg input{display:none;}
+  .seg label{
+    padding:5px 11px;
+    font-size:.74rem;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--muted);
+    background:#fff;
+    border-right:1px solid var(--line);
+    transition:.15s;
+  }
+  .seg label:last-child{border-right:none;}
+  .seg input:checked + label.ok{background:var(--accent);color:#fff;}
+  .seg input:checked + label.nok{background:var(--warn);color:#fff;}
+  .seg input:checked + label.na{background:#8b8a82;color:#fff;}
+
+  .obs-input{
+    width:100%;
+    border:none;
+    border-bottom:1px dashed var(--line);
+    background:transparent;
+    font-family:inherit;
+    font-size:.82rem;
+    padding:3px 2px;
+  }
+  .obs-input:focus{outline:none;border-bottom:1px solid var(--accent);}
+
+  .final-box{
+    padding:16px;
+  }
+  .final-box textarea{
+    width:100%;
+    min-height:80px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:10px;
+    font-family:inherit;
+    font-size:.86rem;
+    resize:vertical;
+  }
+  .final-box textarea:focus{outline:none;border-color:var(--accent);}
+
+  .signrow{
+    display:flex;
+    gap:20px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .signrow .config-field{flex:1 1 200px;}
+
+  .actions{
+    max-width:900px;
+    margin:18px auto 0;
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    flex-wrap:wrap;
+  }
+  button{
+    font-family:inherit;
+    font-size:.82rem;
+    font-weight:700;
+    letter-spacing:.3px;
+    padding:10px 18px;
+    border-radius:6px;
+    border:1px solid var(--accent);
+    cursor:pointer;
+    transition:.15s;
+  }
+  button.primary{background:var(--accent);color:#fff;}
+  button.primary:hover{background:#0b5748;}
+  button.ghost{background:transparent;color:var(--accent);}
+  button.ghost:hover{background:var(--accent-soft);}
+
+  .status-pill{
+    font-size:.68rem;
+    padding:4px 10px;
+    border-radius:20px;
+    background:rgba(255,255,255,.9);
+    color:var(--ink);
+    display:inline-block;
+    margin-left:auto;
+  }
+
+  @media(max-width:640px){
+    .meta-grid{grid-template-columns:1fr 1fr;}
+    header.top{flex-direction:column;gap:10px;}
+    header.top .titlebox{text-align:left;}
+    table.checklist td.result{width:auto;}
+    table.checklist tr{display:flex;flex-direction:column;padding:6px 0;}
+    table.checklist td{padding:4px 14px;}
+  }
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .actions{display:none;}
+    .sheet{border:none;box-shadow:none;}
+  }
+
+  @media (max-width:700px){
+    table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    input, select, textarea { font-size:16px !important; min-height:38px; }
+    input[type=checkbox], input[type=radio] { min-height:auto; width:20px; height:20px; }
+    .table-wrap, .print-page, [class*="wrap"] { -webkit-overflow-scrolling:touch; }
+    .control-bar { position:sticky; top:0; z-index:50; }
+  }
+
+.meta-grid .wide{grid-column:span 2}.config-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.config-row .config-field{width:auto}.sheet{max-width:900px}.config-field{min-width:0}.config-field input,.config-field textarea{font:16px system-ui;width:100%;min-height:40px;padding:7px;border:1px solid var(--line);border-radius:5px}.config-field textarea{min-height:76px;resize:vertical}.section{break-inside:auto}.section-head{break-after:avoid}.checklist tr{break-inside:avoid}.seg{position:relative}.seg input{display:block!important;position:absolute;opacity:0;width:1px;height:1px}.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:-2px}.seg label{font-size:12px;padding:9px 8px;white-space:nowrap}.native-notes{font-size:12px;color:var(--muted);line-height:1.5;padding:12px 24px}.native-footer{padding:14px;display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:#fff;border-top:2px solid var(--accent);z-index:10}.native-footer button{min-height:44px}#native-status{color:#9b331f;margin:8px 24px;font-size:14px}.native-photos{display:grid;grid-template-columns:1fr 1fr;gap:12px}.native-photos img{max-width:100%;max-height:230px}.native-photos figure{margin:0;break-inside:avoid}.signrow canvas{height:90px;width:100%;border:1px dashed var(--line);touch-action:none;background:#fff}.brand .empresa-fiscal{font:500 12px/1.45 Arial;color:#374151;margin:4px 0}.native-print{display:none}.checklist tr[data-invalid]{outline:2px solid #b3492f}.section h2{font:inherit;margin:0}.native-result{display:grid;grid-template-columns:1fr 1fr;gap:12px}.result-select{font:16px system-ui;padding:8px;width:100%}[hidden]{display:none!important}
+@media(max-width:640px){.config-row{grid-template-columns:1fr}body{padding:8px 4px 70px}.sheet{border-radius:7px}header.top{padding:16px}.meta-grid{grid-template-columns:1fr 1fr}.meta-grid .cell{padding:8px}.meta-grid label{font-size:11px}.meta-grid input{font-size:16px;min-height:38px;width:100%}.section{margin:16px 10px}.config-row{padding:12px;gap:12px}.config-field{flex:1 1 100%}table.checklist{display:table;width:100%;overflow:visible}table.checklist tr{display:flex;flex-wrap:wrap;flex-direction:row;gap:4px;padding:9px 0}table.checklist td.code{width:36px;padding:5px 8px}table.checklist td.desc{flex:1;min-width:180px;padding:5px 8px}table.checklist td.result{width:100%;padding:3px 8px 7px 44px}.seg{display:flex;width:100%}.seg label{flex:1;text-align:center;padding:10px 5px}.native-footer{padding:8px;gap:7px}.native-footer button{padding:10px 9px;font-size:12px;flex:1}.native-result{grid-template-columns:1fr}.native-notes{padding:10px 14px}.final-box{padding:12px}.native-photos{grid-template-columns:1fr}.titlebox h1{font-size:15px}}
+@media print{@page{size:A4;margin:12mm}body{padding:0;color:#182629;background:white}.sheet{max-width:none;border:0;border-radius:0}.native-footer,.native-screen,#native-status,.actions,button,input[type=file]{display:none!important}.native-print{display:block}header.top{padding:10px 14px}.meta-grid input,.config-field input,.config-field textarea,.final-box textarea{font-size:11px;min-height:0;border:0;padding:3px;background:transparent}.config-field{flex:1 1 170px}.section{margin:12px 10px}.section-head{font-size:13px}.checklist td{font-size:10px}.seg label{font-size:10px;padding:5px}.signrow img{max-height:75px;max-width:100%}.native-photos img{max-height:210px}.obs-input{font-size:10px}.native-notes{font-size:9px}}
+</style></head><body data-native-model="__TYPE__" data-native-version="2"><div class="sheet"><header class="top"><div class="brand"><img id="native-logo" class="rel-logo" alt="Logótipo" hidden style="max-height:48px;max-width:170px;object-fit:contain"><div class="empresa-nome" id="native-company"></div><div class="empresa-fiscal" id="native-fiscal"></div><div style="font-size:11px" id="native-company-nif"></div></div><div class="titlebox"><h1>Relatório dos Serviços de __TRADE__</h1><p id="modeloNome">__SUBTITLE__</p></div></header><div class="meta-grid">__META__</div><p class="native-notes">Modelo de especialidade incluído na OS. Regista os resultados de cada verificação; usa N/A quando não se aplica. As medições ficam em branco até serem registadas pelo técnico.</p><p class="native-notes" id="native-briefing" hidden><strong>Trabalho previsto na OS: </strong><span id="native-os-description"></span></p><main id="sections">__SECTIONS__</main><div class="section"><div class="section-head"><span class="num">__FINAL_NUMBER__</span> Considerações finais e entrega</div><div class="final-box"><div class="config-row"><label class="config-field">Trabalhos efetivamente realizados<textarea id="native-work" rows="3"></textarea></label><label class="config-field">Materiais / peças e referências<textarea id="native-materials" rows="3"></textarea></label></div><label class="config-field">Observações, anomalias, limitações e recomendações<textarea id="native-observations" rows="3"></textarea></label><div class="native-result"><label class="config-field">Resultado da intervenção<select class="result-select" id="native-result">__RESULTS__</select></label><label class="config-field">Próxima intervenção / manutenção, quando definida<input type="date" id="native-next-date"></label></div><h3 style="font-size:14px">Fotografias da intervenção</h3><label class="config-field native-screen">Adicionar até quatro fotografias<input type="file" id="native-photo-file" accept="image/jpeg,image/png,image/webp" multiple></label><div id="native-photos" class="native-photos"></div><div class="signrow"><div class="config-field"><label>Serviço efetuado por (técnico responsável)</label><canvas id="sign_tecnico" width="600" height="150" aria-label="Assinatura do técnico"></canvas><button type="button" class="ghost native-screen" data-clear-sign="tecnico">Limpar assinatura</button><input id="sign_tecnico_nome" type="text" aria-label="Nome do técnico"><input type="hidden" id="native-sign-tecnico"></div><div class="config-field"><label>Tomei conhecimento (cliente / representante)</label><canvas id="sign_cliente" width="600" height="150" aria-label="Assinatura do cliente"></canvas><button type="button" class="ghost native-screen" data-clear-sign="cliente">Limpar assinatura</button><input id="sign_cliente_nome" type="text" aria-label="Nome do cliente / representante"><input type="hidden" id="native-sign-cliente"><label>Receção pelo cliente<select class="result-select" id="native-client-status"><option value="">Escolher…</option><option>Assinado</option><option>Cliente ausente</option><option>Cliente não assinou</option></select></label></div></div></div></div><p class="native-notes">__NOTE__</p></div><p id="native-status" role="status" aria-live="polite"></p><div class="native-footer native-screen"><button type="button" class="ghost" id="native-print">Imprimir / PDF</button><button type="button" class="ghost" id="_relBtnRascunho">Guardar rascunho</button><button type="button" class="primary" id="_relBtnConcluir">Concluir relatório</button></div><script>__RUNTIME__</script></body></html>

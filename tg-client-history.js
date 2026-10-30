@@ -29,7 +29,7 @@
         if(s.assist) (data.assistencias||[]).filter(belongs).forEach(r=>add('assist',r,'Assistência '+(r.numero||'—'),r.assunto||r.descricao,r.dataCriacao,r.estado,'assist'));
         if(s.obras) (data.obras||[]).filter(belongs).forEach(r=>add('obra',r,r.nome||'Obra',r.observacoes,r.dataConclusao||r.dataCriacao||r.dataInicioPrevista,r.estado,'obra'));
         if(s.contratos) (data.contratos||[]).filter(belongs).forEach(r=>add('contrato',r,'Contrato '+(r.numero||'—'),r.nome||r.observacoes,r.dataCriacao,r.ativo===false?'Inativo':'Ativo','contrato'));
-        (data.relatoriosEspecialidade||[]).filter(belongs).filter(r=>String(r.tipo||'').startsWith('CUSTOM_')||r.tipo==='AVAC'||s.especialidade).forEach(r=>add('relatorio',r,(String(r.tipo||'').startsWith('CUSTOM_')?'Relatório personalizado':'Relatório de especialidade')+' '+(r.numeroDocumento||''),r.tipo,r.data||r.criadoEm,r.rascunho?'Rascunho':'Emitido',r.rascunho?'':'relatorio'));
+        (data.relatoriosEspecialidade||[]).filter(belongs).filter(r=>String(r.tipo||'').startsWith('CUSTOM_')||['AVAC','RAVAC','RLIM','RELE'].includes(r.tipo)||s.especialidade).forEach(r=>add('relatorio',r,(String(r.tipo||'').startsWith('CUSTOM_')?'Relatório personalizado':'Relatório de especialidade')+' '+(r.numeroDocumento||''),r.tipo,r.data||r.criadoEm,r.rascunho?'Rascunho':'Emitido',r.rascunho?'':'relatorio'));
         if(s.crm) {
             const opportunities=(data.oportunidades||[]).filter(belongs), ids=new Set(opportunities.map(r=>r.id));
             opportunities.forEach(r=>add('crm',r,r.nome||'Oportunidade comercial',r.descricao,r.dataFecho||r.dataCriacao,r.estado,'crm'));

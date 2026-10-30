@@ -1452,30 +1452,30 @@ function _assistEstado(value) {
             avac: {
                 label: 'AVAC / Climatização',
                 servicos: [
-                    { v: 'Manutenção AC', l: 'Manutenção de ar condicionado', relatorio: false },
-                    { v: 'Instalação AVAC', l: 'Instalação', relatorio: false },
-                    { v: 'Recarga de gás', l: 'Recarga de gás refrigerante', relatorio: false },
-                    { v: 'Limpeza de filtros', l: 'Limpeza de filtros/condutas', relatorio: false },
-                    { v: 'Diagnóstico AVAC', l: 'Diagnóstico de avaria', relatorio: false },
+                    { v: 'Manutenção AC', l: 'Manutenção de ar condicionado', relatorio: true },
+                    { v: 'Instalação AVAC', l: 'Instalação', relatorio: true },
+                    { v: 'Recarga de gás', l: 'Recarga de gás refrigerante', relatorio: true },
+                    { v: 'Limpeza de filtros', l: 'Limpeza de filtros/condutas', relatorio: true },
+                    { v: 'Diagnóstico AVAC', l: 'Diagnóstico de avaria', relatorio: true },
                 ],
             },
             eletricidade: {
                 label: 'Eletricidade',
                 servicos: [
-                    { v: 'Instalação elétrica', l: 'Instalação elétrica', relatorio: false },
-                    { v: 'Certificação elétrica', l: 'Certificação / vistoria', relatorio: false },
-                    { v: 'Quadro elétrico', l: 'Quadro elétrico', relatorio: false },
-                    { v: 'Iluminação', l: 'Iluminação', relatorio: false },
-                    { v: 'Avaria elétrica', l: 'Avaria elétrica', relatorio: false },
+                    { v: 'Instalação elétrica', l: 'Instalação elétrica', relatorio: true },
+                    { v: 'Certificação elétrica', l: 'Certificação / vistoria', relatorio: true },
+                    { v: 'Quadro elétrico', l: 'Quadro elétrico', relatorio: true },
+                    { v: 'Iluminação', l: 'Iluminação', relatorio: true },
+                    { v: 'Avaria elétrica', l: 'Avaria elétrica', relatorio: true },
                 ],
             },
             limpeza: {
                 label: 'Limpeza',
                 servicos: [
-                    { v: 'Limpeza regular', l: 'Limpeza regular', relatorio: false },
-                    { v: 'Limpeza profunda', l: 'Limpeza profunda', relatorio: false },
-                    { v: 'Limpeza pós-obra', l: 'Limpeza pós-obra', relatorio: false },
-                    { v: 'Desinfeção', l: 'Desinfeção', relatorio: false },
+                    { v: 'Limpeza regular', l: 'Limpeza regular', relatorio: true },
+                    { v: 'Limpeza profunda', l: 'Limpeza profunda', relatorio: true },
+                    { v: 'Limpeza pós-obra', l: 'Limpeza pós-obra', relatorio: true },
+                    { v: 'Desinfeção', l: 'Desinfeção', relatorio: true },
                 ],
             },
             elevadores: {
@@ -5653,7 +5653,7 @@ function _assistEstado(value) {
         function _wsRelatoriosHtml(clienteId) {
             const locaisCliente = (dados.locais || []).filter(l => l.clienteId === clienteId);
             const nomeLocal = localId => localId ? (locaisCliente.find(l => l.id === localId)?.nome || 'Local') : 'Sede';
-            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação' };
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
             const relCliente = (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === clienteId).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
             const cabecalho = `
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -5680,7 +5680,7 @@ function _assistEstado(value) {
             const em30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
             const locaisCliente = (dados.locais || []).filter(l => l.clienteId === clienteId);
             const nomeLocal = localId => localId ? (locaisCliente.find(l => l.id === localId)?.nome || 'Local') : 'Sede';
-            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação' };
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
             const linhas = contratosCliente.map(c => {
                 let cor = ['#475569', '#f1f5f9'], estado = 'Sem validade definida';
                 if (c.validadeContrato) {
@@ -5881,7 +5881,7 @@ function _assistEstado(value) {
             const localId = chave === 'sede' ? null : chave;
             const osLocal = (dados.servicos || []).filter(s => s.clienteId === clienteId && (s.localId || null) === localId && (s.data || '') >= desde).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
             const relLocal = (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === clienteId && (r.localId || null) === localId && !r.rascunho).sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação' };
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância', RIN: 'Deteção de Intrusão', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
             if (!osLocal.length && !relLocal.length) { painel.innerHTML = '<p class="help-text" style="margin:6px 0 0;">Sem intervenções nem relatórios registados aqui (últimos 12 meses).</p>'; painel.dataset.carregado = '1'; return; }
             // Mesmo estilo de linha da aba "Ordens de Serviço" (título a negrito, data por baixo
             // a cinza) — antes estava tudo numa única linha pequena, inconsistente com o resto.
@@ -6421,7 +6421,7 @@ function _assistEstado(value) {
             if (aba === 'relatorios') {
                 const tiposDaOS = window.TGEquipmentReports?.requirements(os) || (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t)).map(tipo=>({tipo,equipamentoId:null}));
                 const relatoriosDaOS = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId);
-                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', AVAC: 'Relatório Técnico AVAC' };
+                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', AVAC: 'Relatório Técnico AVAC', RAVAC: 'Intervenção e Manutenção AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Intervenção e Verificação Elétrica' };
                 if (!tiposDaOS.length) {
                     cont.innerHTML = '<p class="help-text">Esta OS não tem tipos de trabalho com relatório de especialidade associados.</p>';
                 } else {
@@ -6696,7 +6696,7 @@ function _assistEstado(value) {
             const relatoriosFeitos = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId && !r.rascunho).sort((a, b) => (a.tipo || '').localeCompare(b.tipo || ''));
             if (relatoriosFeitos.length) {
                 if (y > 250) { doc.addPage(); y = 20; }
-                const _nomesRel = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação' };
+                const _nomesRel = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
                 doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Relatórios de especialidade realizados', 14, y); y += 4;
                 doc.autoTable({
                     startY: y,
@@ -28421,7 +28421,7 @@ async function salvarAdmin(e) {
         // Agrupamento visual dos tipos de trabalho: Incêndio (esquerda) vs Segurança (direita)
         const TIPOS_TRABALHO_GRUPO_INCENDIO = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP'];
         const TIPOS_TRABALHO_GRUPO_SEGURANCA = ['RCCTV', 'RIN', 'RDI'];
-        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI', 'AVAC'];
+        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI', 'AVAC', 'RAVAC', 'RELE', 'RLIM'];
 
         function _sTiposDisponiveis() {
             const tid = _tenantId();
@@ -28434,7 +28434,9 @@ async function salvarAdmin(e) {
             const baseFiltrada = (!admin || !admin.areasNegocio) ? TIPOS_TRABALHO_BASE
                 : admin.areasNegocio.includes('seguranca') ? TIPOS_TRABALHO_BASE
                 : TIPOS_TRABALHO_BASE.filter(t => t.codigo === 'RDI'); // RDI (Declaração de Instalação) é genérico, mantém-se sempre
-            return [...baseFiltrada, ...customs.map(t => ({ codigo: t.codigo, nome: t.nome }))];
+            const nativos = (window.TGSpecialtyCatalog?.available() || []).flatMap(c => c.work.map(([codigo,nome]) => ({codigo,nome,especialidade:c.title})));
+            const codigos = new Set([...baseFiltrada,...nativos].map(t=>t.codigo));
+            return [...baseFiltrada, ...nativos, ...customs.filter(t=>!codigos.has(t.codigo)).map(t => ({ codigo: t.codigo, nome: t.nome }))];
         }
 
         function _tiposTrabalhoGrupoHtml(checkboxClass, selecionados, onchangeAttr) {
@@ -28451,7 +28453,7 @@ async function salvarAdmin(e) {
                 // "sem relatório desenhado ainda" — avisa logo aqui, no sítio onde se escolhem os
                 // tipos de trabalho, para o admin lembrar-se de o configurar.
                 const custom = !codigosBaseSet.has(t.codigo) ? (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t.codigo && c.adminId === _tenantId()) : null;
-                const semRelatorio = custom && !(custom.campos || []).length;
+                const semRelatorio = custom && !(custom.campos || []).length && !window.TGSpecialtyCatalog?.workType(t.codigo);
                 return `<label style="display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:20px;cursor:pointer;font-size:.85rem;margin-bottom:6px;">
                 <input type="checkbox" class="${checkboxClass}" value="${t.codigo}" ${sel.includes(t.codigo) ? 'checked' : ''} ${onchangeAttr || ''} style="width:auto;" />
                 ${t.nome}
@@ -28476,7 +28478,7 @@ async function salvarAdmin(e) {
                     ` : ''}
                 </div>
                 ` : ''}
-                ${outros.length ? `<div style="margin-top:10px;width:100%;"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.4px;margin-bottom:8px;">Outros</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${outros.map(linha).join('')}</div></div>` : ''}
+                ${[...new Set(outros.map(t=>t.especialidade||'Outros'))].map(grupo=>`<div style="margin-top:10px;width:100%;"><div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.4px;margin-bottom:8px;">${grupo}</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${outros.filter(t=>(t.especialidade||'Outros')===grupo).map(linha).join('')}</div></div>`).join('')}
             `;
         }
         function _sRenderTiposTrabalho(selecionados) {
@@ -28505,7 +28507,7 @@ async function salvarAdmin(e) {
             const funcCont = document.getElementById('s_func_checkboxes');
             if (!cont || !sel) return;
             const tiposMarcados = tiposCont ? [...tiposCont.querySelectorAll('.s-tipo-trabalho-chk:checked')].map(c => c.value) : [];
-            const precisaRelatorio = tiposMarcados.some(t => TIPOS_ESPECIALIDADE.includes(t));
+            const precisaRelatorio = tiposMarcados.some(t => TIPOS_ESPECIALIDADE.includes(t) || window.TGSpecialtyCatalog?.workType(t));
             const idsAtribuidos = funcCont ? [...funcCont.querySelectorAll('input.s-func-check:checked')].map(c => c.value) : [];
             if (!precisaRelatorio && idsAtribuidos.length <= 1) { cont.style.display = 'none'; return; }
             cont.style.display = 'block';
@@ -28791,7 +28793,7 @@ async function salvarAdmin(e) {
         function _rpRenderListaTipos() {
             document.getElementById('rpPreviewFlutuante')?.classList.remove('open');
             const tid = _tenantId();
-            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid && !(window.TGEquipmentReports?.avacWork && window.TGAVACReport?.isAVAC() && ['Manutenção AC','Instalação AVAC','Recarga de gás','Limpeza de filtros','Diagnóstico AVAC'].includes(t.codigo)));
+            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid && !window.TGSpecialtyCatalog?.nativeCustom(t));
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="rp-editor-scroll" style="height:100%;overflow-y:auto;display:flex;flex-direction:column;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -29467,6 +29469,9 @@ window._relPrefill = function(msg){
 
         // ===== Relatórios de Especialidade (REX/RBI/RSI/RCM/RIE/RCP) =====
         const REPORT_TYPE_DEFS = {
+            RAVAC: { nome: 'Intervenção e Manutenção AVAC', campos: [] },
+            RLIM: { nome: 'Limpeza e Desinfeção', campos: [] },
+            RELE: { nome: 'Intervenção e Verificação Elétrica', campos: [] },
             RDI: { nome: 'Declaração de Instalação', campos: [
                 { id: 'tipo_sistema', label: 'Tipo de sistema instalado', tipo: 'select', opts: ['', 'Alarme de intrusão', 'Videovigilância', 'Controlo de acessos'] },
                 { id: 'norma', label: 'Norma técnica aplicável', tipo: 'text' },
@@ -29763,7 +29768,7 @@ window._relPrefill = function(msg){
             const cliente = dados.clientes?.find(c => c.id === clienteId);
             if (!cliente) { alert('Cliente não encontrado.'); return; }
 
-            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio (SADI)', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância (CCTV)', RIN: 'Deteção de Intrusão / Alarme', RDI: 'Declaração de Instalação' };
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio (SADI)', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância (CCTV)', RIN: 'Deteção de Intrusão / Alarme', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
 
             const osCliente = (dados.servicos || []).filter(s => s.clienteId === clienteId && s.status === 'concluído' && (s.data || '') >= desde);
             const relatorios = (dados.relatoriosEspecialidade || []).filter(r => r.clienteId === clienteId && (r.data || '') >= desde);
@@ -29901,7 +29906,7 @@ window._relPrefill = function(msg){
 
         async function _verRelatorioEspecialidadeSnapshot(relatorioId, autoImprimir) {
             const r = (dados.relatoriosEspecialidade || []).find(x => x.id === relatorioId);
-            if (r?.tipo === 'AVAC' && window.TGAVACReport?.openForOS) { window.TGAVACReport.openForOS(r.servicoId); return; }
+            if (r?.tipo === 'AVAC' && !r.campos?.htmlSnapshot && window.TGSpecialtyReports) { window.TGSpecialtyReports.open(r.servicoId, 'RAVAC'); return; }
             if (!r || !r.campos) { alert('Este relatório não tem um snapshot guardado para visualizar.'); return; }
 
             // Abre a janela já aqui, ainda dentro do clique do utilizador (síncrono),
@@ -29951,7 +29956,7 @@ window._relPrefill = function(msg){
             const oss = (dados.servicos || []).filter(s => s.adminId === cli.adminId && s.clienteId === clienteId && (s.status !== 'concluído' || (s.data || '') >= desde));
             const folhas = (dados.folhasObra || []).filter(f => oss.some(s => s.id === f.servicoId) && (!comoCliente || _portalFolhaVisivel(f, cli)));
             const locaisCliente = (dados.locais || []).filter(l => l.adminId === cli.adminId && l.clienteId === clienteId);
-            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio (SADI)', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância (CCTV)', RIN: 'Deteção de Intrusão / Alarme', RDI: 'Declaração de Instalação' };
+            const nomesRelatorio = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Central de Incêndio (SADI)', RCM: 'Central de Monóxido', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-Fogo', RCCTV: 'Videovigilância (CCTV)', RIN: 'Deteção de Intrusão / Alarme', RDI: 'Declaração de Instalação', RAVAC: 'AVAC', RLIM: 'Limpeza e Desinfeção', RELE: 'Eletricidade' };
             const grupos = [{ ...cli, id: '', nome: 'Sede' }, ...locaisCliente];
 
             let h = '';
@@ -30205,12 +30210,11 @@ window._relPrefill = function(msg){
         async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null) {
             const os = dados.servicos?.find(s => s.id === osId);
             if(!os)return;
-            if(tipo === 'AVAC') {
-                if(!window.TGAVACReport?.openForOS){ alert('O formulário técnico AVAC não está disponível. Atualiza a aplicação.');return; }
-                _fecharModalGenerico();
-                window.TGAVACReport.openForOS(osId);
-                return;
-            }
+            tipo = tipo === 'AVAC' ? 'RAVAC' : tipo;
+            const nativeReport = ['RAVAC','RLIM','RELE'].includes(tipo);
+            const nativeContext = nativeReport ? window.TGNativeReportModels?.guard(osId,tipo) : null;
+            if (nativeReport && !nativeContext) { alert('O relatório exige acesso a esta OS, licença válida e a área de negócio correspondente.'); return; }
+            const nativeIdentity = nativeReport ? JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role]) : '';
             const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId);
             equipamentoId=requisito?.equipamentoId || null;
             if(Array.isArray(os.planoManutencao?.relatoriosEquipamentos) && !requisito){alert('Este relatório não está associado a um equipamento desta OS.');return;}
@@ -30225,7 +30229,7 @@ window._relPrefill = function(msg){
             }
             const cliente = dados.clientes?.find(c => c.id === os.clienteId);
             const def = REPORT_TYPE_DEFS[tipo];
-            let template = REPORT_TEMPLATES[tipo];
+            let template = nativeReport ? window.TGNativeReportModels.templateFor(os,tipo) : REPORT_TEMPLATES[tipo];
             // Se não é um tipo fixo (REX, RBI, etc.), procura um tipo de trabalho personalizado
             // criado pelo admin com esse código, e gera o formulário na hora a partir dos campos
             // que ele próprio definiu em "Relatórios personalizados por tipo".
@@ -30282,7 +30286,8 @@ window._relPrefill = function(msg){
             const rascunhoExistente = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
             let usouRascunho = false;
             let estadoRexRestaurar = null;
-            if (rascunhoExistente) {
+            const nativeDraftCompatible = !nativeReport || (rascunhoExistente?.campos?.modeloNativo === 2 && JSON.stringify(rascunhoExistente.campos.estadoNativo?.modelKeys) === JSON.stringify(window.TGNativeReportModels.selection(os,tipo)));
+            if (rascunhoExistente && nativeDraftCompatible) {
                 if (rascunhoExistente.campos?.estadoRex) {
                     // REX: o modelo continua a carregar em branco (precisa dos scripts a correr
                     // normalmente); o estado guardado é reenviado a seguir, já com o iframe pronto.
@@ -30305,7 +30310,7 @@ window._relPrefill = function(msg){
             // com tudo a funcionar (editável, assinaturas em branco e prontas a desenhar).
             const localAtualRel = os.localId || null;
             let camposParaRestaurar = null;
-            if (!usouRascunho) {
+            if (!usouRascunho && !nativeReport) {
                 // 1ª tentativa: usa o localId guardado no próprio relatório (fiável, não depende de
                 // a OS antiga ainda estar carregada em memória — é a forma correta a partir de agora).
                 let relatorioAnteriorConcluido = os.clienteId
@@ -30439,6 +30444,22 @@ window._relPrefill = function(msg){
                 certificadoraLogo: adminRec?.certificadoraLogo || '',
                 tecnicoNome: usuarioLogado?.nome || obterNomeFuncionario(os.funcionarioId) || ''
             };
+            if (nativeReport) {
+                const site = nativeContext.local || nativeContext.customer;
+                initMsg.osNumero = os.numeroRegisto || os.id;
+                initMsg.osDescricao = os.descricao || '';
+                initMsg.instalacaoNome = nativeContext.local?.nome || 'Sede';
+                initMsg.morada = os.morada || site.morada || site.endereco || '';
+                initMsg.local = initMsg.morada;
+                initMsg.numeroPorta = os.numeroPorta || site.numeroPorta || '';
+                initMsg.codigoPostal = os.codigoPostal || site.codigoPostal || '';
+                initMsg.localidade = os.cidade || site.cidade || site.localidade || '';
+                const nativeEquipment = (dados.equipamentos || []).filter(e=>e.adminId===os.adminId && e.clienteId===os.clienteId && (e.localId||null)===(os.localId||null));
+                const matchingNativeEquipment = nativeEquipment.filter(e=>e.fichaTecnica?.relatorioEspecialidade===tipo);
+                initMsg.equipamento = equipamentoId ? nativeEquipment.find(e=>e.id===equipamentoId) : (matchingNativeEquipment.length===1 ? matchingNativeEquipment[0] : null);
+                initMsg.nativeRestoreState = rascunhoExistente?.campos?.estadoNativo || null;
+                initMsg.legacyValues = !rascunhoExistente?.campos?.modeloNativo ? rascunhoExistente?.campos?.avac || null : null;
+            }
             if (!usouRascunho) setTimeout(() => {
                 iframe.contentWindow.postMessage(initMsg, '*');
                 if (estadoRexRestaurar) {
@@ -30523,9 +30544,26 @@ window._relPrefill = function(msg){
                 iframe.contentWindow.postMessage({ type: 'permissao', podeAssinar: podeAssinarRelatorio }, '*');
             }, 150);
 
+            let nativeSaving = false;
             async function onMessage(ev) {
                 if(ev.source!==iframe.contentWindow)return;
                 const msg = {...(ev.data || {})};
+                if (nativeReport && ['relatorioEspecialidadeRascunho','relatorioEspecialidadeConcluido'].includes(msg.type)) {
+                    if (nativeSaving) return;
+                    if (nativeIdentity !== JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role])) return;
+                    nativeSaving = true;
+                    try {
+                        const saved = await window.TGNativeReportModels.persist(osId,tipo,equipamentoId,msg);
+                        if (!saved) return;
+                        window.removeEventListener('message', onMessage);
+                        overlay.classList.remove('open');
+                        if (typeof renderizarTudo === 'function') renderizarTudo();
+                        if (typeof onGuardado === 'function') onGuardado();
+                    } catch(error) {
+                        iframe.contentWindow.postMessage({type:'nativeSaveError',message:'Não foi possível guardar: '+error.message},'*');
+                    } finally { nativeSaving = false; }
+                    return;
+                }
                 if(equipamentoId && msg.html && !msg.html.includes('data-tg-equipment-report')){
                     const heading='<div data-tg-equipment-report="'+escapeHtmlSimples(equipamentoId)+'" style="padding:12px;border-bottom:1px solid #ccc;font-weight:bold">Equipamento: '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId)+'</div>';
                     msg.html=msg.html.replace(/(<body[^>]*>)/i,'$1'+heading);

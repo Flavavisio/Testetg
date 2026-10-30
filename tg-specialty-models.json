@@ -1,0 +1,842 @@
+{
+  "RAVAC": {
+    "Manutenção AC": [
+      {
+        "title": "Identificação do equipamento",
+        "fields": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Localização",
+          "Potência nominal (kW)"
+        ],
+        "checks": [
+          "Identificação e acessibilidade do equipamento verificadas.",
+          "Estado exterior, fixações, corrosão e isolamento verificados."
+        ],
+        "required": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série"
+        ]
+      },
+      {
+        "title": "Unidades, filtros e circuito de ar",
+        "fields": [
+          "Tipo / estado dos filtros",
+          "Filtros ou componentes substituídos"
+        ],
+        "checks": [
+          "Filtros inspecionados e limpeza / substituição registada.",
+          "Baterias e permutadores inspecionados e limpos quando aplicável.",
+          "Ventiladores, turbinas e rolamentos verificados.",
+          "Grelhas e caudal de ar verificados.",
+          "Ruídos e vibrações anormais verificados."
+        ]
+      },
+      {
+        "title": "Condensados, eletricidade e comando",
+        "fields": [
+          "Tensão medida (V)",
+          "Corrente medida (A)",
+          "Temperatura de retorno (°C)",
+          "Temperatura de insuflação (°C)",
+          "Instrumento / identificação"
+        ],
+        "checks": [
+          "Tabuleiro e drenagem de condensados verificados.",
+          "Bomba de condensados e descarga testadas quando aplicável.",
+          "Ligações, cablagem e proteções elétricas verificadas.",
+          "Comandos, termóstatos e modos de funcionamento testados.",
+          "Teste final de funcionamento realizado e resultado registado."
+        ]
+      },
+      {
+        "title": "Plano de manutenção",
+        "fields": [
+          "Referência / versão do plano, quando aplicável",
+          "Tarefas previstas / desvios",
+          "Próxima manutenção conforme plano"
+        ],
+        "checks": [
+          "Execução comparada com as tarefas previstas no plano, quando aplicável.",
+          "Anomalias, limitações e recomendações comunicadas ao responsável."
+        ]
+      }
+    ],
+    "Instalação AVAC": [
+      {
+        "title": "Equipamento e local de instalação",
+        "fields": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Localização",
+          "Potência nominal (kW)",
+          "Refrigerante / carga de fábrica (se aplicável)"
+        ],
+        "checks": [
+          "Adequação do local e acessos de manutenção verificada.",
+          "Suportes, fixações e antivibráticos verificados.",
+          "Distâncias e instruções de montagem do fabricante verificadas."
+        ],
+        "required": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série"
+        ]
+      },
+      {
+        "title": "Montagem e ligações",
+        "fields": [
+          "Tubagem / diâmetros / comprimento",
+          "Desnível e isolamento aplicado",
+          "Alimentação / cabo / proteção elétrica",
+          "Drenagem de condensados"
+        ],
+        "checks": [
+          "Ligações frigoríficas executadas e identificadas quando aplicável.",
+          "Isolamento da tubagem e proteção exterior verificados.",
+          "Alimentação, terra e proteções verificadas.",
+          "Inclinação e escoamento dos condensados verificados."
+        ]
+      },
+      {
+        "title": "Ensaios e colocação em serviço",
+        "fields": [
+          "Ensaio de estanquidade — meio, pressão e duração",
+          "Resultado do ensaio de estanquidade",
+          "Vácuo — unidade, valor final e estabilidade",
+          "Tensão medida (V)",
+          "Corrente medida (A)",
+          "Temperaturas de retorno / insuflação (°C)",
+          "Instrumentos utilizados"
+        ],
+        "checks": [
+          "Ensaios de estanquidade e vácuo registados quando aplicáveis.",
+          "Ausência de fugas verificada pelo método registado.",
+          "Arranque e modos de funcionamento testados.",
+          "Comandos e dispositivos de segurança testados.",
+          "Funcionamento final e descarga de condensados verificados."
+        ]
+      },
+      {
+        "title": "Entrega da instalação",
+        "fields": [
+          "Documentação / manuais entregues",
+          "Certificação da empresa e do técnico, quando aplicável",
+          "Intervenção no refrigerante / referência da ficha, quando aplicável"
+        ],
+        "checks": [
+          "Instruções de utilização e manutenção transmitidas ao cliente.",
+          "Equipamento e instalação entregues com anomalias / pendências identificadas."
+        ]
+      }
+    ],
+    "Recarga de gás": [
+      {
+        "title": "Equipamento e circuito frigorífico",
+        "fields": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Localização",
+          "Identificação do circuito",
+          "Refrigerante — designação",
+          "Carga total do equipamento (kg)"
+        ],
+        "checks": [
+          "Equipamento, circuito e refrigerante identificados.",
+          "Necessidade e motivo da intervenção identificados.",
+          "Compatibilidade do refrigerante e instruções do fabricante verificadas."
+        ],
+        "required": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Refrigerante — designação",
+          "Carga total do equipamento (kg)"
+        ]
+      },
+      {
+        "title": "Deteção e reparação de fugas",
+        "fields": [
+          "Motivo da perda / intervenção",
+          "Data, método e instrumento de deteção de fugas",
+          "Resultado e localização das fugas",
+          "Reparações efetuadas",
+          "Ensaio após reparação — método, data e resultado",
+          "Verificação posterior — data prevista / por confirmar"
+        ],
+        "checks": [
+          "Deteção de fugas realizada ou impossibilidade justificada.",
+          "Fugas detetadas identificadas e medidas de reparação registadas.",
+          "Ensaio após reparação registado quando aplicável.",
+          "Necessidade de verificação posterior avaliada pelo técnico habilitado."
+        ]
+      },
+      {
+        "title": "Registo de refrigerante",
+        "fields": [
+          "Data da intervenção com refrigerante",
+          "Quantidade adicionada (kg)",
+          "Quantidade recuperada (kg)",
+          "Origem: virgem / reciclado / valorizado / sem adição",
+          "Entidade de reciclagem / valorização e certificado, se aplicável",
+          "Destino do refrigerante recuperado",
+          "GWP declarado e fonte",
+          "Identificação / certificado da empresa",
+          "Identificação / certificado do técnico"
+        ],
+        "checks": [
+          "Quantidades adicionadas e recuperadas registadas, incluindo zero quando verificado.",
+          "Recuperação e destino do refrigerante registados quando aplicável.",
+          "Certificações e identificação dos intervenientes registadas.",
+          "Obrigações de registo e conservação avaliadas para esta intervenção."
+        ],
+        "required": [
+          "Data da intervenção com refrigerante",
+          "Quantidade adicionada (kg)",
+          "Quantidade recuperada (kg)",
+          "Origem: virgem / reciclado / valorizado / sem adição",
+          "Identificação / certificado da empresa",
+          "Identificação / certificado do técnico"
+        ]
+      },
+      {
+        "title": "Ensaios finais",
+        "fields": [
+          "Pressão de baixa / alta — valor e unidade",
+          "Temperatura de retorno / insuflação (°C)",
+          "Corrente medida (A)",
+          "Instrumentos e condições do ensaio",
+          "Controlo periódico de fugas — aplicável / não aplicável / por confirmar"
+        ],
+        "checks": [
+          "Estanquidade final e funcionamento verificados.",
+          "Resultados, limitações e recomendações comunicados ao responsável."
+        ]
+      }
+    ],
+    "Limpeza de filtros": [
+      {
+        "title": "Equipamento e componentes",
+        "fields": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Localização",
+          "Filtros / condutas / troços intervencionados",
+          "Tipo e referência dos filtros"
+        ],
+        "checks": [
+          "Componentes e zonas a intervencionar identificados.",
+          "Estado inicial e acessibilidade verificados.",
+          "Equipamento colocado em condição segura para intervenção."
+        ],
+        "required": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série"
+        ]
+      },
+      {
+        "title": "Limpeza e substituições",
+        "fields": [
+          "Estado anterior / sujidade observada",
+          "Método e equipamentos utilizados",
+          "Produtos e instruções de aplicação",
+          "Filtros / peças substituídos e referências",
+          "Resíduos e destino"
+        ],
+        "checks": [
+          "Filtros removidos e tratados segundo instruções do fabricante.",
+          "Condutas e superfícies acessíveis intervencionadas conforme o âmbito.",
+          "Produtos adequados às superfícies e ao equipamento verificados.",
+          "Resíduos recolhidos e zona de trabalho limpa.",
+          "Limitações de acesso e zonas não intervencionadas registadas."
+        ]
+      },
+      {
+        "title": "Verificação final",
+        "fields": [
+          "Estado final",
+          "Caudal / observações de circulação de ar",
+          "Pressão diferencial — valor e unidade, se medida",
+          "Data / referência da próxima intervenção"
+        ],
+        "checks": [
+          "Filtros e componentes remontados e fixados.",
+          "Drenagem e ausência de obstruções verificadas quando aplicável.",
+          "Funcionamento final e ruídos / vibrações verificados.",
+          "Estado final e recomendações comunicados ao responsável."
+        ]
+      }
+    ],
+    "Diagnóstico AVAC": [
+      {
+        "title": "Equipamento e ocorrência",
+        "fields": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série",
+          "Localização",
+          "Sintomas comunicados pelo cliente",
+          "Código de erro / condições da ocorrência"
+        ],
+        "checks": [
+          "Sintomas e histórico disponível recolhidos.",
+          "Equipamento e circuito afetado identificados.",
+          "Condições de segurança avaliadas antes dos ensaios."
+        ],
+        "required": [
+          "Tipo de equipamento",
+          "Marca",
+          "Modelo",
+          "Número de série"
+        ]
+      },
+      {
+        "title": "Diagnóstico e ensaios",
+        "fields": [
+          "Ensaios efetuados, condições e instrumentos",
+          "Tensão / corrente — valores e unidades",
+          "Temperaturas / pressões — valores e unidades",
+          "Causa identificada / diagnóstico",
+          "Limitações do diagnóstico"
+        ],
+        "checks": [
+          "Alimentação e proteções verificadas.",
+          "Comandos, sensores e comunicação verificados.",
+          "Componentes mecânicos / frigoríficos avaliados quando aplicável.",
+          "Resultados dos ensaios e causa provável registados."
+        ]
+      },
+      {
+        "title": "Reparação e estado final",
+        "fields": [
+          "Reparações efetuadas",
+          "Peças substituídas / referências",
+          "Ensaios após reparação e resultados",
+          "Trabalhos pendentes / orçamento necessário",
+          "Referência de ficha de refrigerante, se aplicável"
+        ],
+        "checks": [
+          "Intervenções e peças substituídas identificadas.",
+          "Ensaio funcional após reparação realizado ou impossibilidade registada.",
+          "Riscos e necessidade de retirar o equipamento de serviço comunicados quando aplicável.",
+          "Cliente informado do estado final e dos trabalhos pendentes."
+        ]
+      }
+    ]
+  },
+  "RLIM": {
+    "Limpeza regular": [
+      {
+        "title": "Plano e zonas do serviço",
+        "fields": [
+          "Zonas / divisões previstas",
+          "Horário de início / fim",
+          "Equipa interveniente",
+          "Referência do plano / instruções do cliente"
+        ],
+        "checks": [
+          "Zonas e tarefas acordadas confirmadas.",
+          "Acessos, obstáculos e condições de segurança verificados."
+        ],
+        "required": [
+          "Zonas / divisões previstas"
+        ]
+      },
+      {
+        "title": "Execução da limpeza",
+        "fields": [
+          "Produtos e referências",
+          "Diluição / concentração segundo o rótulo",
+          "Equipamentos / utensílios utilizados"
+        ],
+        "checks": [
+          "Resíduos removidos e recipientes tratados.",
+          "Pó removido das superfícies abrangidas.",
+          "Pontos de contacto frequente limpos.",
+          "Instalações sanitárias limpas quando incluídas.",
+          "Copa / cozinha limpa quando incluída.",
+          "Pavimentos aspirados / varridos e lavados conforme o material.",
+          "Vidros e espelhos limpos quando incluídos.",
+          "Consumíveis repostos quando previstos."
+        ]
+      },
+      {
+        "title": "Controlo final",
+        "fields": [
+          "Zonas / tarefas não executadas e motivo",
+          "Anomalias / danos preexistentes",
+          "Responsável pela verificação",
+          "Próxima visita prevista"
+        ],
+        "checks": [
+          "Estado final das zonas intervencionadas verificado.",
+          "Resíduos e utensílios recolhidos.",
+          "Sinalização mantida enquanto necessária.",
+          "Portas / acessos e entrega do local confirmados com o responsável."
+        ]
+      }
+    ],
+    "Limpeza profunda": [
+      {
+        "title": "Âmbito e preparação",
+        "fields": [
+          "Zonas e superfícies abrangidas",
+          "Sujidade / incrustações observadas",
+          "Restrições de materiais e acessos"
+        ],
+        "checks": [
+          "Âmbito e superfícies sensíveis identificados.",
+          "Produtos e equipamentos adequados aos materiais confirmados.",
+          "Proteção dos bens e sinalização da zona verificadas."
+        ],
+        "required": [
+          "Zonas e superfícies abrangidas"
+        ]
+      },
+      {
+        "title": "Tratamentos e execução",
+        "fields": [
+          "Produtos / lote / referência",
+          "Diluição e método de aplicação",
+          "Tempos de atuação / contacto",
+          "Equipamentos utilizados",
+          "Tratamentos por zona / superfície"
+        ],
+        "checks": [
+          "Gorduras e sujidade aderente tratadas dentro do âmbito.",
+          "Incrustações / calcário tratados onde previsto e compatível.",
+          "Zonas de difícil acesso intervencionadas ou limitações registadas.",
+          "Pavimentos e revestimentos tratados conforme instruções do fabricante.",
+          "Resíduos de produto removidos / enxaguamento realizado quando requerido."
+        ]
+      },
+      {
+        "title": "Inspeção e entrega",
+        "fields": [
+          "Estado anterior / final",
+          "Limitações, manchas persistentes ou danos",
+          "Tarefas pendentes",
+          "Responsável pela verificação"
+        ],
+        "checks": [
+          "Estado final comparado com o âmbito acordado.",
+          "Ausência de resíduos de produto e condições de utilização verificadas.",
+          "Equipamentos e resíduos retirados da zona.",
+          "Pendências e recomendações comunicadas ao cliente."
+        ]
+      }
+    ],
+    "Limpeza pós-obra": [
+      {
+        "title": "Preparação e avaliação",
+        "fields": [
+          "Obra / zonas abrangidas",
+          "Trabalhos de obra ainda em curso",
+          "Riscos / materiais sensíveis",
+          "Resíduos excluídos ou a encaminhar por entidade própria"
+        ],
+        "checks": [
+          "Conclusão / autorização de acesso às zonas confirmada.",
+          "Materiais e superfícies sensíveis identificados.",
+          "Riscos, proteções e sinalização avaliados."
+        ],
+        "required": [
+          "Obra / zonas abrangidas"
+        ]
+      },
+      {
+        "title": "Remoção de resíduos e limpeza",
+        "fields": [
+          "Resíduos recolhidos e destino",
+          "Produtos / referências / diluições",
+          "Métodos e equipamentos utilizados"
+        ],
+        "checks": [
+          "Resíduos soltos e poeiras de obra removidos dentro do âmbito.",
+          "Proteções temporárias retiradas quando autorizado.",
+          "Vestígios de tintas, colas e argamassas tratados com método compatível.",
+          "Caixilharias, vidros e ferragens intervencionados quando incluídos.",
+          "Instalações sanitárias e equipamentos fixos limpos.",
+          "Pavimentos e rodapés limpos conforme o revestimento.",
+          "Poeira residual em superfícies acessíveis verificada."
+        ]
+      },
+      {
+        "title": "Vistoria de entrega",
+        "fields": [
+          "Danos / marcas preexistentes",
+          "Zonas não intervencionadas e motivo",
+          "Pendências de obra que impedem a limpeza",
+          "Responsável pela entrega"
+        ],
+        "checks": [
+          "Inspeção visual final realizada por zona.",
+          "Anomalias e danos observados registados sem os atribuir automaticamente à limpeza.",
+          "Resíduos e equipamentos retirados.",
+          "Estado final e pendências comunicados ao cliente."
+        ]
+      }
+    ],
+    "Desinfeção": [
+      {
+        "title": "Enquadramento e zonas",
+        "fields": [
+          "Zonas e superfícies abrangidas",
+          "Motivo / âmbito da desinfeção",
+          "Restrições de acesso / ocupação",
+          "Responsável no local"
+        ],
+        "checks": [
+          "Âmbito e superfícies a tratar identificados.",
+          "Limpeza prévia avaliada / realizada conforme o procedimento.",
+          "Proteção individual e sinalização verificadas."
+        ],
+        "required": [
+          "Zonas e superfícies abrangidas"
+        ]
+      },
+      {
+        "title": "Produto e aplicação",
+        "fields": [
+          "Produto — nome comercial / lote",
+          "Autorização / registo do biocida e utilização prevista",
+          "Diluição / concentração aplicada",
+          "Tempo de contacto aplicado (minutos)",
+          "Método de aplicação",
+          "Compatibilidade / instruções do rótulo",
+          "Ventilação / condições de reentrada segundo instruções"
+        ],
+        "checks": [
+          "Produto e utilização autorizada verificados.",
+          "Diluição efetuada segundo o rótulo.",
+          "Superfícies mantidas nas condições requeridas durante o tempo de contacto.",
+          "Enxaguamento realizado quando exigido pelo produto / utilização.",
+          "Resíduos e embalagens encaminhados de forma adequada."
+        ],
+        "required": [
+          "Produto — nome comercial / lote",
+          "Autorização / registo do biocida e utilização prevista",
+          "Diluição / concentração aplicada",
+          "Tempo de contacto aplicado (minutos)",
+          "Método de aplicação"
+        ]
+      },
+      {
+        "title": "Verificação e entrega",
+        "fields": [
+          "Hora de início / fim da aplicação",
+          "Zonas não tratadas e justificação",
+          "Incidentes / medidas adotadas",
+          "Responsável pela verificação / entrega"
+        ],
+        "checks": [
+          "Tempo de contacto e condições de aplicação registados.",
+          "Condições de utilização / reentrada transmitidas ao responsável.",
+          "Zona entregue com pendências e limitações identificadas.",
+          "Limitações da verificação visual comunicadas; sem certificação microbiológica automática."
+        ]
+      }
+    ]
+  },
+  "RELE": {
+    "Instalação elétrica": [
+      {
+        "title": "Identificação da instalação",
+        "fields": [
+          "Instalação / quadro / localização",
+          "CPE ou referência, se disponível",
+          "Alimentação — fases, tensão e potência",
+          "Esquema de ligação à terra",
+          "Identificação / habilitação profissional do técnico"
+        ],
+        "checks": [
+          "Âmbito da intervenção e documentação disponível identificados.",
+          "Condições de consignação e ausência de tensão verificadas quando necessárias."
+        ],
+        "required": [
+          "Instalação / quadro / localização",
+          "Identificação / habilitação profissional do técnico"
+        ]
+      },
+      {
+        "title": "Circuitos, canalizações e proteções",
+        "fields": [
+          "Circuitos intervencionados — identificação e utilização",
+          "Condutores — material e secção (mm²)",
+          "Proteções — calibre, curva, poder de corte e diferencial",
+          "Equipamentos / materiais instalados"
+        ],
+        "checks": [
+          "Canalizações e condutores verificados.",
+          "Identificação dos condutores e circuitos verificada.",
+          "Ligações de proteção e equipotencialidade verificadas.",
+          "Proteções e compatibilidade com os circuitos avaliadas.",
+          "Quadro, invólucros e acessibilidade verificados."
+        ]
+      },
+      {
+        "title": "Ensaios e colocação em serviço",
+        "fields": [
+          "Instrumentos — marca / modelo / série",
+          "Estado de verificação / calibração",
+          "Continuidade — circuito, valor (Ω) e resultado",
+          "Isolamento — circuito, tensão de ensaio, valor (MΩ) e resultado",
+          "Terra — método, valor (Ω) e resultado",
+          "Diferencial — tipo, corrente de ensaio (mA), tempo (ms) e resultado",
+          "Tensões medidas e ensaios funcionais"
+        ],
+        "checks": [
+          "Continuidade do condutor de proteção verificada ou limitação registada.",
+          "Isolamento e polaridade verificados quando aplicáveis.",
+          "Ligação à terra e proteção por corte automático avaliadas.",
+          "Atuação diferencial ensaiada quando aplicável.",
+          "Ensaios funcionais realizados e resultados registados."
+        ]
+      },
+      {
+        "title": "Entrega e documentação",
+        "fields": [
+          "Anomalias / circuitos retirados de serviço",
+          "Documentação / esquemas atualizados",
+          "Termo / inspeção / documento oficial — necessidade e referência"
+        ],
+        "checks": [
+          "Identificação e documentação da instalação entregues quando previstas.",
+          "Riscos, limitações e necessidade de inspeção comunicados ao responsável."
+        ]
+      }
+    ],
+    "Certificação elétrica": [
+      {
+        "title": "Identificação e âmbito da verificação",
+        "fields": [
+          "Instalação / localização / CPE",
+          "Entidade / técnico responsável e habilitação",
+          "Tipo e objetivo da verificação",
+          "Documentação e referências disponíveis"
+        ],
+        "checks": [
+          "Âmbito, acessos e condições de segurança confirmados.",
+          "Esquemas e documentação disponível confrontados com a instalação."
+        ],
+        "required": [
+          "Instalação / localização / CPE",
+          "Entidade / técnico responsável e habilitação"
+        ]
+      },
+      {
+        "title": "Exame visual",
+        "fields": [
+          "Quadros / circuitos abrangidos",
+          "Condições ambientais e limitações"
+        ],
+        "checks": [
+          "Proteção contra contactos diretos e indiretos avaliada.",
+          "Condutores, canalizações e secções verificados.",
+          "Proteções contra sobreintensidades verificadas.",
+          "Proteções diferenciais verificadas.",
+          "Identificação, seccionamento e acessibilidade verificados.",
+          "Ligação à terra e equipotencialidade verificadas."
+        ]
+      },
+      {
+        "title": "Ensaios e resultados",
+        "fields": [
+          "Instrumentos e verificação / calibração",
+          "Continuidade — circuito, valor (Ω) e resultado",
+          "Isolamento — circuito, tensão de ensaio, valor (MΩ) e resultado",
+          "Terra — método, valor (Ω) e resultado",
+          "Diferencial — corrente (mA), tempo (ms) e resultado",
+          "Polaridade, tensões e ensaios funcionais",
+          "Ensaios não realizados e motivo"
+        ],
+        "checks": [
+          "Ensaios efetuados identificados com método, circuito e valor.",
+          "Resultados avaliados pelo técnico habilitado nas condições da instalação.",
+          "Não conformidades e limitações registadas."
+        ]
+      },
+      {
+        "title": "Conclusão técnica e encaminhamento",
+        "fields": [
+          "Lista de anomalias / prioridade / medida corretiva",
+          "Necessidade de inspeção por entidade competente",
+          "Entidade e referência do documento oficial, quando existente"
+        ],
+        "checks": [
+          "Conclusão e medidas corretivas comunicadas ao responsável.",
+          "Distinção entre esta verificação e a certificação / inspeção oficial confirmada."
+        ]
+      }
+    ],
+    "Quadro elétrico": [
+      {
+        "title": "Identificação do quadro",
+        "fields": [
+          "Quadro / localização / referência",
+          "Alimentação / tensão nominal / fases",
+          "Circuitos abrangidos",
+          "Identificação / habilitação do técnico"
+        ],
+        "checks": [
+          "Identificação e acessibilidade verificadas.",
+          "Consignação e ausência de tensão verificadas quando necessárias.",
+          "Estado do invólucro e grau de proteção avaliados."
+        ],
+        "required": [
+          "Quadro / localização / referência",
+          "Identificação / habilitação do técnico"
+        ]
+      },
+      {
+        "title": "Componentes e ligações",
+        "fields": [
+          "Disjuntores / fusíveis — referência, calibre e curva",
+          "Diferenciais — tipo e sensibilidade (mA)",
+          "Condutores — circuitos e secções (mm²)",
+          "Materiais substituídos / instalados"
+        ],
+        "checks": [
+          "Fixações, barramentos e ligações verificados.",
+          "Sinais de aquecimento, carbonização ou degradação verificados.",
+          "Condutores de proteção e ligação à terra verificados.",
+          "Identificação dos circuitos e esquema verificados.",
+          "Proteções e coordenação com os circuitos avaliadas.",
+          "Aperto das ligações verificado segundo instruções aplicáveis, quando executado."
+        ]
+      },
+      {
+        "title": "Medições e ensaios",
+        "fields": [
+          "Instrumentos e verificação / calibração",
+          "Tensões por fase / circuito (V)",
+          "Correntes por fase / circuito (A)",
+          "Diferencial — corrente de ensaio (mA), tempo (ms) e resultado",
+          "Continuidade / isolamento — circuito, valor, unidade e resultado",
+          "Ensaios funcionais e resultados"
+        ],
+        "checks": [
+          "Seccionamento e comandos testados.",
+          "Atuação diferencial ensaiada quando aplicável.",
+          "Ausência de anomalias após reposição de serviço verificada.",
+          "Circuitos perigosos / não ensaiados identificados e comunicados."
+        ]
+      }
+    ],
+    "Iluminação": [
+      {
+        "title": "Identificação dos circuitos e luminárias",
+        "fields": [
+          "Zonas e circuitos intervencionados",
+          "Luminárias — tipo, referência e quantidade",
+          "Alimentação / comandos",
+          "Identificação / habilitação do técnico"
+        ],
+        "checks": [
+          "Circuitos e equipamentos identificados.",
+          "Condições seguras de acesso e intervenção verificadas."
+        ],
+        "required": [
+          "Zonas e circuitos intervencionados",
+          "Identificação / habilitação do técnico"
+        ]
+      },
+      {
+        "title": "Verificações e intervenção",
+        "fields": [
+          "Equipamentos / fontes / drivers substituídos",
+          "Proteções e secção dos condutores",
+          "Anomalias por zona / luminária"
+        ],
+        "checks": [
+          "Fixações e integridade das luminárias verificadas.",
+          "Ligações e proteção contra contacto elétrico verificadas.",
+          "Comandos, sensores e temporizações testados.",
+          "Fontes / drivers e compatibilidade das lâmpadas verificados.",
+          "Proteções e ligação à terra verificadas quando aplicáveis."
+        ]
+      },
+      {
+        "title": "Ensaios e entrega",
+        "fields": [
+          "Tensão medida — circuito e valor (V)",
+          "Instrumentos utilizados",
+          "Iluminância — local, condições e valor (lux), se medida",
+          "Teste funcional por zona e resultado"
+        ],
+        "checks": [
+          "Acendimento e funcionamento verificados por zona.",
+          "Ausência de cintilação / anomalias observáveis verificada.",
+          "Equipamentos fora de serviço e trabalhos pendentes identificados.",
+          "Estado final e recomendações comunicados ao cliente."
+        ]
+      }
+    ],
+    "Avaria elétrica": [
+      {
+        "title": "Ocorrência e segurança",
+        "fields": [
+          "Local / quadro / circuito afetado",
+          "Sintomas e momento da ocorrência",
+          "Identificação / habilitação do técnico",
+          "Riscos e medidas iniciais"
+        ],
+        "checks": [
+          "Ocorrência e circuitos afetados identificados.",
+          "Risco imediato avaliado e área / circuitos colocados em segurança quando necessário.",
+          "Consignação e ausência de tensão verificadas quando necessárias."
+        ],
+        "required": [
+          "Local / quadro / circuito afetado",
+          "Identificação / habilitação do técnico"
+        ]
+      },
+      {
+        "title": "Diagnóstico",
+        "fields": [
+          "Instrumentos e verificação / calibração",
+          "Medições por circuito — valor, unidade e condições",
+          "Proteções / componentes verificados",
+          "Causa identificada ou hipótese de diagnóstico",
+          "Limitações / ensaios não realizados"
+        ],
+        "checks": [
+          "Alimentação e dispositivos de proteção verificados.",
+          "Condutores, ligações e equipamentos afetados avaliados.",
+          "Ensaios de isolamento / continuidade realizados quando aplicáveis.",
+          "Causa e limitações do diagnóstico registadas."
+        ]
+      },
+      {
+        "title": "Reparação e reposição de serviço",
+        "fields": [
+          "Trabalhos executados",
+          "Peças / materiais e referências",
+          "Ensaios após reparação e resultados",
+          "Circuitos retirados de serviço / pendências"
+        ],
+        "checks": [
+          "Reparação e materiais aplicados registados.",
+          "Ensaios de segurança e funcionamento realizados antes da reposição, quando aplicáveis.",
+          "Reposição de serviço controlada e resultado verificado.",
+          "Riscos residuais e necessidade de intervenção adicional comunicados ao responsável."
+        ]
+      }
+    ]
+  }
+}

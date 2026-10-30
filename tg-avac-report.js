@@ -147,7 +147,7 @@ window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
 document.addEventListener('click',event=>{
  const control=event.target.closest('button,[role="button"],a');if(!control||!isAVAC())return;
  const label=(control.textContent||'').trim();
- if(!/^(?:preencher|abrir|editar|ver)?\\s*relat[oó]rio\\s+(?:t[eé]cnico\\s+)?AVAC/i.test(label) && !/^(?:AVAC\\s*[—-]\\s*)?Relat[oó]rio T[eé]cnico AVAC/i.test(label))return;
+ if(!/^(?:preencher|abrir|editar|ver)?\s*relat[oó]rio\s+(?:t[eé]cnico\s+)?AVAC/i.test(label) && !/^(?:AVAC\s*[—-]\s*)?Relat[oó]rio T[eé]cnico AVAC/i.test(label))return;
  if(control.id==='tgAvacLaunch'||control.dataset.avacReportOs||control.closest('#tgAvacDialog'))return;
  const os=osByVisibleHeading(control);if(!os)return;
  event.preventDefault();event.stopImmediatePropagation();
@@ -157,7 +157,7 @@ document.addEventListener('click',event=>{
 
 
 /* An OS using AVAC work types must offer the adaptive report directly in its Reports tab. */
-const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria/i.test(String(t||''));
+const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria|instala[cç][aã]o/i.test(String(t||''));
 function osByVisibleHeading(node){
  const root=node?.closest('.modal-overlay,.modal-content,dialog,[role="dialog"],.modal')||node?.parentElement;
  const label=(root?.textContent||'').slice(0,700);
@@ -170,7 +170,7 @@ function mountOSReport(){
  const messages=[...document.querySelectorAll('p,div,span')].filter(el=>el.children.length===0&&/Esta OS n[aã]o tem tipos de trabalho com relat[oó]rio de especialidade associados/i.test(el.textContent||''));
  for(const empty of messages){
   const os=osByVisibleHeading(empty);
-  if(!os)continue;
+  if(!os||!(os.tiposTrabalho||[]).some(avacWorkType))continue;
   let action=empty.parentElement?.querySelector('[data-avac-report-os]');
   if(!action){
    action=document.createElement('button');action.type='button';action.className='btn btn-primary';

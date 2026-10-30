@@ -1,7 +1,7 @@
 /* Equipment-specific specialty reports. Historic OS keep their original requirements. */
 (function(){
  'use strict';
- const types={AVAC:'Relatório Técnico AVAC',REX:'Extintores',RBI:'Bocas de incêndio',RSI:'Sistemas de incêndio',RCM:'Central de incêndio',RIE:'Iluminação de emergência',RCP:'Portas corta-fogo',RCCTV:'CCTV',RIN:'Intrusão',RDI:'Declaração de instalação'};
+ const types={REX:'Extintores',RBI:'Bocas de incêndio',RSI:'Sistemas de incêndio',RCM:'Central de incêndio',RIE:'Iluminação de emergência',RCP:'Portas corta-fogo',RCCTV:'CCTV',RIN:'Intrusão',RDI:'Declaração de instalação'};
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const options=value=>`<option value="__choose__" ${value==null?'selected':''} disabled>Escolher relatório ou Sem relatório</option><option value="" ${value===''?'selected':''}>Sem relatório</option>`+Object.entries(types).map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${id} — ${esc(label)}</option>`).join('');
  function validate(value){if(value!==''&&!Object.hasOwn(types,value))throw Error('Indica o relatório de especialidade do equipamento ou escolhe Sem relatório.');return value;}
@@ -40,5 +40,5 @@
  }
  function equipmentField(e){return `<label style="font-size:.8rem">Relatório de especialidade<select data-equipment-report="${esc(e.id)}" aria-label="Relatório de ${esc(e.fichaTecnica?.nome || e.marca || e.id)}">${options(e.fichaTecnica?.relatorioEspecialidade)}</select></label>`;}
  document.addEventListener('change',e=>{const el=e.target.closest('[data-equipment-report]');if(!el)return;const eq=(dados.equipamentos||[]).find(x=>x.id===el.dataset.equipmentReport&&x.adminId===(usuarioLogado?.adminId||usuarioLogado?.id));if(!eq||!['admin','subadmin'].includes(usuarioLogado?.role))return;try{eq.fichaTecnica={...eq.fichaTecnica,relatorioEspecialidade:validate(el.value)};}catch(err){alert(err.message);}});
- window.TGEquipmentReports={avacWork,types,options,validate,periods,maintenanceValidate,maintenanceValue,maintenanceFields,snapshot,requirements,matches,pending,resolve,equipmentField};
+ window.TGEquipmentReports={avacWork,avacTypes,types,options,validate,periods,maintenanceValidate,maintenanceValue,maintenanceFields,snapshot,requirements,matches,pending,resolve,equipmentField};
 })();

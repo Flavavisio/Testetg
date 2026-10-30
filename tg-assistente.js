@@ -5,7 +5,7 @@
   const base = new URL('.', document.currentScript.src);
   const asset = name => new URL('assets/' + name, base).href;
   const css = document.createElement('link');
-  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=4.1.0-dock', base).href;
+  css.rel = 'stylesheet'; css.href = new URL('tg-assistente.css?v=4.2.0-touch', base).href;
   document.head.append(css);
   const root = document.createElement('aside');
   root.id = 'tg-assistente'; root.hidden = true;
@@ -146,11 +146,14 @@
     if (value) { hint.hidden=true; quickLinks(); animate('wave'); input.focus({preventScroll:true}); log.scrollTop = log.scrollHeight; }
     else if (!root.hidden) toggle.focus({preventScroll:true});
   }
-  function syncDock() {
-    if (typeof document === 'undefined' || !document.body) return;
-    const docked = !root.hidden && !!document.querySelector('.section-container.active');
-    if (root.classList.contains('tg-docked') !== docked) root.classList.toggle('tg-docked', docked);
-    if (document.body.classList.contains('tg-assistant-docked') !== docked) document.body.classList.toggle('tg-assistant-docked', docked);
+  function setMinimized(value) {
+    minimized = value;
+    root.classList.toggle('tg-compact', value);
+    const button = root.querySelector('.tg-minimize');
+    button.textContent = value ? '+' : '−';
+    button.setAttribute('aria-label', value ? 'Mostrar Teco' : 'Encolher Teco');
+    button.setAttribute('aria-pressed', String(value));
+    button.title = value ? 'Mostrar Teco' : 'Encolher Teco';
   }
   function sync() {
     const u = user();
@@ -159,10 +162,9 @@
     if (key !== identity) {
       identity = key; opened = false; panel.hidden = true; root.classList.remove('tg-is-open');
       toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'Abrir assistente Teco');
-      clearTimeout(replyTimer); clearTimeout(hintTimer); lastContext=''; lastAlertKey=''; mutedUntil=0; lastHintAt=0; hint.hidden=true; badge.hidden=true; root.querySelector('.tg-snooze').textContent='Silenciar 1 h'; input.disabled=false; root.querySelector('.tg-form button').disabled=false; input.value = ''; minimized = false; root.classList.remove('tg-compact'); welcome();
+      clearTimeout(replyTimer); clearTimeout(hintTimer); lastContext=''; lastAlertKey=''; mutedUntil=0; lastHintAt=0; hint.hidden=true; badge.hidden=true; root.querySelector('.tg-snooze').textContent='Silenciar 1 h'; input.disabled=false; root.querySelector('.tg-form button').disabled=false; input.value = ''; setMinimized(false); welcome();
     }
     root.hidden = !u || ['cliente', 'funcionario'].includes(u.role) || !!kiosk;
-    syncDock();
     if (root.hidden) { input.disabled=false;root.querySelector('.tg-form button').disabled=false;panel.hidden = true; opened = false; root.classList.remove('tg-is-open'); toggle.setAttribute('aria-expanded', 'false'); clearTimeout(imageTimer); clearTimeout(stateTimer); clearTimeout(replyTimer); hint.hidden=true; picture.removeAttribute('src'); }
     else { if (!picture.getAttribute('src')) animate(); if (opened) quickLinks(); refreshAlerts(); }
   }
@@ -191,11 +193,10 @@
   toggle.addEventListener('click', () => { sync(); if (!root.hidden) setOpen(!opened); });
   root.querySelector('.tg-close').addEventListener('click', () => setOpen(false));
   root.querySelector('.tg-minimize').addEventListener('click', e => {
-    minimized = !minimized; root.classList.toggle('tg-compact', minimized);
-    e.currentTarget.textContent = minimized ? '+' : '−';
-    e.currentTarget.setAttribute('aria-label', minimized ? 'Mostrar mascote' : 'Minimizar mascote');
-    e.currentTarget.title = minimized ? 'Mostrar mascote' : 'Minimizar mascote';
+    e.preventDefault(); e.stopPropagation();
+    setMinimized(!minimized);
     if (opened) setOpen(false);
+    e.currentTarget.focus({preventScroll:true});
   });
   root.querySelector('form').addEventListener('submit', e => {
     e.preventDefault(); const raw=input.value.trim(); if(!raw)return;
@@ -219,7 +220,6 @@
 
   root.addEventListener('keydown', e => { if (e.key === 'Escape' && opened) { e.stopPropagation(); setOpen(false); } });
   if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if(opened)log.scrollTop=log.scrollHeight; }).observe(log);
-  if (typeof MutationObserver === 'function') new MutationObserver(syncDock).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class']});
   window.TGAssistente = Object.freeze({sync});
   // A app notifica alterações da sessão/renderização. Atualização local a cada minuto, sem pedidos de rede nem histórico persistido.
   document.addEventListener('tg:interface-updated', sync);

@@ -29901,6 +29901,7 @@ window._relPrefill = function(msg){
 
         async function _verRelatorioEspecialidadeSnapshot(relatorioId, autoImprimir) {
             const r = (dados.relatoriosEspecialidade || []).find(x => x.id === relatorioId);
+            if (r?.tipo === 'AVAC' && window.TGAVACReport?.openForOS) { window.TGAVACReport.openForOS(r.servicoId); return; }
             if (!r || !r.campos) { alert('Este relatório não tem um snapshot guardado para visualizar.'); return; }
 
             // Abre a janela já aqui, ainda dentro do clique do utilizador (síncrono),

@@ -6,7 +6,23 @@ body.dark-mode.tgt-active{--tgt-surface:#19283d;--tgt-soft:#203d43;--tgt-ink:#ed
 .tgt-active #cardsGrid{display:block!important}
 .tgt-active #cardsGrid:has(.section-container.active) #omeudia{display:none!important}
 .tgt-active #omeudia{grid-template-columns:1fr!important;grid-template-areas:none!important;margin:0!important;width:100%;min-width:0}
-.tgt-active #menuInferiorMobile.tgt-nav{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;gap:0;background:var(--tgt-surface);border-color:var(--tgt-line);padding:5px 5px env(safe-area-inset-bottom,0px)}
+.tgt-active #menuInferiorMobile.tgt-nav{display:grid!important;grid-template-columns:repeat(var(--tgt-nav-columns,4),minmax(0,1fr));overflow:visible;gap:0;background:var(--tgt-surface);border-color:var(--tgt-line);padding:5px 5px env(safe-area-inset-bottom,0px)}
+.tgt-fleet-card{padding:16px;margin:14px 0;background:var(--tgt-surface);border:1px solid var(--tgt-line);border-radius:14px;overflow-wrap:anywhere}
+.tgt-fleet-card h3{font-size:18px;margin:0 0 12px;color:var(--tgt-ink)}
+.tgt-fleet-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.tgt-fleet-details dt,.tgt-fleet-list small{font-size:12px;color:var(--tgt-muted)}
+.tgt-fleet-details dd{margin:4px 0 0;font-size:14px;color:var(--tgt-ink)}
+.tgt-fleet-list{list-style:none;padding:0;margin:0}
+.tgt-fleet-list li{padding:14px 0;border-bottom:1px solid var(--tgt-line)}
+.tgt-fleet-list li:last-child{border-bottom:0}
+.tgt-fleet-list strong,.tgt-fleet-list small{display:block;margin-bottom:8px}
+.tgt-fleet-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}
+.tgt-fleet-form{color:var(--tgt-ink);text-align:left}
+.tgt-fleet-form input,.tgt-fleet-form textarea,.tgt-fleet-form select{font-size:16px!important;width:100%;box-sizing:border-box}
+.tgt-fleet-form input[type=file]{white-space:normal;overflow-wrap:anywhere}
+.tgt-fleet-form [role=status]{font-size:14px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.tgt-active #modalGenericoOverlay:has(.tgt-fleet-form) #modalGenericoAcoes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:10px}
+.tgt-active #modalGenericoOverlay:has(.tgt-fleet-form) #modalGenericoAcoes>.tgt-button{width:100%;min-width:0;min-height:48px;margin:0;padding:10px 8px;white-space:nowrap;overflow-wrap:normal;word-break:normal}
 .tgt-active #menuInferiorMobile.tgt-nav .menu-inf-item{background:transparent;color:var(--tgt-muted);border:0;font:inherit;min-width:0;min-height:59px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:6px;cursor:pointer;box-shadow:none}
 .tgt-active #menuInferiorMobile.tgt-nav .menu-inf-item.ativo{color:var(--tgt-blue);font-weight:700;background:var(--tgt-soft)}
 .tgt-active .tgt-nav .menu-inf-item span{font-size:12px}
@@ -106,6 +122,8 @@ body.dark-mode .tgt-draft-card small{color:#f1d18e}
 .tgt-team .tgm-panel{margin:0 0 12px;padding:12px;box-shadow:none}
 .tgt-shortcuts{display:grid;gap:10px;margin-bottom:20px}
 .tgt-shortcuts button{justify-content:flex-start;text-align:left}
+.tgt-shortcuts [data-tgt-leave-balance]{display:block;margin-top:4px;font-size:13px;font-weight:600;color:var(--tgt-blue)}
+.tgt-leave-summary{padding:14px 16px;border:1px solid var(--tgt-line);border-radius:12px;background:var(--tgt-surface);color:var(--tgt-blue);font-size:15px;font-weight:700;text-align:left;margin:0 0 16px;overflow-wrap:anywhere}
 .tgt-empty{padding:28px 16px;background:var(--tgt-surface);border:1px solid var(--tgt-line);border-radius:16px;text-align:left}
 .tgt-empty>i{font-size:28px;color:var(--tgt-blue)}
 .tgt-empty h3{font-size:18px;color:var(--tgt-ink);margin:12px 0 8px}
@@ -179,6 +197,11 @@ body.dark-mode .tgt-draft-card small{color:#f1d18e}
 .tgt-active #modalPedidoOverlay .modal-actions{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;z-index:2;background:var(--tgt-surface);padding:12px 0 0;margin-top:18px;border-top:1px solid var(--tgt-line)}
 .tgt-active #modalPedidoOverlay .modal-actions button{min-width:0;min-height:48px;margin:0;font-size:14px;white-space:normal;justify-content:center;padding:10px 8px}
 @media(max-width:360px){.tgt-active #ped_horas_bloco>.form-group{flex-basis:100%!important}}
+
+/* Keep leave, fleet and worksheet dialogs centred, including narrow phone screens. */
+body.tgt-active :is(#modalPedidoOverlay,#modalOverlay,#modalFolhaObrigOverlay,#modalGenericoOverlay:has(.tgt-fleet-form),#modalVeiculoIntervOverlay,#modalVeiculoDocsOverlay,#modalVeiculoHistOverlay,#modalVeiculoSinistrosOverlay){align-items:center!important;justify-content:center!important;flex-wrap:nowrap!important;gap:0;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important;box-sizing:border-box;overflow:hidden}
+body.tgt-active :is(#modalPedidoOverlay,#modalOverlay,#modalFolhaObrigOverlay,#modalGenericoOverlay:has(.tgt-fleet-form),#modalVeiculoIntervOverlay,#modalVeiculoDocsOverlay,#modalVeiculoHistOverlay,#modalVeiculoSinistrosOverlay)>.modal{height:auto!important;min-height:0!important;max-height:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom)))!important;width:min(100%,720px)!important;max-width:100%!important;margin:0!important;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box}
+body.tgt-active #modalPedidoOverlay>.modal{width:min(100%,540px)!important}
 
 /* Personal header and installation context for the phone workspace. */
 .tgt-home>.tgt-day-head{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:center}

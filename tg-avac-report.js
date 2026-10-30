@@ -20,7 +20,7 @@ const allFields=[...general,...checks,...measurements,...refrigerant,...plan,['r
 const readForm=()=>({id:$('avac_draft_id')?.value||'',osId:$('avac_os')?.value||'',equipamento:$('avac_equip')?.value||'',mode:$('avac_mode')?.value||'normal',values:Object.fromEntries(allFields.map(([id])=>[id,$('avac_'+id)?.value||''])),updatedAt:new Date().toISOString()});
 function listDrafts(){try{const d=JSON.parse(localStorage.getItem(draftKey())||'[]');return Array.isArray(d)?d.slice(0,50):[]}catch(_){return []}}
 function saveDraft(){
- const d=readForm();d.id ||= (crypto?.randomUUID?.()||String(Date.now()));
+ const d=readForm();d.id ||= (globalThis.crypto?.randomUUID?.()||String(Date.now()));
  const rows=listDrafts().filter(x=>x.id!==d.id);rows.unshift(d);
  try{localStorage.setItem(draftKey(),JSON.stringify(rows));$('avac_draft_id').value=d.id;renderDrafts();$('avac_status').textContent='Rascunho guardado neste navegador. Não está sincronizado com o servidor.'}
  catch(e){$('avac_status').textContent='Não foi possível guardar o rascunho neste dispositivo.'}
@@ -71,7 +71,7 @@ function openCloud(){
 async function saveCloud(){
  const status=$('avac_status'),button=$('avac_save_cloud');if(button.disabled)return;
  if(typeof usuarioLogado==='undefined'||!usuarioLogado||typeof dados==='undefined'||typeof guardarDados!=='function')throw Error('Sessão ou sincronização indisponível.');
- if(!isAVAC())throw Error('A empresa não tem a atividade AVAC ativa.');
+ if(!isAVAC())throw Error('Atividade AVAC não identificada na configuração da empresa. Não é possível guardar.');
  const os=listOS().find(s=>String(s.id)===$('avac_os').value);
  if(!os?.clienteId)throw Error('Seleciona uma OS associada a um cliente para guardar no servidor.');
  const client=(dados.clientes||[]).find(x=>x.id===os.clienteId&&x.adminId===tenant());
@@ -84,7 +84,7 @@ async function saveCloud(){
  try{
  dados.relatoriosEspecialidade=existing?snapshot.map(r=>r.id===existing.id?{...r,...current}:r):[...snapshot,current];
  await guardarDados();
- $('avac_record_id').value=current.id;renderCloud();status.textContent='Registo enviado para sincronização. Confirma no histórico antes de considerar concluído.';
+ $('avac_record_id').value=current.id;renderCloud();status.textContent='Gravação solicitada. Verifica o registo sincronizado no histórico.';
  }catch(e){dados.relatoriosEspecialidade=snapshot;status.textContent='Falha ao guardar no servidor: '+(e.message||e)}finally{button.disabled=false}
 }
 

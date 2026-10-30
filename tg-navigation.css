@@ -47,3 +47,6 @@ body.dark-mode .tgn-more .tgn-menu-section{background:#17243a;border-color:#3444
 .tgn-work-tabs>button[aria-pressed="false"]{background:#f1f5f9!important;color:#334155!important}
 body.dark-mode .tgn-work-tabs>button[aria-pressed="false"]{background:#20324c!important;color:#e2e8f0!important}
 .tgn-work-tabs>button{transition:none!important}
+
+/* Admin e Sub-Admin em telemóvel: menu lateral Nexus em vez da barra inferior. */
+@media(max-width:900px){body.tgn-manager-sidebar-mobile #menuInferiorMobile,body.tgn-manager-sidebar-mobile #menuInferiorMobile.tgn-mobile{display:none!important}}

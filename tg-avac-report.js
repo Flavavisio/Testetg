@@ -55,27 +55,62 @@ function selectOS(){
  $('avac_status').textContent='Dados disponíveis da OS preenchidos; confirma-os antes de guardar.';
 }
 
+
+/* Saved specialty report records use the application's existing tenant-scoped sync pipeline. */
+const cloudReports=()=>typeof dados!=='undefined'&&Array.isArray(dados.relatoriosEspecialidade)?dados.relatoriosEspecialidade.filter(r=>r.adminId===tenant()&&r.tipo==='AVAC'):[];
+function renderCloud(){
+ const e=$('avac_cloud');if(!e)return;
+ e.innerHTML='<option value="">Escolher relatório AVAC guardado</option>'+cloudReports().slice().reverse().map(r=>'<option value="'+esc(r.id)+'">'+esc((r.numeroDocumento||r.id)+' · '+(r.campos?.cliente||'Cliente'))+'</option>').join('');
+}
+function openCloud(){
+ const r=cloudReports().find(x=>String(x.id)===$('avac_cloud')?.value);if(!r)return;
+ $('avac_draft_id').value='';$('avac_record_id').value=r.id;$('avac_equip').value=r.campos?.equipamento||'Ar condicionado';
+ $('avac_mode').value=r.campos?.mode||'normal';populateOS();$('avac_os').value=r.servicoId||'';
+ allFields.forEach(([id])=>{const e=$('avac_'+id);if(e)e.value=r.campos?.[id]||''});toggle();$('avac_status').textContent='Relatório guardado carregado.';
+}
+async function saveCloud(){
+ const status=$('avac_status'),button=$('avac_save_cloud');if(button.disabled)return;
+ if(typeof usuarioLogado==='undefined'||!usuarioLogado||typeof dados==='undefined'||typeof guardarDados!=='function')throw Error('Sessão ou sincronização indisponível.');
+ if(!isAVAC())throw Error('A empresa não tem a atividade AVAC ativa.');
+ const os=listOS().find(s=>String(s.id)===$('avac_os').value);
+ if(!os?.clienteId)throw Error('Seleciona uma OS associada a um cliente para guardar no servidor.');
+ const client=(dados.clientes||[]).find(x=>x.id===os.clienteId&&x.adminId===tenant());
+ if(!client)throw Error('O cliente não pertence à empresa atual.');
+ const form=readForm();if(!form.values.data||!form.values.resultado)throw Error('Preenche a data e o resultado da intervenção.');
+ const existing=cloudReports().find(x=>x.id===$('avac_record_id').value);
+ const current={id:existing?.id||crypto.randomUUID(),adminId:tenant(),servicoId:os.id,clienteId:os.clienteId,localId:os.localId||os.instalacaoId||null,tipo:'AVAC',numeroDocumento:existing?.numeroDocumento||'AVAC-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),data:form.values.data,local:form.values.instalacao||'',campos:{...form.values,equipamento:form.equipamento,mode:form.mode},tecnicoId:usuarioLogado.id,rascunho:true,criadoEm:existing?.criadoEm||new Date().toISOString()};
+ button.disabled=true;status.textContent='A guardar no servidor…';
+ const snapshot=[...(dados.relatoriosEspecialidade||[])];
+ try{
+ dados.relatoriosEspecialidade=existing?snapshot.map(r=>r.id===existing.id?{...r,...current}:r):[...snapshot,current];
+ await guardarDados();
+ $('avac_record_id').value=current.id;renderCloud();status.textContent='Registo enviado para sincronização. Confirma no histórico antes de considerar concluído.';
+ }catch(e){dados.relatoriosEspecialidade=snapshot;status.textContent='Falha ao guardar no servidor: '+(e.message||e)}finally{button.disabled=false}
+}
+
 function section(id,title,body){return '<section id="avac_sec_'+id+'" style="padding:12px;border:1px solid #d9e0e9;border-radius:10px;margin:12px 0"><h3 style="margin-top:0">'+title+'</h3>'+body+'</section>'}
 function insert(){if(!isAVAC())return;const menu=$('tgReportMenu');if(!menu||$('tgAvacLaunch'))return;const b=document.createElement('button');b.id='tgAvacLaunch';b.type='button';b.className='btn btn-outline';b.style.margin='8px';b.textContent='AVAC · Relatório técnico adaptativo';b.onclick=open;menu.appendChild(b);}
 function open(){
 if(!$('tgAvacDialog')){
 const dialog=document.createElement('dialog');dialog.id='tgAvacDialog';dialog.style.cssText='border:0;border-radius:14px;padding:0;max-width:750px;width:94vw;max-height:90vh;overflow:auto;box-shadow:0 16px 70px #0005';
 dialog.innerHTML='<div style="padding:18px"><div style="display:flex;justify-content:space-between;gap:10px"><h2 style="margin:0">Relatório técnico AVAC</h2><button type="button" id="avac_close" class="btn btn-outline">Fechar</button></div><p>Um relatório por intervenção. Inspeção regulamentar e Legionella requerem documentos separados.</p>'+
-section('identity','Identificação', '<input id="avac_draft_id" type="hidden"><label>Associar Ordem de Serviço<select id="avac_os" style="display:block;width:100%"></select></label><label>Rascunhos locais<select id="avac_saved" style="display:block;width:100%"></select></label><label>Tipo de equipamento<select id="avac_equip" style="display:block;width:100%"><option>Ar condicionado</option><option>Bomba de calor</option><option>UTA</option><option>Ventilação</option><option>Chiller</option><option>Outro</option></select></label>'+fields(general))+
+section('identity','Identificação', '<input id="avac_draft_id" type="hidden"><input id="avac_record_id" type="hidden"><label>Relatórios AVAC guardados<select id="avac_cloud" style="display:block;width:100%"></select></label><label>Associar Ordem de Serviço<select id="avac_os" style="display:block;width:100%"></select></label><label>Rascunhos locais<select id="avac_saved" style="display:block;width:100%"></select></label><label>Tipo de equipamento<select id="avac_equip" style="display:block;width:100%"><option>Ar condicionado</option><option>Bomba de calor</option><option>UTA</option><option>Ventilação</option><option>Chiller</option><option>Outro</option></select></label>'+fields(general))+
 section('mode','Intervenção','<label>Tipo de intervenção<select id="avac_mode" style="display:block;width:100%"><option value="normal">Manutenção normal</option><option value="refrigerante">Intervenção com refrigerante</option><option value="plano">Execução do plano de manutenção</option><option value="refrigerante_plano">Refrigerante + plano de manutenção</option></select></label>')+
 section('maintenance','Verificações e limpeza',fields(checks.map(([id,label])=>[id,label+' — estado / trabalho realizado']))+fields(measurements))+
 section('refrigerant','Ficha de gases fluorados (quando aplicável)','<p>Preencher apenas quando o circuito e o fluido estejam sujeitos às obrigações aplicáveis. Este formulário não substitui comunicações ou registos legalmente exigidos.</p>'+fields(refrigerant))+
 section('plan','Execução do plano de manutenção',fields(plan))+
 section('finish','Conclusão',fields([['resultado','Resultado: conforme / não conforme / condicionado'],['recomendacoes','Recomendações','textarea']])+'<label>Fotografias / anexos de imagem<input type="file" id="avac_photos" accept="image/*" multiple style="display:block;width:100%"></label>')+
-'<div style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap"><button type="button" id="avac_save" class="btn btn-outline">Guardar rascunho local</button><button type="button" id="avac_pdf" class="btn btn-primary">Gerar PDF</button></div><p id="avac_status" role="status"></p></div>';
+'<div style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap"><button type="button" id="avac_save_cloud" class="btn btn-primary">Guardar no sistema</button><button type="button" id="avac_save" class="btn btn-outline">Guardar rascunho local</button><button type="button" id="avac_pdf" class="btn btn-primary">Gerar PDF</button></div><p id="avac_status" role="status"></p></div>';
 document.body.appendChild(dialog);
 $('avac_close').onclick=()=>dialog.close();
 $('avac_mode').onchange=toggle;
 $('avac_pdf').onclick=exportPDF;
 $('avac_save').onclick=saveDraft;
+$('avac_save_cloud').onclick=()=>saveCloud().catch(e=>{$('avac_status').textContent=e.message});
+$('avac_cloud').onchange=openCloud;
 $('avac_saved').onchange=loadDraft;
 $('avac_os').onchange=selectOS;
-populateOS();renderDrafts();
+populateOS();renderDrafts();renderCloud();
 }toggle();$('tgAvacDialog').showModal();
 }
 function toggle(){const mode=$('avac_mode')?.value||'normal';if($('avac_sec_refrigerant'))$('avac_sec_refrigerant').hidden=!mode.includes('refrigerante');if($('avac_sec_plan'))$('avac_sec_plan').hidden=!mode.includes('plano')}
@@ -105,6 +140,6 @@ const pages=doc.internal.getNumberOfPages();for(let p=1;p<=pages;p++){doc.setPag
 const date=new Date().toISOString().slice(0,10);doc.save('relatorio_avac_'+date+'.pdf');status.textContent='PDF gerado.';
 }catch(e){status.textContent='Erro ao gerar PDF: '+e.message;}
 }
-window.TGAVACReport={open,saveDraft,listDrafts,isAVAC};
+window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
 const observer=new MutationObserver(insert);function init(){insert();observer.observe(document.body,{subtree:true,childList:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

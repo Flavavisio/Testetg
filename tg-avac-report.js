@@ -74,17 +74,19 @@ async function saveCloud(){
  if(!isAVAC())throw Error('Atividade AVAC não identificada na configuração da empresa. Não é possível guardar.');
  const os=listOS().find(s=>String(s.id)===$('avac_os').value);
  if(!os?.clienteId)throw Error('Seleciona uma OS associada a um cliente para guardar no servidor.');
- const client=(dados.clientes||[]).find(x=>x.id===os.clienteId&&x.adminId===tenant());
+ const client=(dados.clientes||[]).find(x=>String(x.id)===String(os.clienteId)&&String(x.adminId)===tenant());
  if(!client)throw Error('O cliente não pertence à empresa atual.');
- const form=readForm();if(!form.values.data||!form.values.resultado)throw Error('Preenche a data e o resultado da intervenção.');
+ const form=readForm();if(!form.values.data||!form.values.resultado?.trim())throw Error('Preenche a data e o resultado da intervenção.');
+ if(form.mode.includes('refrigerante')&&(!form.values.tipo_gas?.trim()||!form.values.certificacao?.trim()||!form.values.fugas?.trim()))throw Error('Na intervenção com refrigerante, indica o fluido, a certificação e o resultado da verificação de fugas.');
+ if(form.mode.includes('plano')&&(!form.values.plano_ref?.trim()||!form.values.tarefas_realizadas?.trim()))throw Error('Na execução do plano, indica a referência e as tarefas realizadas.');
  const existing=cloudReports().find(x=>x.id===$('avac_record_id').value);
- const current={id:existing?.id||crypto.randomUUID(),adminId:tenant(),servicoId:os.id,clienteId:os.clienteId,localId:os.localId||os.instalacaoId||null,tipo:'AVAC',numeroDocumento:existing?.numeroDocumento||'AVAC-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),data:form.values.data,local:form.values.instalacao||'',campos:{...form.values,equipamento:form.equipamento,mode:form.mode},tecnicoId:usuarioLogado.id,rascunho:true,criadoEm:existing?.criadoEm||new Date().toISOString()};
+ const current={id:existing?.id||(globalThis.crypto?.randomUUID?.()||'avac-'+Date.now()+'-'+Math.random().toString(36).slice(2)),adminId:tenant(),servicoId:os.id,clienteId:os.clienteId,localId:os.localId||os.instalacaoId||null,tipo:'AVAC',numeroDocumento:existing?.numeroDocumento||'AVAC-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),data:form.values.data,local:form.values.instalacao||'',campos:{...form.values,equipamento:form.equipamento,mode:form.mode,anexosFotograficosNaoGuardados:($('avac_photos')?.files?.length||0)>0},tecnicoId:usuarioLogado.id,rascunho:true,criadoEm:existing?.criadoEm||new Date().toISOString()};
  button.disabled=true;status.textContent='A guardar no servidor…';
  const snapshot=[...(dados.relatoriosEspecialidade||[])];
  try{
  dados.relatoriosEspecialidade=existing?snapshot.map(r=>r.id===existing.id?{...r,...current}:r):[...snapshot,current];
  await guardarDados();
- $('avac_record_id').value=current.id;renderCloud();status.textContent='Gravação solicitada. Verifica o registo sincronizado no histórico.';
+ $('avac_record_id').value=current.id;renderCloud();status.textContent='Sincronização solicitada. Confirma no histórico. As fotografias selecionadas são incluídas apenas no PDF e não foram guardadas no servidor.';
  }catch(e){dados.relatoriosEspecialidade=snapshot;status.textContent='Falha ao guardar no servidor: '+(e.message||e)}finally{button.disabled=false}
 }
 
@@ -111,7 +113,7 @@ $('avac_cloud').onchange=openCloud;
 $('avac_saved').onchange=loadDraft;
 $('avac_os').onchange=selectOS;
 populateOS();renderDrafts();renderCloud();
-}toggle();$('tgAvacDialog').showModal();
+}populateOS();renderCloud();toggle();$('tgAvacDialog').showModal();
 }
 function toggle(){const mode=$('avac_mode')?.value||'normal';if($('avac_sec_refrigerant'))$('avac_sec_refrigerant').hidden=!mode.includes('refrigerante');if($('avac_sec_plan'))$('avac_sec_plan').hidden=!mode.includes('plano')}
 async function exportPDF(){

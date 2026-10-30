@@ -143,6 +143,18 @@ const date=new Date().toISOString().slice(0,10);doc.save('relatorio_avac_'+date+
 }catch(e){status.textContent='Erro ao gerar PDF: '+e.message;}
 }
 window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
+// The native specialty list can render an AVAC entry. Open the adaptive form, not a security template.
+document.addEventListener('click',event=>{
+ const control=event.target.closest('button,[role="button"],a');if(!control||!isAVAC())return;
+ const label=(control.textContent||'').trim();
+ if(!/^(?:preencher|abrir|editar|ver)?\\s*relat[oó]rio\\s+(?:t[eé]cnico\\s+)?AVAC/i.test(label) && !/^(?:AVAC\\s*[—-]\\s*)?Relat[oó]rio T[eé]cnico AVAC/i.test(label))return;
+ if(control.id==='tgAvacLaunch'||control.dataset.avacReportOs||control.closest('#tgAvacDialog'))return;
+ const os=osByVisibleHeading(control);if(!os)return;
+ event.preventDefault();event.stopImmediatePropagation();
+ open();$('avac_os').value=String(os.id);selectOS();
+ $('avac_mode').value=(os.tiposTrabalho||[]).some(t=>/recarga de g[aá]s/i.test(String(t)))?'refrigerante':'normal';toggle();
+},true);
+
 
 /* An OS using AVAC work types must offer the adaptive report directly in its Reports tab. */
 const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria/i.test(String(t||''));

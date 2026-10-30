@@ -142,7 +142,24 @@ const pages=doc.internal.getNumberOfPages();for(let p=1;p<=pages;p++){doc.setPag
 const date=new Date().toISOString().slice(0,10);doc.save('relatorio_avac_'+date+'.pdf');status.textContent='PDF gerado.';
 }catch(e){status.textContent='Erro ao gerar PDF: '+e.message;}
 }
-window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
+function openForOS(osId){
+ if(!isAVAC())return;
+ open();
+ const selected=listOS().find(s=>String(s.id)===String(osId));
+ if(!selected){$('avac_status').textContent='Não foi possível encontrar a OS selecionada.';return;}
+ $('avac_os').value=String(osId);
+ const existing=cloudReports().find(r=>String(r.servicoId)===String(osId));
+ if(existing){
+  $('avac_cloud').value=String(existing.id);openCloud();
+ } else {
+  $('avac_record_id').value='';$('avac_draft_id').value='';
+  allFields.forEach(([id])=>{const el=$('avac_'+id);if(el)el.value='';});
+  selectOS();
+  const kinds=(selected.tiposTrabalho||[]).map(String).join(' ');
+  $('avac_mode').value=/recarga de g[aá]s/i.test(kinds)?'refrigerante':'normal';toggle();
+ }
+}
+window.TGAVACReport={open,openForOS,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
 // The native specialty list can render an AVAC entry. Open the adaptive form, not a security template.
 document.addEventListener('click',event=>{
  const control=event.target.closest('button,[role="button"],a');if(!control||!isAVAC())return;

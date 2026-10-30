@@ -10,7 +10,7 @@ const measurements=[['temp_entrada','Temperatura de entrada (°C)','number'],['t
 const refrigerant=[['tipo_gas','Refrigerante / designação'],['gwp','GWP (valor declarado)','number'],['carga','Carga total do equipamento (kg)','number'],['adicionado','Quantidade adicionada (kg)','number'],['recuperado','Quantidade recuperada (kg)','number'],['fugas','Verificação de fugas, método e resultado','textarea'],['certificacao','Identificação da certificação do técnico/empresa'],['destino','Destino do refrigerante recuperado','textarea']];
 const plan=[['plano_ref','Referência e versão do plano'],['tarefas_previstas','Tarefas previstas','textarea'],['tarefas_realizadas','Tarefas realizadas','textarea'],['desvios','Desvios ou tarefas pendentes','textarea']];
 function admin(){try{return typeof adminDoUtilizador==='function'?adminDoUtilizador():null}catch(e){return null}}
-function isAVAC(){const a=admin();if(!a)return false;const names=['areasAtividade','areaAtividade','atividades','atividade','setor','setorAtividade','ramoAtividade','especialidades'];return names.some(k=>{const v=a[k];return (Array.isArray(v)?v.join(' '):typeof v==='string'?v:'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes('avac')})}
+function isAVAC(){const a=admin();if(!a)return false;const v=a.areasNegocio??a.areas_negocio??[];return (Array.isArray(v)?v:typeof v==='string'?[v]:[]).some(x=>String(x).trim().toLowerCase()==='avac')}
 
 /* Drafts are scoped to this browser, tenant and login. Never claim cloud persistence. */
 const tenant=()=>String(typeof usuarioLogado!=='undefined'?(usuarioLogado?.adminId||usuarioLogado?.id||''):'');
@@ -89,7 +89,7 @@ async function saveCloud(){
 }
 
 function section(id,title,body){return '<section id="avac_sec_'+id+'" style="padding:12px;border:1px solid #d9e0e9;border-radius:10px;margin:12px 0"><h3 style="margin-top:0">'+title+'</h3>'+body+'</section>'}
-function insert(){if(!isAVAC())return;const menu=$('tgReportMenu');if(!menu||$('tgAvacLaunch'))return;const b=document.createElement('button');b.id='tgAvacLaunch';b.type='button';b.className='btn btn-outline';b.style.margin='8px';b.textContent='AVAC · Relatório técnico adaptativo';b.onclick=open;menu.appendChild(b);}
+function insert(){const existing=$('tgAvacLaunch');if(!isAVAC()){existing?.remove();return;}const menu=$('tgReportMenu');if(!menu||existing)return;const b=document.createElement('button');b.id='tgAvacLaunch';b.type='button';b.className='btn btn-outline';b.style.margin='8px';b.textContent='AVAC · Relatório técnico adaptativo';b.onclick=open;menu.appendChild(b);}
 function open(){
 if(!$('tgAvacDialog')){
 const dialog=document.createElement('dialog');dialog.id='tgAvacDialog';dialog.style.cssText='border:0;border-radius:14px;padding:0;max-width:750px;width:94vw;max-height:90vh;overflow:auto;box-shadow:0 16px 70px #0005';

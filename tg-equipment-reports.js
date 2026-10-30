@@ -15,9 +15,11 @@
  function avacEnabled(){try{const a=typeof adminDoUtilizador==='function'?adminDoUtilizador():null;const areas=a?.areasNegocio??a?.areas_negocio??[];return Array.isArray(areas)&&areas.some(v=>String(v).toLowerCase()==='avac')}catch(_){return false}}
  function avacWork(os){return avacEnabled()&&(os?.tiposTrabalho||[]).some(t=>avacTypes.some(label=>label.toLocaleLowerCase('pt-PT')===String(t).toLocaleLowerCase('pt-PT')))}
  function requirements(os){
-  if(avacWork(os))return [{tipo:'AVAC',equipamentoId:null,equipamentoNome:'Relatório Técnico AVAC'}];
-  if(Array.isArray(os?.planoManutencao?.relatoriosEquipamentos))return os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId);
-  return (os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
+  const avac=avacWork(os)?[{tipo:'AVAC',equipamentoId:null,equipamentoNome:'Relatório Técnico AVAC'}]:[];
+  const security=Array.isArray(os?.planoManutencao?.relatoriosEquipamentos)
+   ?os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId)
+   :(os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
+  return [...security,...avac];
  }
  function matches(r,os,req){return r.adminId===os.adminId&&r.servicoId===os.id&&r.tipo===req.tipo&&(r.campos?.equipamentoId||null)===(req.equipamentoId||null);}
  function pending(os){return requirements(os).filter(req=>!(dados.relatoriosEspecialidade||[]).some(r=>matches(r,os,req)&&!r.rascunho));}

@@ -159,11 +159,17 @@ document.addEventListener('click',event=>{
 /* An OS using AVAC work types must offer the adaptive report directly in its Reports tab. */
 const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria|instala[cç][aã]o/i.test(String(t||''));
 function osByVisibleHeading(node){
- const root=node?.closest('.modal-overlay,.modal-content,dialog,[role="dialog"],.modal')||node?.parentElement;
- const label=(root?.textContent||'').slice(0,700);
- const found=label.match(/OS-[A-Z0-9]+-[0-9]+/i)?.[0];
- if(!found)return null;
- return listOS().find(s=>[s.numero,s.numeroOS,s.id].filter(Boolean).some(n=>String(n).toLowerCase()===found.toLowerCase()))||null;
+ let current=node;
+ for(let i=0;current&&i<12;i++,current=current.parentElement){
+  const headings=[...current.querySelectorAll('h1,h2,h3,h4,.modal-title,.modal-header')];
+  const labels=headings.map(el=>el.textContent||'').join(' ');
+  const match=labels.match(/OS-[A-Z0-9]+-[0-9]+/i);
+  if(!match)continue;
+  const found=match[0].toLowerCase();
+  const os=listOS().find(s=>[s.numero,s.numeroOS,s.id].filter(Boolean).some(n=>String(n).toLowerCase()===found));
+  if(os)return os;
+ }
+ return null;
 }
 function mountOSReport(){
  if(!isAVAC())return;

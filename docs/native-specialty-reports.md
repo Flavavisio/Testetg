@@ -1,32 +1,39 @@
-# Relatórios nativos de AVAC, limpezas e eletricidade — TesteTG
+# Modelos nativos de especialidade — TesteTG
 
-Disponíveis por área de negócio: `avac` → RAVAC, `limpeza` → RLIM, `eletricidade` → RELE. Os tipos de trabalho de origem têm formulários incluídos e aparecem agrupados por especialidade na OS. Os modelos vazios criados pelo onboarding deixam de surgir como relatórios personalizados; o histórico existente é preservado.
+São 14 modelos completos com folhas, secções, campos e perguntas já elaborados, usando o mesmo iframe/leitor e fluxo de relatórios de CCTV e intrusão. O técnico não precisa de configurar modelos personalizados.
 
-## Utilização
+| Área | Modelos incluídos |
+| --- | --- |
+| AVAC (RAVAC) | Manutenção de ar condicionado; instalação e colocação em serviço; recarga de gás; limpeza de filtros/condutas; diagnóstico de avaria |
+| Limpeza (RLIM) | Limpeza regular; limpeza profunda; limpeza pós-obra; desinfeção |
+| Eletricidade (RELE) | Instalação elétrica; verificação técnica/preparação para inspeção; quadro elétrico; iluminação; avaria elétrica |
 
-1. Selecionar a área de negócio e um trabalho correspondente na OS.
-2. No separador Relatórios, usar Iniciar ou Continuar. A saída da OS usa a mesma fila de relatórios pendentes.
-3. Guardar rascunho para continuar noutra sessão. A conclusão exige identificação, trabalhos, resultado e assinatura do técnico autorizado; registar assinatura, ausência ou recusa do cliente.
-4. Consultar o documento emitido no histórico da OS/cliente/instalação. A pré-visualização abre dentro da app, com botão de fechar; Imprimir / Guardar PDF usa o documento completo.
+## Funcionamento na OS
 
-AVAC inclui cinco intervenções: manutenção, instalação/arranque, recarga, filtros/condutas e diagnóstico, com anexos de refrigerante e plano de manutenção quando aplicáveis. A recarga abre a ficha de gases fluorados. Não calcula obrigações ou prazos legais automaticamente.
+O tipo de trabalho escolhido na OS determina a folha que abre. Se a OS contiver vários trabalhos da mesma área, a folha reúne as secções dos trabalhos selecionados. As áreas de negócio continuam a controlar a disponibilidade das especialidades.
 
-Limpezas inclui zonas e tarefas, métodos, produtos, diluição, contacto, biocida, proteção, resíduos e verificação final. Desinfeção exige identificar produto, diluição, contacto e autorização/registo.
+O cabeçalho recebe os dados disponíveis da empresa, nome fiscal, logótipo, cliente, instalação/morada, OS, data e técnico. A identificação de equipamento é preenchida quando existe um equipamento associado ao relatório, ou quando existe exatamente um equipamento nessa instalação configurado com esse tipo de relatório.
 
-Eletricidade inclui quadro/instalação, circuitos, proteções, instrumentos, tensão, terra, isolamento, diferencial, continuidade, ensaios, anomalias e medidas tomadas. É um registo técnico; não emite certificação ou inspeção oficial.
+Cada modelo contém verificações numeradas com OK / NÃO OK / N/A, observação por verificação, campos de identificação e medições próprios da intervenção, trabalhos realizados, materiais, anomalias, resultado, fotografias e assinaturas. As respostas de conformidade e os valores medidos nunca são inventados nem copiados de uma visita concluída anterior.
 
-## Persistência e permissões
+Ao concluir é necessário responder às verificações, registar os trabalhos e o resultado, assinar com um perfil autorizado e registar a receção/ausência/recusa do cliente. Respostas NÃO OK exigem observações. Os relatórios de eletricidade documentam os ensaios e trabalhos; não emitem certificação ou inspeção oficial.
 
-Usa `relatorios_especialidade`, `config_series_relatorio` e a RPC de numeração existentes. Os campos estruturados ficam em `campos.avac`, `campos.limpeza` e `campos.eletricidade`; o documento congelado fica em `campos.htmlSnapshot`. Fotografias comprimidas (até quatro), legendas e assinaturas persistem com o relatório. Só é mostrado sucesso depois de o servidor devolver o ID gravado. A atualização exige que o relatório continue em rascunho. A cache local e o snapshot de sincronização são atualizados após a confirmação.
+## Persistência
 
-Preserva empresa, atribuição da OS, responsável, permissões negadas, autorização para assinar e validade da licença. As políticas restritivas de área não concedem acesso adicional a linhas. Os relatórios históricos mantêm-se consultáveis mesmo que a área mude.
+Usa `relatorios_especialidade`, a numeração RPC e o histórico existentes. `campos.estadoNativo` conserva os valores e respostas; `campos.htmlSnapshot` conserva a folha. O rascunho mantém campos editáveis e as assinaturas/fotografias. A folha concluída fica congelada, com os resultados e assinaturas visíveis, pronta a imprimir/guardar em PDF. Guardar/concluir só fecha o editor depois da confirmação do servidor. Falhas mantêm o editor aberto com opção de repetir.
 
-A base de dados é partilhada com produção: a migração apenas aceita os novos tipos e acrescenta condições de área para a sua escrita. O frontend e o deploy desta alteração destinam-se exclusivamente ao repositório Testetg.
+Uma alteração posterior aos trabalhos da OS carrega a folha atual e restaura os campos compatíveis do rascunho dessa OS. Rascunhos do editor anterior são preservados no registo ao serem convertidos. Os documentos históricos emitidos mantêm-se consultáveis.
 
-## Validação em 30/10/2026
+## Fontes do código
 
-- Testes de formulários, persistência simulada, reabertura a partir de JSON, fotografias, assinaturas, validações e isolamento de empresa.
-- Regressões de relatórios por equipamento, fila de conclusão da OS, nome fiscal e carregamento das entradas web/PWA.
-- Transações reais com papel `authenticated`: reserva de número, inserção de rascunho, releitura JSON e conclusão de RAVAC/RLIM/RELE. Todas revertidas; não deixaram documentos nem consumiram números.
-- Testes de negação por área para RLIM/RELE igualmente revertidos.
-- Verificação visual em navegador e numa janela de 390 × 844 px com dados fictícios. A pré-visualização usa o leitor da app. Não foi simulada uma assinatura de um cliente real.
+- `tg-specialty-models.json`: os 14 conjuntos de perguntas/campos elaborados.
+- `templates/native-specialty.html`: folha base no estilo CCTV/intrusão.
+- `templates/native-specialty-runtime.js`: preenchimento, fotografias, assinaturas e snapshot no iframe.
+- `templates/native-specialty-host.js`: seleção do modelo, contexto/permissões, gravação confirmada e registo no catálogo nativo.
+- `scripts/build-specialty-models.py`: gera `tg-specialty-templates.js`, carregado nas entradas web/PWA e incluído na cache offline.
+
+A migração aditiva dos tipos RLIM/RELE e condições de área foi aplicada no trabalho anterior à base partilhada. Esta revisão dos modelos não altera o esquema nem os dados de clientes. O frontend de produção não foi alterado. A publicação no TesteTG continua pendente da autorização explícita solicitada após o bloqueio automático do envio para main.
+
+## Verificações
+
+Testes dos 14 modelos; seleção por código/rótulo; composição de vários trabalhos; preenchimento automático; conservação de perguntas sem respostas automáticas; reabertura do rascunho com fotografias/assinaturas sem duplicar secções; conclusão e PDF; gravação confirmada dos três tipos; restrições de acesso; entrada real `_abrirModalRelatorioEspecialidade` e regressões do fluxo CCTV/intrusão. Verificação visual de folhas em desktop e 390 px com dados fictícios.

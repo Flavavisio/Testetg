@@ -32,7 +32,7 @@
     function html(adminId, today) {
         const s = scope(adminId);
         if (!s) return '';
-        const records = Object.fromEntries(['ponto','obraPontoLonga','servicos','obras'].map(key => [key, (dados[key] || []).filter(row => row.adminId === s.adminId)]));
+        const records = Object.fromEntries(['ponto','obraPontoLonga','servicos','obras','pedidos'].map(key => [key, (dados[key] || []).filter(row => row.adminId === s.adminId)]));
         const states = s.people.map(p => ({person:p, state:personState(s,p,today,records)}));
         const active = states.filter(row => row.state.active).length;
         const names = new Map([[s.enc.id, s.enc.nome], ...s.people.map(p => [p.id,p.nome])]);

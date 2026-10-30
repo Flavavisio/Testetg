@@ -13,7 +13,7 @@
  }
  const avacTypes=['Manutenção de ar condicionado','Instalação','Recarga de gás refrigerante','Limpeza de filtros/condutas','Diagnóstico de avaria'];
  function avacEnabled(){try{const a=typeof adminDoUtilizador==='function'?adminDoUtilizador():null;const areas=a?.areasNegocio??a?.areas_negocio??[];return Array.isArray(areas)&&areas.some(v=>String(v).toLowerCase()==='avac')}catch(_){return false}}
- function avacWork(os){return avacEnabled()&&(os?.tiposTrabalho||[]).some(t=>avacTypes.some(label=>label.toLocaleLowerCase('pt-PT')===String(t).toLocaleLowerCase('pt-PT')))}
+ function avacWork(os){const codes=['Manutenção AC','Instalação AVAC','Recarga de gás','Limpeza de filtros','Diagnóstico AVAC'];return avacEnabled()&&(os?.tiposTrabalho||[]).some(t=>codes.includes(String(t))||avacTypes.some(label=>label.toLocaleLowerCase('pt-PT')===String(t).toLocaleLowerCase('pt-PT')))}
  function requirements(os){
   const avac=avacWork(os)?[{tipo:'AVAC',equipamentoId:null,equipamentoNome:'Relatório Técnico AVAC'}]:[];
   const security=Array.isArray(os?.planoManutencao?.relatoriosEquipamentos)

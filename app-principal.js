@@ -6421,7 +6421,7 @@ function _assistEstado(value) {
             if (aba === 'relatorios') {
                 const tiposDaOS = window.TGEquipmentReports?.requirements(os) || (os.tiposTrabalho || []).filter(t => TIPOS_ESPECIALIDADE.includes(t)).map(tipo=>({tipo,equipamentoId:null}));
                 const relatoriosDaOS = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId);
-                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação' };
+                const nomes = { REX: 'Extintores', RBI: 'Bocas de Incêndio', RSI: 'Sistemas de Incêndio', RCM: 'Central de Incêndio', RIE: 'Iluminação de Emergência', RCP: 'Portas Corta-fogo', RCCTV: 'CCTV', RIN: 'Intrusão', RDI: 'Declaração de Instalação', AVAC: 'Relatório Técnico AVAC' };
                 if (!tiposDaOS.length) {
                     cont.innerHTML = '<p class="help-text">Esta OS não tem tipos de trabalho com relatório de especialidade associados.</p>';
                 } else {
@@ -28421,7 +28421,7 @@ async function salvarAdmin(e) {
         // Agrupamento visual dos tipos de trabalho: Incêndio (esquerda) vs Segurança (direita)
         const TIPOS_TRABALHO_GRUPO_INCENDIO = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP'];
         const TIPOS_TRABALHO_GRUPO_SEGURANCA = ['RCCTV', 'RIN', 'RDI'];
-        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI'];
+        const TIPOS_ESPECIALIDADE = ['REX', 'RBI', 'RSI', 'RCM', 'RIE', 'RCP', 'RCCTV', 'RIN', 'RDI', 'AVAC'];
 
         function _sTiposDisponiveis() {
             const tid = _tenantId();
@@ -28791,7 +28791,7 @@ async function salvarAdmin(e) {
         function _rpRenderListaTipos() {
             document.getElementById('rpPreviewFlutuante')?.classList.remove('open');
             const tid = _tenantId();
-            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid);
+            const tipos = (dados.tiposTrabalhoCustom || []).filter(t => t.adminId === tid && !(window.TGEquipmentReports?.avacWork && window.TGAVACReport?.isAVAC() && ['Manutenção AC','Instalação AVAC','Recarga de gás','Limpeza de filtros','Diagnóstico AVAC'].includes(t.codigo)));
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="rp-editor-scroll" style="height:100%;overflow-y:auto;display:flex;flex-direction:column;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
@@ -30204,6 +30204,12 @@ window._relPrefill = function(msg){
         async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null) {
             const os = dados.servicos?.find(s => s.id === osId);
             if(!os)return;
+            if(tipo === 'AVAC') {
+                if(!window.TGAVACReport?.openForOS){ alert('O formulário técnico AVAC não está disponível. Atualiza a aplicação.');return; }
+                _fecharModalGenerico();
+                window.TGAVACReport.openForOS(osId);
+                return;
+            }
             const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId);
             equipamentoId=requisito?.equipamentoId || null;
             if(Array.isArray(os.planoManutencao?.relatoriosEquipamentos) && !requisito){alert('Este relatório não está associado a um equipamento desta OS.');return;}

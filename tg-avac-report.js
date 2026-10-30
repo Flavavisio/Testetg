@@ -68,7 +68,7 @@ function openCloud(){
  $('avac_mode').value=r.campos?.mode||'normal';populateOS();$('avac_os').value=r.servicoId||'';
  allFields.forEach(([id])=>{const e=$('avac_'+id);if(e)e.value=r.campos?.[id]||''});toggle();$('avac_status').textContent='Relatório guardado carregado.';
 }
-async function saveCloud(){
+async function saveCloud(concluir=false){
  const status=$('avac_status'),button=$('avac_save_cloud');if(button.disabled)return;
  if(typeof usuarioLogado==='undefined'||!usuarioLogado||typeof dados==='undefined'||typeof guardarDados!=='function')throw Error('Sessão ou sincronização indisponível.');
  if(!isAVAC())throw Error('Atividade AVAC não identificada na configuração da empresa. Não é possível guardar.');
@@ -80,7 +80,7 @@ async function saveCloud(){
  if(form.mode.includes('refrigerante')&&(!form.values.tipo_gas?.trim()||!form.values.certificacao?.trim()||!form.values.fugas?.trim()))throw Error('Na intervenção com refrigerante, indica o fluido, a certificação e o resultado da verificação de fugas.');
  if(form.mode.includes('plano')&&(!form.values.plano_ref?.trim()||!form.values.tarefas_realizadas?.trim()))throw Error('Na execução do plano, indica a referência e as tarefas realizadas.');
  const existing=cloudReports().find(x=>x.id===$('avac_record_id').value);
- const current={id:existing?.id||(globalThis.crypto?.randomUUID?.()||'avac-'+Date.now()+'-'+Math.random().toString(36).slice(2)),adminId:tenant(),servicoId:os.id,clienteId:os.clienteId,localId:os.localId||os.instalacaoId||null,tipo:'AVAC',numeroDocumento:existing?.numeroDocumento||'AVAC-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),data:form.values.data,local:form.values.instalacao||'',campos:{...form.values,equipamento:form.equipamento,mode:form.mode,anexosFotograficosNaoGuardados:($('avac_photos')?.files?.length||0)>0},tecnicoId:usuarioLogado.id,rascunho:true,criadoEm:existing?.criadoEm||new Date().toISOString()};
+ const current={id:existing?.id||(globalThis.crypto?.randomUUID?.()||'avac-'+Date.now()+'-'+Math.random().toString(36).slice(2)),adminId:tenant(),servicoId:os.id,clienteId:os.clienteId,localId:os.localId||os.instalacaoId||null,tipo:'AVAC',numeroDocumento:existing?.numeroDocumento||'AVAC-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,7).toUpperCase(),data:form.values.data,local:form.values.instalacao||'',campos:{...form.values,equipamento:form.equipamento,mode:form.mode,anexosFotograficosNaoGuardados:($('avac_photos')?.files?.length||0)>0},tecnicoId:usuarioLogado.id,rascunho:!concluir,criadoEm:existing?.criadoEm||new Date().toISOString()};
  button.disabled=true;status.textContent='A guardar no servidor…';
  const snapshot=[...(dados.relatoriosEspecialidade||[])];
  try{
@@ -102,13 +102,14 @@ section('maintenance','Verificações e limpeza',fields(checks.map(([id,label])=
 section('refrigerant','Ficha de gases fluorados (quando aplicável)','<p>Preencher apenas quando o circuito e o fluido estejam sujeitos às obrigações aplicáveis. Este formulário não substitui comunicações ou registos legalmente exigidos.</p>'+fields(refrigerant))+
 section('plan','Execução do plano de manutenção',fields(plan))+
 section('finish','Conclusão',fields([['resultado','Resultado: conforme / não conforme / condicionado'],['recomendacoes','Recomendações','textarea']])+'<label>Fotografias / anexos de imagem<input type="file" id="avac_photos" accept="image/*" multiple style="display:block;width:100%"></label>')+
-'<div style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap"><button type="button" id="avac_save_cloud" class="btn btn-primary">Guardar no sistema</button><button type="button" id="avac_save" class="btn btn-outline">Guardar rascunho local</button><button type="button" id="avac_pdf" class="btn btn-primary">Gerar PDF</button></div><p id="avac_status" role="status"></p></div>';
+'<div style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap"><button type="button" id="avac_save_cloud" class="btn btn-outline">Guardar no sistema</button><button type="button" id="avac_finish_cloud" class="btn btn-primary">Concluir relatório</button><button type="button" id="avac_save" class="btn btn-outline">Guardar rascunho local</button><button type="button" id="avac_pdf" class="btn btn-primary">Gerar PDF</button></div><p id="avac_status" role="status"></p></div>';
 document.body.appendChild(dialog);
 $('avac_close').onclick=()=>dialog.close();
 $('avac_mode').onchange=toggle;
 $('avac_pdf').onclick=exportPDF;
 $('avac_save').onclick=saveDraft;
-$('avac_save_cloud').onclick=()=>saveCloud().catch(e=>{$('avac_status').textContent=e.message});
+$('avac_save_cloud').onclick=()=>saveCloud(false).catch(e=>{$('avac_status').textContent=e.message});
+$('avac_finish_cloud').onclick=()=>saveCloud(true).catch(e=>{$('avac_status').textContent=e.message});
 $('avac_cloud').onchange=openCloud;
 $('avac_saved').onchange=loadDraft;
 $('avac_os').onchange=selectOS;

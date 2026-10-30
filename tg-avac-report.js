@@ -146,46 +146,38 @@ window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
 
 /* An OS using AVAC work types must offer the adaptive report directly in its Reports tab. */
 const avacWorkType=t=>/manuten[cç][aã]o de ar condicionado|recarga de g[aá]s refrigerante|limpeza de filtros\/?condutas|diagn[oó]stico de avaria/i.test(String(t||''));
-function osByVisibleHeading(panel){
- const shell=panel?.closest('dialog,.modal-overlay,.modal,[role="dialog"],.modal-content')||panel;
- const label=(shell?.querySelector('h1,h2,h3,h4')?.textContent||shell?.textContent||'').slice(0,500);
- const numbers=[...label.matchAll(/OS-[A-Z0-9-]+/gi)].map(m=>m[0].replace(/[—–]$/,''));
- return listOS().find(s=>numbers.some(n=>[s.numero,s.numeroOS,s.id].filter(Boolean).some(v=>String(v).toLowerCase()===n.toLowerCase())))||null;
+function osByVisibleHeading(node){
+ const root=node?.closest('.modal-overlay,.modal-content,dialog,[role="dialog"],.modal')||node?.parentElement;
+ const label=(root?.textContent||'').slice(0,700);
+ const found=label.match(/OS-[A-Z0-9]+-[0-9]+/i)?.[0];
+ if(!found)return null;
+ return listOS().find(s=>[s.numero,s.numeroOS,s.id].filter(Boolean).some(n=>String(n).toLowerCase()===found.toLowerCase()))||null;
 }
 function mountOSReport(){
  if(!isAVAC())return;
- const dialogs=[...document.querySelectorAll('dialog,[role="dialog"],.modal-overlay,.modal,.modal-content')];
- for(const panel of dialogs){
-  if(panel.hidden||panel.style.display==='none')continue;
-  const heading=[...panel.querySelectorAll('h1,h2,h3,h4')].find(h=>/\bOS\s+OS-[A-Z0-9-]+/i.test(h.textContent||''));
-  if(!heading)continue;
-  const os=osByVisibleHeading(heading);
-  if(!os||!(os.tiposTrabalho||[]).some(avacWorkType))continue;
-  const reportTab=[...panel.querySelectorAll('button,[role="tab"]')].find(el=>/^\s*Relat[oó]rios\s*$/i.test(el.textContent||''));
-  if(!reportTab)continue;
-  // The report tab can be rebuilt when switching tabs. Attach a single persistent handler.
-  if(reportTab.dataset.avacReportListener!=='1'){
-    reportTab.dataset.avacReportListener='1';
-    reportTab.addEventListener('click',()=>queueMicrotask(mountOSReport));
+ const messages=[...document.querySelectorAll('p,div,span')].filter(el=>el.children.length===0&&/Esta OS n[aã]o tem tipos de trabalho com relat[oó]rio de especialidade associados/i.test(el.textContent||''));
+ for(const empty of messages){
+  const os=osByVisibleHeading(empty);
+  if(!os)continue;
+  let action=empty.parentElement?.querySelector('[data-avac-report-os]');
+  if(!action){
+   action=document.createElement('button');action.type='button';action.className='btn btn-primary';
+   action.dataset.avacReportOs=String(os.id);action.textContent='Preencher relatório AVAC';
+   action.style.cssText='display:block;width:100%;min-height:48px;margin:16px auto;padding:12px';
+   action.onclick=()=>{open();$('avac_os').value=String(os.id);selectOS();$('avac_mode').value=(os.tiposTrabalho||[]).some(t=>/recarga de g[aá]s/i.test(String(t)))?'refrigerante':'normal';toggle()};
+   empty.insertAdjacentElement('afterend',action);
   }
-  const tabIsActive=reportTab.classList.contains('active')||reportTab.classList.contains('ativo')||reportTab.getAttribute('aria-selected')==='true'||/rgb\(14, 165, 233\)|#0ea5e9/i.test(reportTab.style.background||'');
-  const empty=[...panel.querySelectorAll('p,div,span')].find(el=>el.children.length===0&&/Esta OS n[aã]o tem tipos de trabalho com relat[oó]rio de especialidade associados/i.test(el.textContent||''));
-  if(!tabIsActive&&!empty)continue;
-  let button=panel.querySelector('[data-avac-os-launch="'+String(os.id)+'"]');
-  if(!button){
-    button=document.createElement('button');button.type='button';button.className='btn btn-primary';
-    button.dataset.avacOsLaunch=String(os.id);button.textContent='Preencher relatório técnico AVAC';
-    button.style.cssText='display:block;width:100%;max-width:430px;margin:16px auto;padding:13px 18px;min-height:48px';
-    button.addEventListener('click',()=>{
-      open();$('avac_os').value=String(os.id);selectOS();
-      const types=(os.tiposTrabalho||[]).map(String);
-      $('avac_mode').value=types.some(t=>/recarga de g[aá]s/i.test(t))?'refrigerante':'normal';toggle();
-    });
-    (empty?.parentElement||reportTab.parentElement||panel).appendChild(button);
-  }
-  if(empty)empty.textContent='Relatório AVAC disponível para preenchimento nesta OS.';
+  empty.textContent='Relatório AVAC disponível para preenchimento nesta OS.';
  }
 }
+// Integrate with the existing OS tab even when its contents are rendered asynchronously.
+document.addEventListener('click',event=>{
+ const tab=event.target.closest('button,[role="tab"]');
+ if(!tab||!/^\s*Relat[oó]rios\s*$/i.test(tab.textContent||''))return;
+ setTimeout(mountOSReport,80);
+ setTimeout(mountOSReport,350);
+},true);
+
 
 function tidyCustomAVAC(){
  if(!isAVAC())return;

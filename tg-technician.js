@@ -66,9 +66,12 @@
     function menu() {
         const nav=$('menuInferiorMobile');if (!enabled() || !nav) return;
         nav.classList.add('tgt-nav');nav.style.display='grid';document.body.classList.add('tem-menu-inferior');
-        if (!nav.querySelector('[data-tgt-nav]')) nav.innerHTML=[['home','house','Hoje'],['jobs','calendar-week','Trabalhos'],['works','helmet-safety','Obras'],['more','user','Perfil']].map(([key,ico,text])=>`<button type="button" class="menu-inf-item" data-tgt-nav="${key}"${key==='home'?' id="menuInfHome"':''}>${icon(ico)}<span>${text}</span></button>`).join('');
+        const items=[['home','house','Hoje'],['jobs','calendar-week','Trabalhos'],['works','helmet-safety','Obras'],...(u()?.role==='funcionario'?[['fleet','car','Frota']]:[]),['more','user','Perfil']];
+        const navKey=items.map(item=>item[0]).join(',');
+        nav.style.setProperty('--tgt-nav-columns',String(items.length));
+        if (nav.dataset.tgtItems!==navKey || !nav.querySelector('[data-tgt-nav]')) {nav.innerHTML=items.map(([key,ico,text])=>`<button type="button" class="menu-inf-item" data-tgt-nav="${key}"${key==='home'?' id="menuInfHome"':''}>${icon(ico)}<span>${text}</span></button>`).join('');nav.dataset.tgtItems=navKey;}
         document.body.classList.toggle('tgt-profile',view==='more');
-        mark(view==='home'?'home':view==='jobs'?'jobs':view==='works'?'works':view==='records'?'records':['more','group','leave'].includes(view)?'more':'');
+        mark(view==='home'?'home':view==='jobs'?'jobs':view==='works'?'works':view==='fleet'?'fleet':view==='records'?'records':['more','group','leave'].includes(view)?'more':'');
     }
     function prepareHome() {
         const grid=$('cardsGrid'),home=$('tgHome'),dia=$('omeudia');
@@ -188,12 +191,134 @@
         if(focus)content.insertAdjacentHTML('beforeend',focusHTML(focus));
         content.insertAdjacentHTML('beforeend',list.length?list.map(job=>rowHTML(job)).join(''):'<p class="tgt-message">Sem obras ativas atribuídas a ti.</p>');menu();
     }
+    function leaveBalanceText() {
+        const person=rows(u()?.role==='encarregado'?'encarregados':'funcionarios').find(p=>p.id===u()?.id);
+        if(!enabled() || !_licencaValidaTenant() || !person || typeof feriasDisponiveis!=='function')return 'Saldo de férias indisponível';
+        const balance=Number(feriasDisponiveis(person.id,Number(today().slice(0,4))));
+        if(!Number.isFinite(balance))return 'Saldo de férias indisponível';
+        const days=Math.max(0,balance);return days.toLocaleString('pt-PT')+(days===1?' dia disponível':' dias disponíveis');
+    }
+    function updateLeaveBalance() {
+        const allowed=enabled() && permitted('pedidos');
+        const text=allowed?leaveBalanceText():'';
+        document.querySelectorAll('[data-tgt-leave-balance]').forEach(el=>{el.textContent=text;});
+        const section=$('secao-pedidos');let summary=$('tgtLeaveBalance');
+        if(!allowed){summary?.remove();return;}
+        if(section && !summary){summary=document.createElement('p');summary.id='tgtLeaveBalance';summary.className='tgt-leave-summary';const header=section.querySelector('.section-header');if(header)header.after(summary);else section.prepend(summary);}
+        if(summary)summary.textContent='Férias · '+today().slice(0,4)+' · '+text;
+    }
     function more() {
         view='more';const content=panel('O meu perfil');if(!content)return;
         const actions=document.createElement('div');actions.className='tgt-shortcuts';
-        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('pedidos')?button(icon('umbrella-beach')+' Férias e faltas','leave'):'')+(attendance()&&permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
+        actions.innerHTML=button(icon('user')+' Editar o meu perfil','profile')+(permitted('pedidos')?button(icon('umbrella-beach')+'<span>Férias e faltas<small data-tgt-leave-balance>'+esc(leaveBalanceText())+'</small></span>','leave'):'')+(attendance()&&permitted('ponto')?button(icon('clock')+' O meu registo de ponto','point'):'')+(permitted('folhas')?button(icon('clipboard-list')+' As minhas folhas de obra','sheets'):'');
         if(permitted('ferramentas')){const b=document.createElement('button');b.type='button';b.className='tgt-button';b.dataset.tgtCard='ferramentas';b.textContent='Equipamentos e QR';actions.append(b);}
         content.append(actions);menu();
+    }
+    let fleetEditor=null;
+    function fleetVehicle() {
+        if(!enabled() || u()?.role!=='funcionario' || !_licencaValidaTenant() || typeof moduloFrotaAtivo!=='function' || !moduloFrotaAtivo(adminDoUtilizador()))return null;
+        const person=rows('funcionarios').find(p=>p.id===u().id);
+        return person?.veiculoId ? rows('veiculos').find(v=>v.id===person.veiculoId) || null : null;
+    }
+    function fleetEditorCurrent(editor) {
+        return fleetEditor===editor && editor.owner===JSON.stringify([u()?.id,tenant()]) && fleetVehicle()?.id===editor.vehicleId;
+    }
+    function fleetRemember(collection,record) {
+        const list=dados[collection] || (dados[collection]=[]),index=list.findIndex(row=>row.id===record.id && row.adminId===record.adminId);
+        if(index<0)list.push(record);else list[index]=record;
+        // Direct confirmed writes must not be re-sent by the general data synchroniser.
+        if(typeof _snap!=='undefined' && typeof M!=='undefined' && M[collection]){
+            _snap[collection] ||= new Map();_snap[collection].set(record.id,JSON.stringify(M[collection].to(record)));
+        }
+    }
+    function fleetEdit(kind) {
+        const vehicle=fleetVehicle();if(!vehicle || !['km','manutencao','inspecao','documento','sinistro'].includes(kind))return;
+        const overlay=$('modalGenericoOverlay'),form=$('modalGenericoForm'),fields=$('modalGenericoCampos');if(!overlay || !form || !fields)return;
+        const names={km:'Atualizar quilómetros',manutencao:'Registar manutenção',inspecao:'Registar inspeção',documento:'Carregar documento',sinistro:'Comunicar sinistro'};
+        const editor={owner:JSON.stringify([u().id,tenant()]),personId:u().id,tenantId:tenant(),vehicleId:vehicle.id,kind,id:gerarId(),created:Date.now(),busy:false,saved:false};fleetEditor=editor;
+        const input=(id,label,type,value='',required=false)=>`<div class="form-group"><label for="tgt-fleet-${id}">${label}</label><input id="tgt-fleet-${id}" type="${type}" value="${esc(value)}" ${required?'required':''} ${type==='number'?'min="0" step="any" inputmode="decimal"':''}></div>`;
+        const description='<div class="form-group"><label for="tgt-fleet-description">Descrição</label><textarea id="tgt-fleet-description" rows="3" required></textarea></div>';
+        let body='';
+        if(kind==='documento')body='<div class="form-group"><label for="tgt-fleet-file">Documento ou fotografia</label><input id="tgt-fleet-file" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" required></div>';
+        else if(kind==='km')body=input('km','Quilómetros atuais','number',vehicle.km??0,true);
+        else if(kind==='sinistro')body=input('date','Data','date',today(),true)+description+input('insurer','Seguradora','text',vehicle.seguroSeguradora||'')+'<div class="form-group"><label for="tgt-fleet-state">Estado</label><select id="tgt-fleet-state"><option value="aberto">Aberto</option><option value="em_processo">Em processo</option><option value="resolvido">Resolvido</option></select></div>';
+        else body=input('date','Data','date',today(),true)+input('km','Quilómetros','number',vehicle.km??0)+description+input('cost','Custo (€)','number')+input('next-date',kind==='inspecao'?'Próxima inspeção':'Próxima manutenção (data)','date','',kind==='inspecao')+(kind==='manutencao'?input('next-km','Próxima manutenção (km)','number'):'');
+        $('modalGenericoTitulo').textContent=names[kind];
+        fields.innerHTML=`<div class="tgt-fleet-form"><p class="tgt-message">${esc(vehicle.matricula)} · ${esc(vehicle.marcaModelo||'')}</p>${body}<p id="tgt-fleet-feedback" role="status" aria-live="polite"></p></div>`;
+        const actions=$('modalGenericoAcoes') || form.querySelector('.modal-actions');
+        if(actions)actions.innerHTML='<button type="button" class="tgt-button" data-tgt-action="fleet-cancel">Cancelar</button><button type="submit" class="tgt-button tgt-primary">Guardar</button>';
+        form.onsubmit=event=>{event.preventDefault();return fleetSave(editor,form);};
+        overlay.classList.add('open');
+    }
+    async function fleetSave(editor,form) {
+        if(editor.busy || !fleetEditorCurrent(editor) || !form.reportValidity())return;
+        const value=id=>$('tgt-fleet-'+id)?.value || '';
+        const numeric=id=>{const raw=value(id);if(raw==='')return null;const n=Number(raw);if(!Number.isFinite(n)||n<0)throw new Error('Indica valores numéricos válidos, iguais ou superiores a zero.');return n;};
+        const feedback=message=>{if(fleetEditor===editor && $('tgt-fleet-feedback'))$('tgt-fleet-feedback').textContent=message;};
+        const guard=()=>{if(!fleetEditorCurrent(editor))throw new Error('A sessão ou a atribuição da viatura mudou. Volta a abrir a Frota.');};
+        const buttons=[...form.querySelectorAll('button')];editor.busy=true;buttons.forEach(b=>b.disabled=true);feedback('A guardar…');
+        try {
+            guard();
+            let record,collection,table,patch;
+            const vehicle=fleetVehicle();
+            if(editor.kind==='documento'){
+                const file=$('tgt-fleet-file')?.files?.[0];if(!file)throw new Error('Seleciona um documento.');
+                if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('Escolhe um PDF ou uma imagem JPG, PNG ou WebP.');
+                const encoded=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Não foi possível ler o ficheiro.'));reader.readAsDataURL(file);});guard();
+                collection='veiculoDocumentos';table='veiculo_documentos';record={id:editor.id,adminId:editor.tenantId,veiculoId:editor.vehicleId,nome:file.name,ficheiro:encoded,dataCriacao:editor.created};
+            }else if(editor.kind==='sinistro'){
+                collection='veiculoSinistros';table='veiculo_sinistros';record={id:editor.id,adminId:editor.tenantId,veiculoId:editor.vehicleId,condutorId:editor.personId,data:value('date'),descricao:value('description').trim(),seguradora:value('insurer').trim(),estado:value('state'),dataCriacao:editor.created};
+            }else if(editor.kind==='km'){
+                const km=numeric('km');if(km===null)throw new Error('Indica os quilómetros atuais.');patch={km,km_data:today()};
+            }else{
+                collection='veiculoIntervencoes';table='veiculo_intervencoes';const km=numeric('km');
+                record={id:editor.id,adminId:editor.tenantId,veiculoId:editor.vehicleId,tipo:editor.kind,data:value('date'),km,descricao:value('description').trim(),custo:numeric('cost'),proximaData:value('next-date')||null,proximaKm:editor.kind==='manutencao'?numeric('next-km'):null,dataCriacao:editor.created};
+                patch={};if(km!==null && km>Number(vehicle.km||0)){patch.km=km;patch.km_data=record.data;}
+                if(editor.kind==='inspecao')patch.inspecao_validade=record.proximaData;
+            }
+            // Re-read the persisted assignment before writing, even if the local list is stale.
+            const assignment=await supa.from('funcionarios').select('id,admin_id,veiculo_id').eq('id',editor.personId).eq('admin_id',editor.tenantId).single();guard();
+            if(assignment.error)throw assignment.error;
+            if(assignment.data?.veiculo_id!==editor.vehicleId || assignment.data?.admin_id!==editor.tenantId || assignment.data?.id!==editor.personId)throw new Error('Esta viatura já não te está atribuída. Atualiza a Frota.');
+            if(record){
+                const payload=M[collection].to(record);
+                const result=await supa.from(table).upsert(payload,{onConflict:'id'}).select('*').single();
+                if(result.error)throw result.error;
+                if(result.data?.id!==editor.id || result.data?.admin_id!==editor.tenantId || result.data?.veiculo_id!==editor.vehicleId)throw new Error('O servidor não confirmou o registo.');
+                editor.saved=true;guard();fleetRemember(collection,M[collection].from(result.data));
+            }
+            if(patch && Object.keys(patch).length){
+                guard();const result=await supa.from('veiculos').update(patch).eq('id',editor.vehicleId).eq('admin_id',editor.tenantId).select('*').single();
+                if(result.error)throw result.error;
+                if(result.data?.id!==editor.vehicleId || result.data?.admin_id!==editor.tenantId)throw new Error('O servidor não confirmou a atualização da viatura.');
+                guard();fleetRemember('veiculos',M.veiculos.from(result.data));
+            }
+            guard();fleetEditor=null;$('modalGenericoOverlay').classList.remove('open');fleet();
+            if(typeof _guardarCacheLocal==='function')void Promise.resolve(_guardarCacheLocal()).catch(()=>{});
+        }catch(error){feedback((editor.saved?'O registo foi guardado, mas a atualização da viatura não ficou concluída. Podes voltar a guardar sem duplicar. ':'Não foi possível guardar. ')+(error.message||'Verifica a ligação e tenta novamente.'));}
+        finally{editor.busy=false;buttons.forEach(b=>b.disabled=false);}
+    }
+    function fleet() {
+        if(!enabled() || u()?.role!=='funcionario')return;
+        view='fleet';const content=panel('A minha viatura');if(!content)return;
+        if(!_licencaValidaTenant() || typeof moduloFrotaAtivo!=='function' || !moduloFrotaAtivo(adminDoUtilizador())) {
+            content.insertAdjacentHTML('beforeend','<p class="tgt-message">A Frota não está disponível na licença da tua empresa.</p>');menu();return;
+        }
+        const person=rows('funcionarios').find(p=>p.id===u().id);
+        const vehicle=person?.veiculoId && rows('veiculos').find(v=>v.id===person.veiculoId);
+        if(!vehicle){content.insertAdjacentHTML('beforeend','<p class="tgt-message">Não tens nenhuma viatura atribuída. Contacta o responsável da empresa.</p>');menu();return;}
+        const date=value=>{if(!value)return 'Por indicar';if(/^\d{4}-\d{2}-\d{2}/.test(String(value)))return String(value).slice(0,10).split('-').reverse().join('/');const parsed=new Date(value);return Number.isFinite(parsed.getTime())?parsed.toLocaleDateString('pt-PT'):'Por indicar';};
+        const number=value=>value==null || value===''?'Por indicar':Number.isFinite(Number(value))?Number(value).toLocaleString('pt-PT'):'Por indicar';
+        const detail=(label,value)=>`<div><dt>${esc(label)}</dt><dd>${esc(value || 'Por indicar')}</dd></div>`;
+        const section=(title,body)=>`<section class="tgt-fleet-card"><h3>${title}</h3>${body}</section>`;
+        const linked=key=>rows(key).filter(row=>row.veiculoId===vehicle.id);
+        const documents=linked('veiculoDocumentos'),history=linked('veiculoIntervencoes').sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))),incidents=linked('veiculoSinistros').sort((a,b)=>String(b.data||'').localeCompare(String(a.data||'')));
+        const safeFile=value=>/^(https?:\/\/)/i.test(String(value||'')) || /^data:(?:application\/pdf|image\/(?:png|jpe?g|webp));base64,[a-z0-9+/=\s]+$/i.test(String(value||''))?String(value):'';
+        content.insertAdjacentHTML('beforeend',`<div class="tgt-fleet-actions">${[['km','gauge-high','Atualizar km'],['manutencao','screwdriver-wrench','Manutenção'],['inspecao','clipboard-check','Inspeção'],['documento','file-arrow-up','Documento'],['sinistro','car-burst','Sinistro']].map(([kind,ico,label])=>button(icon(ico)+' '+label,'fleet-'+kind)).join('')}</div>`+section(`${icon('car')} ${esc(vehicle.matricula || 'Viatura atribuída')}`,`<p class="tgt-message">${esc(vehicle.marcaModelo || 'Marca / modelo por indicar')}</p><dl class="tgt-fleet-details">${detail('Ano',vehicle.ano)}${detail('Combustível',vehicle.combustivel)}${detail('Quilómetros',number(vehicle.km)+' km')}${detail('Último registo de km',date(vehicle.kmData))}${detail('Inspeção válida até',date(vehicle.inspecaoValidade))}${detail('Seguro válido até',date(vehicle.seguroValidade))}${detail('Seguradora',vehicle.seguroSeguradora)}</dl>${vehicle.observacoes?`<h4>Observações</h4><p class="tgt-note-text">${esc(vehicle.observacoes)}</p>`:''}`)
+            +section('Documentos',documents.length?`<ul class="tgt-fleet-list">${documents.map(doc=>{const url=safeFile(doc.ficheiro);return `<li><strong>${esc(doc.nome || 'Documento')}</strong><small>${esc(date(doc.dataCriacao))}</small>${url?`<a class="tgt-button" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${icon('file-arrow-down')} Abrir documento</a>`:'<small>Ficheiro indisponível</small>'}</li>`;}).join('')}</ul>`:'<p class="tgt-message">Sem documentos registados.</p>')
+            +section('Inspeções e manutenções',history.length?`<ul class="tgt-fleet-list">${history.map(item=>`<li><strong>${esc(item.tipo==='inspecao'?'Inspeção':item.tipo==='manutencao'?'Manutenção':item.tipo || 'Intervenção')}</strong><small>${esc(date(item.data))} · ${esc(number(item.km))} km</small><p class="tgt-note-text">${esc(item.descricao || 'Sem descrição')}</p><dl class="tgt-fleet-details">${detail('Custo',item.custo==null?'Por indicar':number(item.custo)+' €')}${detail('Próxima data',date(item.proximaData))}${detail('Próximos quilómetros',item.proximaKm==null?'Por indicar':number(item.proximaKm)+' km')}</dl></li>`).join('')}</ul>`:'<p class="tgt-message">Sem inspeções ou manutenções registadas.</p>')
+            +section('Sinistros',incidents.length?`<ul class="tgt-fleet-list">${incidents.map(item=>`<li><strong>${esc(date(item.data))} · ${esc(item.estado || 'Estado por indicar')}</strong><p class="tgt-note-text">${esc(item.descricao || 'Sem descrição')}</p><small>${esc(item.seguradora || 'Seguradora por indicar')}</small></li>`).join('')}</ul>`:'<p class="tgt-message">Sem sinistros registados.</p>'));
+        menu();
     }
     function navigate(open) {const result=open();window.scrollTo({top:0,behavior:'auto'});return result;}
     function passportTarget(job) {
@@ -289,16 +414,18 @@
         if(refreshing)return;refreshing=true;
         try {
             const on=enabled(),key=JSON.stringify([u()?.id,u()?.adminId,u()?.role]);
+            if(fleetEditor && !fleetEditorCurrent(fleetEditor)){fleetEditor=null;$('modalGenericoOverlay')?.classList.remove('open');}
+            if((key!==identity || !on) && view==='fleet'){$('painelGrupoMobileConteudo')?.replaceChildren();if($('painelGrupoMobile'))$('painelGrupoMobile').style.display='none';}
             if(key!==identity){identity=key;view='home';selected='';weekDay='';wizards.forEach(removeWizard);}
             document.body.classList.toggle('tgt-active',on);
-            if(on){prepareHome();menu();renderHome();if(view==='jobs')workList();if(view==='works')worksList();installWizard();}
+            if(on){prepareHome();menu();renderHome();if(view==='jobs')workList();if(view==='works')worksList();if(view==='fleet')fleet();installWizard();}
             else if(wasEnabled){
                 document.body.classList.remove('tgt-profile');$('menuInferiorMobile')?.classList.remove('tgt-nav');$('painelGrupoMobileConteudo')?.classList.remove('tgt-panel');
                 wizards.forEach(removeWizard);if($('omeudia'))delete $('omeudia').dataset.tgtHtml;
                 _montarMenuInferiorMobile();renderizarOMeuDia();
                 if(!document.querySelector('.section-container.active')&&view==='home')_mostrarInicioConteudo();
             }
-            wasEnabled=on;
+            updateLeaveBalance();wasEnabled=on;
         }finally{refreshing=false;}
     }
     function wrap(name,fn) {const original=window[name];if(typeof original==='function')window[name]=function(...args){return fn.call(this,original,args);};}
@@ -312,11 +439,12 @@
     wrap('picarPontoOS',function(original,args){if(enabled()&&args[1]==='entrada'&&!entryAllowed(args[0],'os'))return denyOtherDay();return original.apply(this,args);});
     wrap('obraLongaPicarEntrada',function(original,args){if(enabled()&&!entryAllowed(args[0],'obra'))return denyOtherDay();return original.apply(this,args);});
     wrap('renderizarOMeuDia',function(original,args){if(enabled())return renderHome();return original.apply(this,args);});
-    wrap('_mostrarInicioConteudo',function(original,args){if(enabled()){view='home';prepareHome();renderHome();return;}return original.apply(this,args);});
+    wrap('renderizarPedidosFunc',function(original,args){const result=original.apply(this,args);updateLeaveBalance();return result;});
+    wrap('_mostrarInicioConteudo',function(original,args){if(enabled())return home();return original.apply(this,args);});
     wrap('_montarMenuInferiorMobile',function(original,args){const result=original.apply(this,args);if(enabled()){document.body.classList.add('tgt-active');menu();}return result;});
     wrap('_voltarMeuDia',function(original,args){if(enabled())return home();return original.apply(this,args);});
     wrap('_abrirGrupoMobile',function(original,args){if(enabled()){view='group';prepareHome();}const result=original.apply(this,args);if(enabled())menu();return result;});
-    wrap('abrirSecao',function(original,args){if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':args[0]==='pedidos'?'leave':'section';const result=original.apply(this,args);if(enabled())menu();return result;});
+    wrap('abrirSecao',function(original,args){if(enabled()&&u()?.role==='funcionario'&&args[0]==='frota')return fleet();if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':args[0]==='pedidos'?'leave':'section';const result=original.apply(this,args);if(enabled())menu();return result;});
     for(const name of ['criarFolhaDaOS','criarFolhaDaObra'])wrap(name,function(original,args){wizards.forEach(removeWizard);const result=original.apply(this,args);installWizard();return result;});
     wrap('abrirModal',function(original,args){wizards.forEach(removeWizard);return original.apply(this,args);});
     document.addEventListener('submit',event=>{
@@ -329,10 +457,12 @@
     document.addEventListener('click',event=>{
         const control=event.target.closest('[data-tgt-nav],[data-tgt-action],[data-tgt-card],[data-tgt-step],[data-tgt-travel],[data-tgt-day]');
         if(!control||!enabled())return;
+        if(control.dataset.tgtAction==='fleet-cancel'){if(!fleetEditor?.busy){fleetEditor=null;$('modalGenericoOverlay')?.classList.remove('open');}return;}
+        if(control.dataset.tgtAction?.startsWith('fleet-'))return fleetEdit(control.dataset.tgtAction.slice(6));
         if(control.dataset.tgtDay){if(weekDays().some(day=>day.date===control.dataset.tgtDay)){weekDay=control.dataset.tgtDay;workList();document.querySelector('[data-tgt-day="'+weekDay+'"]')?.focus({preventScroll:true});}return;}
         if(control.dataset.tgtAction==='weekly-details'){const job=weekJobs().find(job=>job.id===control.dataset.tgtId);if(job)return details(job);return;}
         if(control.dataset.tgtTravel){const job=jobs().find(j=>j.kind==='os'&&j.id===control.dataset.tgtTravel);if(job&&typeof _registarKmViagemOS==='function')_registarKmViagemOS(job.id);return;}
-        if(control.dataset.tgtNav){switch(control.dataset.tgtNav){case'home':return navigate(home);case'jobs':weekDay=today();return navigate(workList);case'works':return navigate(worksList);case'records':if(permitted('folhas'))return abrirSecao('folhas');return;case'more':return navigate(more);}}
+        if(control.dataset.tgtNav){switch(control.dataset.tgtNav){case'home':return navigate(home);case'jobs':weekDay=today();return navigate(workList);case'works':return navigate(worksList);case'fleet':return navigate(fleet);case'records':if(permitted('folhas'))return abrirSecao('folhas');return;case'more':return navigate(more);}}
         if(control.dataset.tgtCard){if(permitted(control.dataset.tgtCard))document.querySelector(`#cardsGrid [data-card="${CSS.escape(control.dataset.tgtCard)}"]`)?.click();return;}
         const wizard=wizards.get(control.closest('form'));
         if(control.dataset.tgtStep!==undefined&&wizard){const target=Number(control.dataset.tgtStep);if(target<=wizard.step){setStep(wizard,target);return;}for(let i=wizard.step;i<target;i++)if(!validate(wizard,i))return;setStep(wizard,target);return;}

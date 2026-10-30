@@ -88,7 +88,10 @@ const doc=new jsPDF({unit:'mm',format:'a4'}), W=210, margin=15;let y=18;
 const newPage=(needed=8)=>{if(y+needed>275){doc.addPage();y=18}};
 const heading=t=>{newPage(14);doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(t,margin,y);y+=8};
 const line=(label,value)=>{if(!String(value||'').trim())return;doc.setFont('helvetica','normal');doc.setFontSize(10);const text=doc.splitTextToSize(label+': '+value,180);newPage(text.length*5+3);doc.text(text,margin,y);y+=text.length*5+2};
-doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('Relatório técnico AVAC',margin,y);y+=13;
+doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('Relatório técnico AVAC',margin,y);y+=10;
+const company=admin();doc.setFont('helvetica','normal');doc.setFontSize(10);
+line('Empresa',company?.nomeEmpresa||company?.nome||'');line('Nome fiscal',company?.nomeFiscal||company?.razaoSocial||'');line('Data de emissão',new Date().toLocaleDateString('pt-PT'));
+y+=4;
 line('Ordem de serviço',$('avac_os').selectedOptions[0]?.textContent||'');line('Equipamento',$('avac_equip').value);line('Intervenção',$('avac_mode').selectedOptions[0].textContent);
 const read=id=>$ ('avac_'+id)?.value||'';
 const group=(title,entries)=>{heading(title);entries.forEach(([id,label])=>line(label,read(id)))};
@@ -98,6 +101,7 @@ if($('avac_mode').value.includes('plano'))group('Anexo — plano de manutenção
 group('Resultado e recomendações',[['resultado','Resultado'],['recomendacoes','Recomendações']]);
 const files=[...($('avac_photos').files||[])].slice(0,15);
 if(files.length){heading('Anexo fotográfico');for(const f of files){if(!f.type.startsWith('image/'))continue;const url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(f)});const fmt=f.type==='image/png'?'PNG':'JPEG';if(!['image/png','image/jpeg'].includes(f.type)){line('Ficheiro não incorporado',f.name);continue}newPage(70);doc.addImage(url,fmt,margin,y,95,64,undefined,'FAST');y+=70;}}
+const pages=doc.internal.getNumberOfPages();for(let p=1;p<=pages;p++){doc.setPage(p);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Relatório técnico de intervenção — não substitui inspeção regulamentar, registo oficial de gases fluorados ou Legionella.',15,286,{maxWidth:170});doc.text(p+' / '+pages,194,290,{align:'right'});}
 const date=new Date().toISOString().slice(0,10);doc.save('relatorio_avac_'+date+'.pdf');status.textContent='PDF gerado.';
 }catch(e){status.textContent='Erro ao gerar PDF: '+e.message;}
 }

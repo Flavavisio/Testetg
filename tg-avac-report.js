@@ -7,7 +7,7 @@ const fields=(items)=>items.map(([id,label,type='text'])=>'<label style="display
 const general=[['cliente','Cliente'],['instalacao','Instalação / morada'],['tecnico','Técnico responsável'],['data','Data da intervenção','date'],['marca','Marca'],['modelo','Modelo'],['serie','N.º de série'],['observacoes','Observações','textarea']];
 const checks=[['filtros','Estado e limpeza dos filtros'],['bateria','Baterias e permutadores'],['drenagem','Condensados e drenagem'],['ventiladores','Ventiladores e ruídos'],['ligacoes','Ligações elétricas e segurança']];
 const measurements=[['temp_entrada','Temperatura de entrada (°C)','number'],['temp_saida','Temperatura de saída (°C)','number'],['corrente','Corrente elétrica (A)','number'],['pressao','Pressão (bar)','number']];
-const refrigerant=[['tipo_gas','Refrigerante / designação'],['gwp','GWP (valor declarado)','number'],['carga','Carga total do equipamento (kg)','number'],['adicionado','Quantidade adicionada (kg)','number'],['recuperado','Quantidade recuperada (kg)','number'],['fugas','Verificação de fugas, método e resultado','textarea'],['certificacao','Identificação da certificação do técnico/empresa'],['destino','Destino do refrigerante recuperado','textarea']];
+const refrigerant=[['tipo_gas','Refrigerante / designação'],['gwp','GWP (valor declarado)','number'],['carga','Carga total do equipamento (kg)','number'],['adicionado','Quantidade adicionada (kg)','number'],['recuperado','Quantidade recuperada (kg)','number'],['fugas','Verificação de fugas, método e resultado','textarea'],['certificacao','Identificação da certificação do técnico/empresa'],['destino','Destino do refrigerante recuperado','textarea'],['data_adicao','Data da adição de refrigerante','date'],['origem_gas','Gás novo, reciclado ou valorizado'],['instalacao_reciclagem','Identificação da entidade de reciclagem/valorização'],['data_fugas','Data da verificação de fugas','date'],['reparacao_fugas','Data e resultado da reparação de fugas','textarea'],['desativacao','Desativação e medidas de recuperação/eliminação, se aplicável','textarea']];
 const plan=[['plano_ref','Referência e versão do plano'],['tarefas_previstas','Tarefas previstas','textarea'],['tarefas_realizadas','Tarefas realizadas','textarea'],['desvios','Desvios ou tarefas pendentes','textarea']];
 function admin(){try{return typeof adminDoUtilizador==='function'?adminDoUtilizador():null}catch(e){return null}}
 function isAVAC(){const a=admin();if(!a)return false;const v=a.areasNegocio??a.areas_negocio??[];return (Array.isArray(v)?v:typeof v==='string'?[v]:[]).some(x=>String(x).trim().toLowerCase()==='avac')}
@@ -128,7 +128,7 @@ const company=admin();doc.setFont('helvetica','normal');doc.setFontSize(10);
 line('Empresa',company?.nomeEmpresa||company?.nome||'');line('Nome fiscal',company?.nomeFiscal||company?.razaoSocial||'');line('Data de emissão',new Date().toLocaleDateString('pt-PT'));
 y+=4;
 line('Ordem de serviço',$('avac_os').selectedOptions[0]?.textContent||'');line('Equipamento',$('avac_equip').value);line('Intervenção',$('avac_mode').selectedOptions[0].textContent);
-const read=id=>$ ('avac_'+id)?.value||'';
+const read=id=>$('avac_'+id)?.value||'';
 const group=(title,entries)=>{heading(title);entries.forEach(([id,label])=>line(label,read(id)))};
 group('Identificação',general);group('Verificações e limpeza',checks);group('Medições',measurements);
 if($('avac_mode').value.includes('refrigerante'))group('Anexo — refrigerante / gases fluorados',refrigerant);

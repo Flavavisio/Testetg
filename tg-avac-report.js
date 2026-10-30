@@ -166,5 +166,24 @@ function mountOSReport(){
  }
 }
 
-const observer=new MutationObserver(()=>{insert();mountOSReport();});function init(){insert();mountOSReport();observer.observe(document.body,{subtree:true,childList:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+
+function tidyCustomAVAC(){
+ if(!isAVAC())return;
+ for(const title of document.querySelectorAll('h1,h2,h3,h4')){
+  if(!/Relat[oó]rios personalizados por tipo de trabalho/i.test(title.textContent||''))continue;
+  const container=title.closest('dialog,.modal-content,.modal,[role="dialog"]')||title.parentElement?.parentElement;
+  if(!container)continue;
+  const names=['Manutenção de ar condicionado','Instalação','Recarga de gás refrigerante','Limpeza de filtros/condutas','Diagnóstico de avaria'];
+  for(const tr of container.querySelectorAll('tr')){
+   const first=tr.querySelector('td')?.textContent?.trim()||'';
+   if(names.some(x=>x.toLowerCase()===first.toLowerCase()))tr.hidden=true;
+  }
+  if(!container.querySelector('#avacNativeNote')){
+   const notice=document.createElement('p');notice.id='avacNativeNote';notice.textContent='Os trabalhos AVAC utilizam automaticamente o Relatório Técnico AVAC adaptativo, disponível nas Ordens de Serviço. Não é necessário criar modelos personalizados.';
+   title.insertAdjacentElement('afterend',notice);
+  }
+ }
+}
+
+const observer=new MutationObserver(()=>{insert();mountOSReport();tidyCustomAVAC();});function init(){insert();mountOSReport();tidyCustomAVAC();observer.observe(document.body,{subtree:true,childList:true});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

@@ -15,7 +15,6 @@
  function avacEnabled(){try{const a=typeof adminDoUtilizador==='function'?adminDoUtilizador():null;const areas=a?.areasNegocio??a?.areas_negocio??[];return Array.isArray(areas)&&areas.some(v=>String(v).toLowerCase()==='avac')}catch(_){return false}}
  function avacWork(os){return avacEnabled()&&(os?.tiposTrabalho||[]).some(t=>avacTypes.some(label=>label.toLocaleLowerCase('pt-PT')===String(t).toLocaleLowerCase('pt-PT')))}
  function requirements(os){
-  if(avacWork(os))return [{tipo:'AVAC',equipamentoId:null,equipamentoNome:'Relatório Técnico AVAC'}];
   if(Array.isArray(os?.planoManutencao?.relatoriosEquipamentos))return os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId);
   return (os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
  }

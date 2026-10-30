@@ -147,7 +147,7 @@ window.TGAVACReport={open,saveDraft,listDrafts,isAVAC,saveCloud,renderCloud};
 document.addEventListener('click',event=>{
  const control=event.target.closest('button,[role="button"],a');if(!control||!isAVAC())return;
  const label=(control.textContent||'').trim();
- if(!/^(?:preencher|abrir|editar|ver)?\s*relat[oó]rio\s+(?:t[eé]cnico\s+)?AVAC/i.test(label) && !/^(?:AVAC\s*[—-]\s*)?Relat[oó]rio T[eé]cnico AVAC/i.test(label))return;
+ if(!(/\bAVAC\b/i.test(label) && /relat[oó]rio|preencher|abrir|editar/i.test(label)))return;
  if(control.id==='tgAvacLaunch'||control.dataset.avacReportOs||control.closest('#tgAvacDialog'))return;
  const os=osByVisibleHeading(control);if(!os)return;
  event.preventDefault();event.stopImmediatePropagation();

@@ -4,19 +4,20 @@
 #tg-assistente button,#tg-assistente input{font:inherit}
 #tg-assistente button{cursor:pointer}
 #tg-assistente button:focus-visible,#tg-assistente input:focus-visible{outline:3px solid #ff8e30;outline-offset:3px}
-#tg-assistente .tg-launcher{position:relative;display:flex;justify-content:flex-end}
+#tg-assistente .tg-launcher{position:relative;display:flex;justify-content:flex-end;align-items:flex-start;gap:12px}
 #tg-assistente .tg-open{background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;display:flex;flex-direction:column;align-items:center;color:var(--tg-ink)}
 #tg-assistente .tg-open img{width:124px;height:132px;background:transparent;border:0;border-radius:0;object-fit:contain;filter:drop-shadow(0 5px 6px #162b4f22)}
 #tg-assistente .tg-open span{background:var(--tg-paper);border:1px solid var(--tg-line);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:650;box-shadow:0 3px 12px #162b4f10}
-#tg-assistente .tg-minimize{position:absolute;right:-5px;top:0;width:26px;height:26px;border:1px solid var(--tg-line);border-radius:50%;background:var(--tg-paper);color:var(--tg-ink);line-height:1}
+#tg-assistente .tg-minimize{position:relative;flex:0 0 48px;width:48px;height:48px;margin-top:8px;padding:0;display:grid;place-items:center;border:1px solid var(--tg-line);border-radius:50%;background:var(--tg-paper);color:var(--tg-ink);font-size:26px;line-height:1;box-shadow:0 3px 12px #162b4f18;touch-action:manipulation}
 #tg-assistente.tg-compact .tg-open img{display:none}
-#tg-assistente.tg-compact .tg-minimize{top:-17px;right:-10px}
+#tg-assistente.tg-compact .tg-launcher,#tg-assistente.tg-is-open .tg-launcher{align-items:center;min-height:48px}
+#tg-assistente.tg-compact .tg-minimize,#tg-assistente.tg-is-open .tg-minimize{margin-top:0}
 #tg-assistente .tg-chat{position:absolute;bottom:165px;right:0;width:360px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 200px);display:flex;flex-direction:column;background:var(--tg-paper);border:1px solid var(--tg-line);border-radius:20px;overflow:hidden;box-shadow:0 18px 60px #10223f30}
-#tg-assistente.tg-compact .tg-chat{bottom:52px;max-height:calc(100dvh - 90px)}
+#tg-assistente.tg-compact .tg-chat{bottom:64px;max-height:calc(100dvh - 100px)}
 #tg-assistente header{padding:18px;background:#172c50;color:white;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 #tg-assistente header strong{font-size:15px}
 #tg-assistente header small{display:block;color:#d1ddeb;font-size:12px;margin-top:3px}
-#tg-assistente .tg-close{background:#ffffff15;border:0;color:#fff;border-radius:9px;min-width:32px;height:32px;font-size:23px;line-height:1}
+#tg-assistente .tg-close{background:#ffffff15;border:0;color:#fff;border-radius:9px;min-width:44px;height:44px;font-size:23px;line-height:1;touch-action:manipulation}
 #tg-assistente .tg-messages{overflow-y:auto;overscroll-behavior:contain;padding:16px;min-height:80px;max-height:290px;scroll-behavior:smooth}
 #tg-assistente .tg-message{background:var(--tg-soft);padding:11px 13px;margin:0 20px 12px 0;border-radius:12px 12px 12px 3px;overflow-wrap:anywhere;font-size:13px}
 #tg-assistente .tg-message p{margin:0}
@@ -51,13 +52,13 @@ body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#243
 #tg-assistente .tg-tools .tg-snooze{margin-left:auto}
 #tg-assistente .tg-message p{white-space:pre-line}
 #tg-assistente .tg-form button:disabled{opacity:.5;cursor:wait}
-#tg-assistente.tg-is-open .tg-chat{bottom:52px;max-height:calc(100dvh - 100px)}
+#tg-assistente.tg-is-open .tg-chat{bottom:64px;max-height:calc(100dvh - 100px)}
 #tg-assistente.tg-is-open .tg-launcher .tg-open img{display:none}
 @keyframes tg-breathe{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
 @keyframes tg-wave{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) translateY(-5px)}75%{transform:rotate(8deg) translateY(-5px)}}
 @keyframes tg-attention{0%,100%{transform:translateY(0)}35%{transform:translateY(-12px) rotate(-5deg)}65%{transform:translateY(-6px) rotate(5deg)}}
 @keyframes tg-think{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg) translateY(-3px)}}
-@media(max-width:600px){#tg-assistente .tg-proactive{bottom:128px;max-width:calc(100vw - 30px)}#tg-assistente.tg-is-open .tg-chat{bottom:48px;max-height:calc(100dvh - 155px)}}
+@media(max-width:600px){#tg-assistente .tg-proactive{bottom:144px;max-width:calc(100vw - 30px)}#tg-assistente.tg-is-open .tg-chat{bottom:64px;max-height:calc(100dvh - 175px)}}
 @media(prefers-reduced-motion:reduce){#tg-assistente .tg-open img{animation:none!important}}
 
 #tg-assistente .tg-header-mascot{object-fit:contain;flex:none;animation:tg-breathe 4s ease-in-out infinite}
@@ -67,13 +68,7 @@ body.dark-mode #tg-assistente{--tg-ink:#e5edf8;--tg-paper:#19273b;--tg-soft:#243
 #tg-assistente[data-state="success"] .tg-header-mascot,#tg-assistente[data-state="wave"] .tg-header-mascot{animation:tg-wave .65s ease-in-out 4}
 @media(prefers-reduced-motion:reduce){#tg-assistente .tg-header-mascot{animation:none!important}}
 
-/* Keep the assistant outside action columns on operational screens. */
-#tg-assistente.tg-docked{right:12px;bottom:18px}
-#tg-assistente.tg-docked .tg-open{width:44px;height:44px;border-radius:50%;background:var(--tg-ink);color:white;box-shadow:0 3px 12px #162b4f30;justify-content:center}
-#tg-assistente.tg-docked .tg-open img{display:none}
-#tg-assistente.tg-docked .tg-open span{font-size:0;border:0;background:none;padding:0;box-shadow:none;color:inherit}
-#tg-assistente.tg-docked .tg-open span::after{content:'?';font-size:22px;font-weight:750}
-#tg-assistente.tg-docked .tg-minimize{display:none}
-#tg-assistente.tg-docked .tg-chat{bottom:58px;max-height:calc(100dvh - 100px)}
-body.tg-assistant-docked .section-container{padding-inline-end:76px!important}
+/* Keep both touch targets separate when the mascot is expanded or compact. */
+#tg-assistente.tg-compact .tg-open,#tg-assistente.tg-is-open .tg-open{min-height:48px;justify-content:center}
+#tg-assistente.tg-compact .tg-proactive{bottom:64px}
 body:has(.modal-overlay.open) #tg-assistente,body:has(#wsClienteOverlay.open) #tg-assistente,body:has(dialog[open]) #tg-assistente{display:none!important}

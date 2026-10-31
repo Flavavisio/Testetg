@@ -26295,7 +26295,7 @@ async function salvarAdmin(e) {
                 passo4.appendChild(pergunta4);
                 secTipos.style.display = 'none';
                 passo4.appendChild(secTipos);
-                // Transforma as colunas "Incêndio" e "Segurança" em acordeão (fecham por
+                // Transforma todas as especialidades em acordeão (fecham por
                 // omissão, abrem ao clicar) — só nesta secção do wizard, sem alterar o
                 // formulário normal nem outros sítios que reaproveitam o mesmo componente.
                 _osWizTornarAcordeaoTiposTrabalho(secTipos);
@@ -26372,32 +26372,38 @@ async function salvarAdmin(e) {
             console.error('Erro ao ativar o Modo Wizard de OS:', e);
           }
         }
-        // Transforma as duas colunas (Incêndio / Segurança) dentro do contentor de tipos de
-        // trabalho num acordeão: título clicável com seta, conteúdo fechado por omissão.
+        // Todas as especialidades abrem pelo título, incluindo AVAC, Limpezas e Eletricidade.
         function _osWizTornarAcordeaoTiposTrabalho(secTipos) {
             try {
                 const cont = secTipos.querySelector('#s_tipos_trabalho_cont');
-                const linhaFlex = cont?.firstElementChild;
-                if (!linhaFlex) return;
-                const colunas = Array.from(linhaFlex.children).filter(c => c.style && c.style.flex); // ignora o separador de 1px
-                colunas.forEach(coluna => {
+                if (!cont) return;
+                const grupos = Array.from(cont.children).flatMap(el =>
+                    el.style.display === 'flex' ? Array.from(el.children).filter(c => c.style.flex) : [el]);
+                grupos.forEach(coluna => {
+                    if (coluna.dataset.tgAcordeao === 'true') return;
                     const titulo = coluna.children[0];
                     const resto = Array.from(coluna.children).slice(1);
                     if (!titulo || !resto.length) return;
+                    coluna.dataset.tgAcordeao = 'true';
                     const corpo = document.createElement('div');
-                    corpo.style.display = 'none';
+                    corpo.hidden = true;
                     resto.forEach(el => corpo.appendChild(el));
+                    const botao = document.createElement('button');
+                    botao.type = 'button';
+                    botao.style.cssText = 'border:0;background:transparent;padding:8px 0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left;width:100%;cursor:pointer;';
+                    while (titulo.firstChild) botao.appendChild(titulo.firstChild);
                     const seta = document.createElement('i');
                     seta.className = 'fas fa-chevron-down';
+                    seta.setAttribute('aria-hidden', 'true');
                     seta.style.cssText = 'margin-left:6px;font-size:.7rem;transition:transform .15s;';
-                    titulo.appendChild(seta);
-                    titulo.style.cursor = 'pointer';
-                    titulo.style.userSelect = 'none';
-                    titulo.onclick = () => {
-                        const aberto = corpo.style.display !== 'none';
-                        corpo.style.display = aberto ? 'none' : '';
-                        seta.style.transform = aberto ? '' : 'rotate(180deg)';
+                    botao.appendChild(seta);
+                    botao.setAttribute('aria-expanded', 'false');
+                    botao.onclick = () => {
+                        corpo.hidden = !corpo.hidden;
+                        botao.setAttribute('aria-expanded', String(!corpo.hidden));
+                        seta.style.transform = corpo.hidden ? '' : 'rotate(180deg)';
                     };
+                    titulo.appendChild(botao);
                     coluna.appendChild(corpo);
                 });
             } catch (e) { console.error('Acordeão de tipos de trabalho:', e); }

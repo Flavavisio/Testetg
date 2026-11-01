@@ -46,7 +46,7 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.0'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.0'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.1'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.1'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -56,4 +56,25 @@ test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, f
  let done=0;const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>done++);const frame=host.document.getElementById('re_iframe');assert(frame);assert(frame.srcdoc.includes('Registo de refrigerante'));assert(!host.document.querySelector('.avac-form'));let initMsg;frame.contentWindow.postMessage=msg=>{if(msg.type==='init')initMsg=msg;};frame.dispatchEvent(new host.Event('load'));await opening;await new Promise(r=>setTimeout(r,180));assert.equal(initMsg.morada,'Rua da Loja');assert.equal(initMsg.instalacaoNome,'Loja');assert.equal(initMsg.osNumero,'OS-1');
  doc=sheet(frame.srcdoc);doc.w.dispatchEvent(new doc.w.MessageEvent('message',{source:doc.w.parent,data:initMsg}));const draft=doc.w.TGNativeSheet.serialize(false);host.dispatchEvent(new host.MessageEvent('message',{source:frame.contentWindow,data:{type:'relatorioEspecialidadeRascunho',...draft}}));await new Promise(r=>setImmediate(r));assert.equal(host.writes.length,1);assert.equal(done,1);assert(!host.document.getElementById('overlayRelEspec').classList.contains('open'));assert.equal(host.dados.relatoriosEspecialidade[0].campos.modeloNativo,2);
  }finally{doc?.w.close();host.close()}
+});
+for(const [type,code]of [['RAVAC','Recarga de gás'],['RLIM','Limpeza regular'],['RELE','Quadro elétrico']])test(type+' customer satisfaction survives drafts, final PDF and dashboard extraction',async()=>{
+ const host=setup();host.eval(fs.readFileSync('tg-satisfaction.js','utf8'));const first=sheet(host.TGNativeReportModels.models[type][code]);let reopened;
+ try{
+  host.dados.servicos[0].tiposTrabalho=[code];init(first.w);
+  const select=first.w.document.getElementById('native-satisfaction');assert.equal(select.value,'');
+  assert.equal(host.TGSatisfaction.extract(first.w.TGNativeSheet.serialize(true).html).grau,null);
+  select.value='insatisfeito';const draft=first.w.TGNativeSheet.serialize(false);
+  assert.equal(host.TGSatisfaction.extract(draft.html).grau,'insatisfeito');
+  reopened=sheet(draft.html);init(reopened.w);assert.equal(reopened.w.document.getElementById('native-satisfaction').value,'insatisfeito');complete(reopened.w);
+  for(const key of ['muito_insatisfeito','insatisfeito','satisfeito','muito_satisfeito']){
+   reopened.w.document.getElementById('native-satisfaction').value=key;
+   const final=reopened.w.TGNativeSheet.serialize(true);
+   assert.equal(final.estadoNativo.values['native-satisfaction'],key);
+   assert.equal(host.TGSatisfaction.extract(final.html).grau,key);
+   assert.equal(new JSDOM(final.html).window.document.querySelectorAll('.sat-box').length,4);
+  }
+  const final=reopened.w.TGNativeSheet.serialize(true);await host.TGNativeReportModels.persist('os',type,null,{type:'relatorioEspecialidadeConcluido',...final});
+  const ctx={tenantId:'a',user:host.usuarioLogado,reports:host.dados.relatoriosEspecialidade,clients:host.dados.clientes};
+  const summary=host.TGSatisfaction.summarize(ctx,{ini:'2026-10-30',fim:'2026-10-30'});assert.equal(summary.total,1);assert.equal(summary.counts.muito_satisfeito,1);
+ }finally{reopened?.w.close();first.w.close();host.close()}
 });

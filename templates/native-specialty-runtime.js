@@ -68,6 +68,9 @@
     const c=clone.querySelector('#sign_'+key),src=key==='tecnico'?s.techSignature:s.clientSignature;
     if(safeImage(src)){const img=document.createElement('img');img.src=src;img.alt='Assinatura '+key;img.style='display:block;width:100%;height:75px;object-fit:contain';c.replaceWith(img);}else c.remove();
    }
+   const satisfaction=clone.querySelector('#native-satisfaction');
+   if(satisfaction){const marks=document.createElement('div');marks.id=satisfaction.id;marks.style='display:flex;flex-wrap:wrap;gap:12px;margin-top:8px';
+    [...satisfaction.options].filter(o=>o.value).forEach(o=>{const option=document.createElement('span');option.className='sat-opt';const box=document.createElement('span');box.className='sat-box';box.textContent=o.value===s.values['native-satisfaction']?'X':'';box.style='display:inline-block;border:1px solid currentColor;min-width:16px;min-height:16px;text-align:center;margin-right:5px';const label=document.createElement('span');label.textContent=o.textContent;option.append(box,label);marks.append(option);});satisfaction.replaceWith(marks);}
    clone.querySelectorAll('input,select,textarea').forEach(el=>{if(el.type==='hidden'){el.remove();return;}const span=document.createElement('span');span.id=el.id;span.className='native-print-value';span.style='display:block;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:500';span.textContent=el.value||'—';el.replaceWith(span);});
    clone.querySelectorAll('[hidden]').forEach(el=>el.remove());
    const toolbar=document.createElement('div');toolbar.className='native-screen';toolbar.innerHTML='<button type="button" onclick="window.print()">Imprimir / Guardar PDF</button>';clone.querySelector('body').prepend(toolbar);

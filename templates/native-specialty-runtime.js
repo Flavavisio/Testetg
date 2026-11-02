@@ -26,6 +26,7 @@
   if(legacy.work||legacy.trabalhos)set('native-work',legacy.work||legacy.trabalhos);
   const restore=msg.nativeRestoreState;
   if(restore?.type===config.type){Object.entries(restore.values||{}).forEach(([id,value])=>set(id,value));Object.entries(restore.answers||{}).forEach(([name,value])=>{const el=[...document.querySelectorAll('input[type=radio]')].find(x=>x.name===name&&x.value===value);if(el)el.checked=true;});
+   ['tecnico','cliente'].forEach(key=>paintSignature(key));
    for(const photo of restore.photos||[]){if(!safeImage(photo.src))continue;const figure=document.createElement('figure');figure.dataset.nativePhoto='';figure.innerHTML='<img src="'+photo.src+'" alt="Fotografia da intervenção"><input type="text" aria-label="Legenda da fotografia" value="'+esc(photo.caption||'')+'"><button class="native-screen" type="button" data-photo-remove>Retirar fotografia</button>';byId('native-photos').append(figure);}
   }
  }
@@ -84,13 +85,17 @@
   const snapshot=serialize(final),s=snapshot.estadoNativo;
   window.parent.postMessage({type:final?'relatorioEspecialidadeConcluido':'relatorioEspecialidadeRascunho',...snapshot,assinaturaTecnico:s.techSignature,assinaturaTecnicoNome:s.values.sign_tecnico_nome,assinaturaCliente:s.clientSignature,assinaturaClienteNome:s.values.sign_cliente_nome},'*');
  }
+ function paintSignature(key){
+  const value=byId('native-sign-'+key).value;if(!safeImage(value))return;
+  const image=new Image();image.onload=()=>{if(byId('native-sign-'+key).value===value){const ctx=byId('sign_'+key).getContext('2d');ctx.clearRect(0,0,600,150);ctx.drawImage(image,0,0,600,150);}};image.src=value;
+ }
  function bindSignature(key){
   const canvas=byId('sign_'+key),ctx=canvas.getContext('2d');if(!ctx)return;let down=false;
   const hidden=byId('native-sign-'+key),pos=e=>{const r=canvas.getBoundingClientRect();return[(e.clientX-r.left)*canvas.width/(r.width||600),(e.clientY-r.top)*canvas.height/(r.height||150)];};
   canvas.onpointerdown=e=>{if(busy)return;e.preventDefault();canvas.setPointerCapture?.(e.pointerId);down=true;const [x,y]=pos(e);ctx.beginPath();ctx.moveTo(x,y);};
   canvas.onpointermove=e=>{if(!down)return;e.preventDefault();const [x,y]=pos(e);ctx.lineWidth=2.5;ctx.lineCap='round';ctx.strokeStyle='#182629';ctx.lineTo(x,y);ctx.stroke();hidden.value=canvas.toDataURL('image/png');};
   canvas.onpointerup=canvas.onpointercancel=()=>{down=false;};
-  if(safeImage(hidden.value)){const image=new Image();image.onload=()=>ctx.drawImage(image,0,0,600,150);image.src=hidden.value;}
+  paintSignature(key);
   document.querySelector('[data-clear-sign="'+key+'"]').onclick=()=>{ctx.clearRect(0,0,600,150);hidden.value='';};
  }
  async function photo(file){

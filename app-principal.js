@@ -29083,6 +29083,86 @@ async function salvarAdmin(e) {
         const REPORT_TEMPLATES = {};
         Object.keys(REPORT_TEMPLATES_B64).forEach(k => { try { REPORT_TEMPLATES[k] = decodeURIComponent(escape(atob(REPORT_TEMPLATES_B64[k]))); } catch(e) { REPORT_TEMPLATES[k] = atob(REPORT_TEMPLATES_B64[k]); } });
 
+        // Canvas pixels are not part of an HTML snapshot. Preserve them explicitly in drafts.
+        function _tgAssinaturasRascunhoRuntime() {
+            const images = {}, names = {};
+            const ids = ['sign_tecnico', 'sign_cliente', '_relCanvasTec', '_relCanvasCli'];
+            const nameIds = ['sign_tecnico_nome', 'sign_cliente_nome', '_relNomeTec', '_relNomeCli'];
+            const safe = value => typeof value === 'string' && /^data:image\/png;base64,[a-z0-9+/=]+$/i.test(value) && value.length < 1500000;
+            function remember(canvas) {
+                if (!canvas || !canvas._relDrawn) return '';
+                const value = canvas._relSignatureRestoring || canvas.toDataURL('image/png');
+                if (!safe(value)) return '';
+                images[canvas.id] = value;
+                canvas.setAttribute('data-rel-signature', value);
+                return value;
+            }
+            function restore(canvas) {
+                if (!canvas) return;
+                const value = images[canvas.id] || canvas.getAttribute('data-rel-signature');
+                if (!safe(value)) return;
+                images[canvas.id] = value;
+                canvas.setAttribute('data-rel-signature', value);
+                canvas._relDrawn = true;
+                canvas._relSignatureRestoring = value;
+                const image = new Image();
+                image.onload = () => {
+                    if (canvas._relSignatureRestoring !== value) return;
+                    const ctx = canvas.getContext('2d');
+                    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(image, 0, 0, canvas.width, canvas.height); ctx.restore();
+                    canvas._relSignatureRestoring = '';
+                };
+                image.src = value;
+                nameIds.forEach(id => { const el = document.getElementById(id); if (el && names[id] !== undefined) el.value = names[id]; });
+            }
+            function clear(id) {
+                delete images[id];
+                const canvas = document.getElementById(id);
+                if (canvas) { canvas.removeAttribute('data-rel-signature'); canvas._relSignatureRestoring = ''; }
+            }
+            function save() {
+                ids.forEach(id => remember(document.getElementById(id)));
+                nameIds.forEach(id => { const el = document.getElementById(id); if (el) names[id] = el.value; });
+                return {
+                    assinaturaTecnico: images.sign_tecnico || images._relCanvasTec || '',
+                    assinaturaCliente: images.sign_cliente || images._relCanvasCli || '',
+                    assinaturaTecnicoNome: names.sign_tecnico_nome || names._relNomeTec || '',
+                    assinaturaClienteNome: names.sign_cliente_nome || names._relNomeCli || '',
+                    assinaturasRascunho: { images: {...images}, names: {...names} }
+                };
+            }
+            function restoreState(state) {
+                if (!state) return;
+                ids.forEach(id => { if (safe(state.images?.[id])) images[id] = state.images[id]; });
+                nameIds.forEach(id => { if (typeof state.names?.[id] === 'string') names[id] = state.names[id]; });
+                ids.forEach(id => restore(document.getElementById(id)));
+            }
+            window.TGReportDraftSignatures = { remember, restore, clear, save, restoreState };
+            document.addEventListener('input', event => { if (nameIds.includes(event.target.id)) names[event.target.id] = event.target.value; });
+            document.addEventListener('click', event => { if (event.target.closest('#_relBtnRascunho')) save(); }, true);
+            window.addEventListener('message', event => {
+                if (event.source !== window.parent) return;
+                if (event.data?.type === 'assinaturasRascunho') restoreState(event.data.estado);
+                if (event.data?.type === 'rascunhoRex') {
+                    try { const state = JSON.parse(event.data.estado); setTimeout(() => restoreState(state.assinaturasRascunho), 0); } catch (_) {}
+                }
+            });
+        }
+        function _tgPrepararAssinaturasRascunho(html) {
+            if (!html || html.includes('data-native-model=') || html.includes('id="tg-draft-signatures"')) return html;
+            // Upgrade both fixed templates and saved HTML drafts, including custom report types.
+            html = html.replaceAll('c._relBound = true;', 'c._relBound = true; window.TGReportDraftSignatures.restore(c);');
+            html = html.replace(/c\._relDrawn\s*=\s*true;/g, 'c._relDrawn=true; c._relSignatureRestoring=""; window.TGReportDraftSignatures.remember(c);');
+            html = html.replaceAll('window._relLimpar = function(id){', 'window._relLimpar = function(id){ window.TGReportDraftSignatures.clear(id);');
+            html = html.replaceAll('function capture(id){', 'function capture(id){ const saved=document.getElementById(id)?._relSignatureRestoring; if(saved)return saved;');
+            html = html.replaceAll("{ type: 'relatorioEspecialidadeRascunho',", "{ type: 'relatorioEspecialidadeRascunho', ...window.TGReportDraftSignatures.save(),");
+            html = html.replace('colIds, nextId, state, pageSize,', 'assinaturasRascunho: window.TGReportDraftSignatures.save().assinaturasRascunho, colIds, nextId, state, pageSize,');
+            const script = '<script id="tg-draft-signatures">(' + _tgAssinaturasRascunhoRuntime.toString() + ')();<\/script>';
+            return html.replace(/<head([^>]*)>/i, '$&' + script);
+        }
+
         // O nome fiscal faz parte do branding: reaplicar em cada render/página e rascunho.
         function _tgAtualizarNomeFiscalDocumento(doc, nomeFiscal, empresaNome) {
             const fiscal = String(nomeFiscal || '').trim();
@@ -30303,7 +30383,7 @@ window._relPrefill = function(msg){
                     if (!htmlRascunho && rascunhoExistente.campos?.htmlSnapshotPath) {
                         htmlRascunho = await _obterTextoStorage(rascunhoExistente.campos.htmlSnapshotPath) || '';
                     }
-                    if (htmlRascunho) { iframe.srcdoc = _tgPrepararNomeFiscalEspecialidade(['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho, tipo); usouRascunho = true; }
+                    if (htmlRascunho) { iframe.srcdoc = _tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho, tipo)); usouRascunho = true; }
                 }
             }
             // Sem rascunho em aberto: se já existir um relatório CONCLUÍDO anterior desta mesma
@@ -30388,7 +30468,7 @@ window._relPrefill = function(msg){
                     }
                 }
             }
-            if (!usouRascunho) iframe.srcdoc = _tgPrepararNomeFiscalEspecialidade(template, tipo); // sempre o modelo normal — nunca o snapshot bloqueado
+            if (!usouRascunho) iframe.srcdoc = _tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(template, tipo)); // sempre o modelo normal — nunca o snapshot bloqueado
 
             let numeroInicial = 1;
             // Já não se acrescenta "-L1"/"-L2" ao número — a Sede e cada Local têm o mesmo
@@ -30550,6 +30630,12 @@ window._relPrefill = function(msg){
                 iframe.contentWindow.postMessage({ type: 'permissao', podeAssinar: podeAssinarRelatorio }, '*');
             }, 150);
 
+            if (!nativeReport && rascunhoExistente?.campos?.assinaturasRascunho) {
+                iframeCarregado.then(() => setTimeout(() => iframe.contentWindow.postMessage({
+                    type: 'assinaturasRascunho', estado: rascunhoExistente.campos.assinaturasRascunho
+                }, '*'), 400));
+            }
+
             let nativeSaving = false;
             async function onMessage(ev) {
                 if(ev.source!==iframe.contentWindow)return;
@@ -30588,16 +30674,24 @@ window._relPrefill = function(msg){
                         numeroDocumento: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].numeroDocumento : ('RASCUNHO-' + osId),
                         data: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].data : getDataHoje(),
                         rascunho: true,
+                        assinaturaTecnico: msg.assinaturaTecnico || null,
+                        assinaturaTecnicoNome: msg.assinaturaTecnicoNome || '',
+                        assinaturaCliente: msg.assinaturaCliente || null,
+                        assinaturaClienteNome: msg.assinaturaClienteNome || '',
                         campos: msg.estadoRex ? { estadoRex: msg.estadoRex } : (htmlOkRasc ? { htmlSnapshotPath: pastaRasc + '.html' } : { htmlSnapshot: msg.html || '' }),
                         tecnicoId: usuarioLogado?.id || null,
                         criadoEm: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].criadoEm : Date.now(),
                         atualizadoEm: Date.now()
                     };
                     registoRasc.localId=os.localId || null;
-                    registoRasc.campos={...registoRasc.campos,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
+                    registoRasc.campos={...registoRasc.campos,assinaturasRascunho:msg.assinaturasRascunho || null,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
                     if (idxRasc !== -1) dados.relatoriosEspecialidade[idxRasc] = registoRasc;
                     else dados.relatoriosEspecialidade.push(registoRasc);
-                    guardarDados(dados);
+                    try { await guardarDados(dados); }
+                    catch (error) {
+                        alert('Não foi possível confirmar o rascunho no servidor. A assinatura e os dados continuam neste formulário. Tenta guardar novamente.');
+                        return;
+                    }
                     alert('📝 Rascunho guardado. Podes voltar a este relatório mais tarde para continuares a preencher.');
                     overlay.classList.remove('open');
                     onGuardado();

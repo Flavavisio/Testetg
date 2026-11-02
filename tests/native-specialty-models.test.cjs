@@ -46,13 +46,13 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.2'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.2'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.3'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.3'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
  const host=setup();let doc;try{
  const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
- host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.renderizarTudo=()=>{};host.eval('var _relEspecOnMessageAtual=null;'+fn);
+ host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.renderizarTudo=()=>{};host.eval(main.slice(main.indexOf('        function _tgAssinaturasRascunhoRuntime'),main.indexOf('        // O nome fiscal faz parte do branding:'))+'var _relEspecOnMessageAtual=null;'+fn);
  let done=0;const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>done++);const frame=host.document.getElementById('re_iframe');assert(frame);assert(frame.srcdoc.includes('Registo de refrigerante'));assert(!host.document.querySelector('.avac-form'));let initMsg;frame.contentWindow.postMessage=msg=>{if(msg.type==='init')initMsg=msg;};frame.dispatchEvent(new host.Event('load'));await opening;await new Promise(r=>setTimeout(r,180));assert.equal(initMsg.morada,'Rua da Loja');assert.equal(initMsg.instalacaoNome,'Loja');assert.equal(initMsg.osNumero,'OS-1');
  doc=sheet(frame.srcdoc);doc.w.dispatchEvent(new doc.w.MessageEvent('message',{source:doc.w.parent,data:initMsg}));const draft=doc.w.TGNativeSheet.serialize(false);host.dispatchEvent(new host.MessageEvent('message',{source:frame.contentWindow,data:{type:'relatorioEspecialidadeRascunho',...draft}}));await new Promise(r=>setImmediate(r));assert.equal(host.writes.length,1);assert.equal(done,1);assert(!host.document.getElementById('overlayRelEspec').classList.contains('open'));assert.equal(host.dados.relatoriosEspecialidade[0].campos.modeloNativo,2);
  }finally{doc?.w.close();host.close()}
@@ -94,7 +94,39 @@ test('old native draft snapshots with disabled buttons use current templates and
  const host=setup();try{
   const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
   host.dados.relatoriosEspecialidade=[{id:'draft',adminId:'a',servicoId:'os',tipo:'RAVAC',rascunho:true,campos:{modeloNativo:2,estadoNativo:{type:'RAVAC',version:2,modelKeys:['Recarga de gás'],values:{'native-work':'Trabalho guardado'}},htmlSnapshot:'<html><body>OLD DISABLED SNAPSHOT</body></html>'}}];
-  host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.eval('var _relEspecOnMessageAtual=null;'+fn);
+  host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.eval(main.slice(main.indexOf('        function _tgAssinaturasRascunhoRuntime'),main.indexOf('        // O nome fiscal faz parte do branding:'))+'var _relEspecOnMessageAtual=null;'+fn);
   const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>{});const frame=host.document.getElementById('re_iframe');assert(!frame.srcdoc.includes('OLD DISABLED SNAPSHOT'));assert(frame.srcdoc.includes('Registo de refrigerante'));let message;frame.contentWindow.postMessage=m=>{if(m.type==='init')message=m};frame.dispatchEvent(new host.Event('load'));await opening;await new Promise(r=>setTimeout(r,180));assert.equal(message.nativeRestoreState.values['native-work'],'Trabalho guardado');
  }finally{host.close()}
+});
+test('every native model persists a customer-signed incomplete draft and repaints it on fresh reopening before finalization',async()=>{
+ const host=setup();try{for(const [type,variants]of Object.entries(host.TGNativeReportModels.models))for(const [code,html]of Object.entries(variants)){
+  host.dados.relatoriosEspecialidade=[];host.dados.servicos[0].tiposTrabalho=[code];const first=sheet(html);let reopened;try{
+   init(first.w);first.w.document.getElementById('native-sign-cliente').value=png;first.w.document.getElementById('sign_cliente_nome').value='Cliente QA';
+   first.w.document.getElementById('_relBtnRascunho').click();await host.TGNativeReportModels.persist('os',type,null,first.messages[0]);
+   const saved=plain(host.writes.at(-1).value);assert(saved.rascunho);assert.equal(saved.assinaturaCliente,png);assert.equal(saved.assinaturaClienteNome,'Cliente QA');
+   // Fresh template + persisted state is the actual application reopening route.
+   reopened=sheet(html);const painted=[];reopened.w.Image=class{set src(value){this.onload?.()}};
+   reopened.w.HTMLCanvasElement.prototype.getContext=function(){return{clearRect(){},drawImage:()=>painted.push(this.id)}};
+   init(reopened.w);reopened.w.dispatchEvent(new reopened.w.MessageEvent('message',{source:reopened.w.parent,data:{type:'init',podeAssinar:true,nativeRestoreState:saved.campos.estadoNativo}}));
+   assert(painted.includes('sign_cliente'),code+' visibly restored');assert.equal(reopened.w.document.getElementById('native-sign-cliente').value,png);
+   reopened.w.document.getElementById('_relBtnRascunho').click();await host.TGNativeReportModels.persist('os',type,null,reopened.messages.at(-1));assert.equal(host.writes.at(-1).value.assinaturaCliente,png);
+   reopened.w.dispatchEvent(new reopened.w.MessageEvent('message',{source:reopened.w.parent,data:{type:'nativeSaveError'}}));complete(reopened.w);reopened.w.document.getElementById('native-client-status').value='Assinado';reopened.w.document.getElementById('_relBtnConcluir').click();
+   const final=reopened.messages.at(-1);assert.equal(final.type,'relatorioEspecialidadeConcluido');await host.TGNativeReportModels.persist('os',type,null,final);assert.equal(host.writes.at(-1).value.assinaturaCliente,png);assert(!host.writes.at(-1).value.rascunho);assert(final.html.includes(png));
+  }finally{first.w.close();reopened?.w.close();}
+ }}finally{host.close();}
+});
+for(const type of ['REX','RCCTV'])test(type+' actual host saves customer signature in draft record and confirms writes before closing',async()=>{
+ const host=setup();let doc;try{
+  const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
+  const b64=main.match(new RegExp(type+':\\s*"([A-Za-z0-9+/=]{10000,})"'))[1];
+  host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.alert=()=>{};host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host._tgAtualizarNomeFiscalDocumento=()=>{};host.REPORT_TYPE_DEFS={[type]:{nome:type}};host.REPORT_TEMPLATES={[type]:Buffer.from(b64,'base64').toString('utf8')};host._uploadTextoStorage=async()=>false;host.renderizarTudo=()=>{};
+  let release,confirmed=0,closed=0;host.guardarDados=()=>new Promise(r=>{release=()=>{confirmed++;r()}});
+  host.eval(main.slice(main.indexOf('        function _tgAssinaturasRascunhoRuntime'),main.indexOf('        // O nome fiscal faz parte do branding:'))+'var _relEspecOnMessageAtual=null;'+fn);
+  const opening=host._abrirModalRelatorioEspecialidade('os',type,()=>closed++);const frame=host.document.getElementById('re_iframe');frame.dispatchEvent(new host.Event('load'));await opening;
+  const signatureState={images:{sign_cliente:png},names:{sign_cliente_nome:'Cliente QA'}};
+  const draft={type:'relatorioEspecialidadeRascunho',html:'<!doctype html><html><head></head><body>Draft</body></html>',assinaturaCliente:png,assinaturaClienteNome:'Cliente QA',assinaturasRascunho:signatureState,...(type==='REX'?{estadoRex:JSON.stringify({colIds:[1],assinaturasRascunho:signatureState})}:{})};
+  host.dispatchEvent(new host.MessageEvent('message',{source:frame.contentWindow,data:draft}));await new Promise(r=>setImmediate(r));
+  const record=host.dados.relatoriosEspecialidade[0];assert(record.rascunho);assert.equal(record.assinaturaCliente,png);assert.equal(record.assinaturaClienteNome,'Cliente QA');assert.deepEqual(plain(record.campos.assinaturasRascunho),signatureState);assert.equal(closed,0);assert(host.document.getElementById('overlayRelEspec').classList.contains('open'));
+  release();await new Promise(r=>setImmediate(r));assert.equal(confirmed,1);assert.equal(closed,1);
+ }finally{doc?.w.close();host.close()}
 });

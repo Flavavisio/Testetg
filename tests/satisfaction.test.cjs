@@ -127,7 +127,7 @@ test('report completion actually persists extracted satisfaction in existing JSO
         const body = app.slice(start, end);
         const os = { id: 'os', adminId: 'a', clienteId: 'c' }, data = { relatoriosEspecialidade: [] };
         const frame = { contentWindow: {} };
-        const env = { iframe: frame, equipamentoId: null, requisito: {}, osId: 'os', tipo: 'RBI', os, numDoc: 'RBI-1', localAtualRel: null, cliente: { id: 'c' }, numeroInicial: 1, hoje: '2026-10-20', initMsg: { local: 'Loja' }, usuarioLogado: { id: 't' }, dados: data,
+        const env = { nativeReport: false, iframe: frame, equipamentoId: null, requisito: {}, osId: 'os', tipo: 'RBI', os, numDoc: 'RBI-1', localAtualRel: null, cliente: { id: 'c' }, numeroInicial: 1, hoje: '2026-10-20', initMsg: { local: 'Loja' }, usuarioLogado: { id: 't' }, dados: data,
             _tenantId: () => 'a', gerarId: () => 'r', _uploadTextoStorage: async () => true, _uploadImagemStorage: async () => false, proximoNumeroRelatorio: async () => 1, guardarDados: () => {}, overlay: { classList: { remove() {} } }, onGuardado: () => {}, mesmoEquipamento: () => true, window: x.w };
         const names = Object.keys(env);
         const onMessage = new Function(...names, body + '\nreturn onMessage;')(...names.map(n => env[n]));
@@ -143,7 +143,7 @@ test('month and week boundaries use local dates in Portugal, not UTC conversion'
 });
 test('public shells and PWA cache reference the new module and app together', () => {
     for (const file of ['index.html', 'login.html', 'sw.js']) {
-        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.3/); assert.match(source, /app-principal.js\?v=specialty-fiscal-20261021/);
+        const source = fs.readFileSync(path.join(root, file), 'utf8'); assert.match(source, /tg-satisfaction.js\?v=1.0.1/); assert.match(source, /tg-satisfaction.css\?v=1.0.3/); assert.match(source, /app-principal.js\?v=signed-drafts-20261102/);
     }
 });
 

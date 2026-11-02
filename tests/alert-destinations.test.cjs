@@ -4,7 +4,7 @@ const src=fs.readFileSync('app-principal.js','utf8');
 const helpers=src.slice(src.indexOf('        function _acaoPendenciasAlerta('),src.indexOf('        // ==================== ARMAZÉM / STOCK',src.indexOf('        function _acaoPendenciasAlerta(')));
 const browserTest=fs.readFileSync('tests/alert-destinations-browser.cjs','utf8');
 const fixture=browserTest.split('await page.addScriptTag({content:`')[1].split('`+helpers')[0];
-function setup(){const dom=new JSDOM('<div id="alertasPendencias"></div>',{runScripts:'dangerously'});dom.window.eval(fixture+helpers);return dom.window;}
+function setup(){const dom=new JSDOM('<div id="alertasPendencias"></div>',{runScripts:'dangerously'});dom.window.eval(fixture+src.match(/        function _osComRelatoriosPorTerminar\([^]*?\n        \}/)[0]+helpers);return dom.window;}
 const json=x=>JSON.parse(JSON.stringify(x));
 test('clicking a grouped pending alert includes exactly those OS and opens the chosen OS',()=>{
  const w=setup();w.renderizarAlertas();w.document.querySelector('.alerta-linha').click();
@@ -36,4 +36,10 @@ test('mobile accordion and keyboard activation lead to the same filtered group; 
  w.document.querySelector('.alerta-linha').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
  const overlay=w.document.getElementById('tgPendenciasOverlay');assert(overlay);
  overlay.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));assert(!w.document.getElementById('tgPendenciasOverlay'));w.close();
+});
+test('draft report alert survives OS completion, opens that OS reports, then disappears after completion',()=>{
+ const w=setup();w._tiposEspecialidadePendentes=()=>[];w._verOsMostrar=(id,tab)=>w.calls.push(['tab',id,tab]);
+ const os=w.dados.servicos.find(s=>s.id==='one');os.status='concluído';w.dados.relatoriosEspecialidade=[{id:'r',adminId:'tenant',servicoId:'one',tipo:'RIN',rascunho:true}];
+ w.renderizarAlertas();const alert=[...w.document.querySelectorAll('.alerta-linha')].find(a=>a.textContent.includes('relatórios por terminar'));assert(alert);alert.click();assert.deepEqual(json(w.calls),[['os','one'],['tab','one','relatorios']]);
+ w.dados.relatoriosEspecialidade[0].rascunho=false;w.renderizarAlertas();assert(!w.document.getElementById('alertasPendencias').textContent.includes('relatórios por terminar'));assert.equal(os.status,'concluído');w.close();
 });

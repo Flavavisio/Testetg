@@ -37,7 +37,8 @@
                 if (!assigned(row,people,fallback)) return;
                 const state=kind==='os'?row.status:row.estado;
                 if(!open && /cancelad/.test(normal(state)))return;
-                if(kind==='os' && row.data!==today() && !open)return;
+                const hasDraft = kind==='os' && rows('relatoriosEspecialidade').some(r=>r.servicoId===row.id && r.rascunho && r.tecnicoId===u().id);
+                if(kind==='os' && row.data!==today() && !open && !hasDraft)return;
                 if(kind==='obra' && !open && (done(state)||row.dataInicioPrevista&&row.dataInicioPrevista>today()))return;
                 const client = rows('clientes').find(c => c.id === row.clienteId);
                 const date = kind==='os'?row.data:row.dataInicioPrevista;
@@ -350,7 +351,8 @@
         if (!field.matches?.('input,textarea,select') || ['hidden','checkbox','radio','range','color'].includes(field.type)) return;
         if (!wizard.fonts.has(field)) wizard.fonts.set(field, [field.style.getPropertyValue('font-size'), field.style.getPropertyPriority('font-size')]);
         const size = Math.max(16, parseFloat(getComputedStyle(field).fontSize) || 16);
-        field.style.setProperty('font-size', size + 'px', 'important');
+        // Keep the shared focus minimum effective even under a reduced container zoom.
+        field.style.setProperty('font-size', 'max(' + size + 'px, var(--tg-form-focus-min, 16px))', 'important');
     }
     function installWizard() {
         if(!enabled())return;

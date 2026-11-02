@@ -6161,16 +6161,7 @@ function _assistEstado(value) {
             const os = dados.servicos?.find(s => s.id === osId); if (!os) return;
             if (usuarioLogado?.role === 'funcionario') { alert('Só o Encarregado, Sub-Admin ou Admin pode finalizar uma obra.'); return; }
 
-            const rascunhosPorAssinar = (dados.relatoriosEspecialidade || []).filter(r => r.servicoId === osId && r.rascunho);
-            if (rascunhosPorAssinar.length) {
-                alert('⚠️ Esta OS tem ' + rascunhosPorAssinar.length + ' relatório(s) por assinar/concluir (' + rascunhosPorAssinar.map(r => r.tipo).join(', ') + '). Termina de preencher e assinar esses relatórios antes de finalizar a OS.');
-                abrirFilaRelatoriosEspecialidade(osId, rascunhosPorAssinar.map(r => r.tipo), () => {
-                    finalizarEGerarReportOS(osId);
-                });
-                return;
-            }
-
-            const pendentesEspec = _tiposEspecialidadePendentes(osId);
+            const pendentesEspec = _tiposEspecialidadePorIniciar(osId);
             if (pendentesEspec.length) {
                 if (!confirm(`Esta OS tem relatórios de especialidade por preencher (${pendentesEspec.join(', ')}). Preenchê-los agora?`)) return;
                 abrirFilaRelatoriosEspecialidade(osId, pendentesEspec, () => {
@@ -13486,7 +13477,7 @@ function _assistEstado(value) {
         }
         function _itensPendenciasAlerta(tipo, ids) {
             if (!['admin', 'subadmin'].includes(usuarioLogado?.role) || !Array.isArray(ids)) return [];
-            const colecoes = { servico: 'servicos', contrato: 'contratos', veiculo: 'veiculos', requisicao: 'requisicoes', pedido: 'pedidos', artigo: 'artigos', obra: 'obras', assistencia: 'assistencias' };
+            const colecoes = { relatorioOS: 'servicos', servico: 'servicos', contrato: 'contratos', veiculo: 'veiculos', requisicao: 'requisicoes', pedido: 'pedidos', artigo: 'artigos', obra: 'obras', assistencia: 'assistencias' };
             const lista = dados[colecoes[tipo]] || [];
             return lista.filter(i => i.adminId === _tenantId() && ids.includes(i.id));
         }
@@ -13543,6 +13534,7 @@ function _assistEstado(value) {
             const item = _itensPendenciasAlerta(tipo, [id])[0];
             if (!item) { mostrarErro('Registo indisponível.'); return; }
             document.getElementById('tgPendenciasOverlay')?.remove();
+            if (tipo === 'relatorioOS') { abrirVerOS(id); _verOsMostrar(id, 'relatorios'); return; }
             if (tipo === 'servico') { abrirVerOS(id); return; }
             if (tipo === 'contrato') { abrirModalContrato(id); return; }
             if (tipo === 'veiculo') { abrirModalVeiculo(id); return; }
@@ -13617,6 +13609,9 @@ function _assistEstado(value) {
                 const _nomes = _aniversariantes.map(p => p.nome).join(', ');
                 alertas.push({ tipo: 'info', titulo: `🎂 ${_aniversariantes.length === 1 ? _aniversariantes[0].nome + ' faz anos hoje' : _nomes + ' fazem anos hoje'}`, sub: 'Aproveite para o(a) cumprimentar!', acao: '' });
             }
+
+            const osRelatoriosPendentes = _osComRelatoriosPorTerminar(adminId);
+            if (osRelatoriosPendentes.length) alertas.push({ tipo: 'warning', titulo: `${osRelatoriosPendentes.length} OS com relatórios por terminar`, sub: 'Existem relatórios em rascunho ou por concluir. A conclusão da OS mantém-se.', acao: _acaoPendenciasAlerta('relatorioOS', osRelatoriosPendentes) });
 
             const osPendLista = (dados.servicos || []).filter(s => s.adminId === adminId && (s.status || 'pendente') === 'pendente');
             if (osPendLista.length) alertas.push({ tipo: 'info', titulo: `${osPendLista.length} ${osPendLista.length === 1 ? 'ordem de serviço pendente' : 'ordens de serviço pendentes'}`, sub: 'Atribua ou inicie as ordens para manter o fluxo.', acao: _acaoPendenciasAlerta('servico', osPendLista) });
@@ -15566,6 +15561,8 @@ function _assistEstado(value) {
             const feriasPendentes = (dados.pedidos || []).filter(p => p.adminId === adminId && ['pendente', 'pendente_aprov'].includes(p.status));
 
             const alertas = [];
+            const osRelatoriosPendentes = _osComRelatoriosPorTerminar(adminId);
+            if (osRelatoriosPendentes.length) alertas.push({ icone: 'fa-file-pen', cor: '#d97706', texto: `${osRelatoriosPendentes.length} OS com relatórios por terminar`, aviso: 'Inclui rascunhos de dias anteriores.', acao: _acaoPendenciasAlerta('relatorioOS', osRelatoriosPendentes) });
             if (semPontoAinda.length) alertas.push({ icone: 'fa-user-clock', cor: '#dc2626', texto: `${semPontoAinda.length} ${semPontoAinda.length === 1 ? 'pessoa ainda não picou' : 'pessoas ainda não picaram'} o ponto hoje`, aviso: semPontoAinda.map(p => p.nome).join(', '), acao: `abrirSecao('ponto')` });
             if (osAtrasadas.length) alertas.push({ icone: 'fa-triangle-exclamation', cor: '#f59e0b', texto: `${osAtrasadas.length} ${osAtrasadas.length === 1 ? 'OS atrasada' : 'OS atrasadas'}`, aviso: osAtrasadas.slice(0, 3).map(s => obterNomeCliente(s.clienteId)).join(', '), acao: _acaoPendenciasAlerta('servico', osAtrasadas) });
             if (feriasPendentes.length) alertas.push({ icone: 'fa-umbrella-beach', cor: '#0ea5e9', texto: `${feriasPendentes.length} ${feriasPendentes.length === 1 ? 'pedido' : 'pedidos'} por aprovar`, aviso: '', acao: _acaoPendenciasAlerta('pedido', feriasPendentes) });
@@ -15614,6 +15611,7 @@ function _assistEstado(value) {
         function _htmlResumoEquipaHoje(adminId, hoje) {
             const todasOS = (dados.servicos || []).filter(s => s.adminId === adminId && s.data === hoje && s.status !== 'cancelado')
                 .sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'));
+            const osRelatoriosPendentes = _osComRelatoriosPorTerminar(adminId);
             const linha = s => {
                 const idsAtrib = (s.funcionariosIds && s.funcionariosIds.length) ? s.funcionariosIds : [s.funcionarioId].filter(Boolean);
                 const nomes = idsAtrib.length ? idsAtrib.map(id => obterNomeFuncionario(id)).join(', ') : 'Sem ninguém atribuído';
@@ -15625,6 +15623,7 @@ function _assistEstado(value) {
                     <span class="tgm-resumo-txt"><strong>${escapeHtmlSimples(obterNomeCliente(s.clienteId) || 'OS')}</strong> — ${escapeHtmlSimples(nomes)}</span>
                     <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
                         <span class="tgm-resumo-badge" style="background:${corEstado};">${labelEstado}</span>
+                        ${osRelatoriosPendentes.some(os => os.id === s.id) ? '<span style="font-size:.78rem;color:#d97706;font-weight:700;">Relatório por terminar</span>' : ''}
                         ${kmOS > 0 ? `<span style="font-size:.68rem;color:#0ea5e9;font-weight:600;"><i class="fas fa-road"></i> ${kmOS.toLocaleString('pt-PT')} km</span>` : ''}
                     </span>
                 </div>`;
@@ -15633,6 +15632,7 @@ function _assistEstado(value) {
                 <div class="tgm-panel tgm-panel--equipa">
                     <div class="tgm-eyebrow">Toda a equipa</div>
                     <div class="tgm-title tgm-title--sm"><i class="fas fa-users"></i> Resumo do Dia</div>
+                    ${osRelatoriosPendentes.length ? `<button type="button" class="btn btn-outline" style="margin:8px 0;white-space:normal;" onclick="${escapeHtmlSimples(_acaoPendenciasAlerta('relatorioOS', osRelatoriosPendentes))}"><i class="fas fa-file-pen"></i> ${osRelatoriosPendentes.length} OS com relatórios por terminar (inclui dias anteriores)</button>` : ''}
                     ${todasOS.length ? `<div class="tgm-resumo-lista">${todasOS.map(linha).join('')}</div>` : '<p class="tgm-vazio">Sem OS marcadas para hoje.</p>'}
                 </div>
             `;
@@ -27810,7 +27810,7 @@ async function salvarAdmin(e) {
                     const osv = dados.servicos?.find(s => s.id === osId);
                     if (osv) {
                         if (terminou) {
-                            const pendentesEspec = _tiposEspecialidadePendentes(osId);
+                            const pendentesEspec = _tiposEspecialidadePorIniciar(osId);
                             const _finalizarOS = () => { _concluirOS(osv); };
                             if (pendentesEspec.length) abrirFilaRelatoriosEspecialidade(osId, pendentesEspec, _finalizarOS);
                             else _finalizarOS();
@@ -30269,20 +30269,36 @@ window._relPrefill = function(msg){
             } catch (e) { console.error('signed url:', e); return null; }
         }
 
+        // A saved draft satisfies the exit flow, but stays pending for management.
+        // Re-read persisted records after each save; never reopen the same draft in a loop.
+        function _requisitosEspecialidadePorIniciar(os) {
+            if (window.TGEquipmentReports) return window.TGEquipmentReports.pending(os).filter(req =>
+                !(dados.relatoriosEspecialidade || []).some(r => window.TGEquipmentReports.matches(r, os, req)));
+            return _tiposEspecialidadePendentes(os.id).filter(tipo =>
+                !(dados.relatoriosEspecialidade || []).some(r => r.adminId === os.adminId && r.servicoId === os.id && r.tipo === tipo)
+            ).map(tipo => ({ tipo, equipamentoId: null }));
+        }
+        function _tiposEspecialidadePorIniciar(osId) {
+            const os = dados.servicos?.find(s => s.id === osId);
+            return os ? _requisitosEspecialidadePorIniciar(os).map(r => r.tipo) : [];
+        }
+        function _osComRelatoriosPorTerminar(adminId) {
+            return (dados.servicos || []).filter(os => os.adminId === adminId && os.status !== 'cancelado' && (
+                (dados.relatoriosEspecialidade || []).some(r => r.adminId === adminId && r.servicoId === os.id && r.rascunho) ||
+                os.status === 'concluído' && _tiposEspecialidadePendentes(os.id).length > 0
+            ));
+        }
         function abrirFilaRelatoriosEspecialidade(osId, tiposPendentes, onConcluir) {
-            const os=dados.servicos?.find(s=>s.id===osId);
-            if(window.TGEquipmentReports && os){
-                const pending=window.TGEquipmentReports.pending(os);
-                if(!pending.length){onConcluir();return;}
-                const req=pending[0];
-                _abrirModalRelatorioEspecialidade(osId,req.tipo,()=>{
-                    if(window.TGEquipmentReports.pending(os).some(r=>r.tipo===req.tipo && r.equipamentoId===req.equipamentoId)){alert('O relatório ficou em rascunho. Conclui e assina antes de terminar a OS.');return;}
-                    abrirFilaRelatoriosEspecialidade(osId,[],onConcluir);
-                },req.equipamentoId);
-                return;
-            }
-            if (!tiposPendentes.length) { onConcluir(); return; }
-            _abrirModalRelatorioEspecialidade(osId, tiposPendentes[0], () => abrirFilaRelatoriosEspecialidade(osId,tiposPendentes.slice(1),onConcluir));
+            const os = dados.servicos?.find(s => s.id === osId);
+            if (!os) return;
+            const req = _requisitosEspecialidadePorIniciar(os)[0];
+            if (!req) { onConcluir(); return; }
+            _abrirModalRelatorioEspecialidade(osId, req.tipo, () => {
+                // A failed save or a dismissed form must never complete the OS.
+                const aindaPorIniciar = _requisitosEspecialidadePorIniciar(os).some(r => r.tipo === req.tipo && r.equipamentoId === req.equipamentoId);
+                if (aindaPorIniciar) return;
+                abrirFilaRelatoriosEspecialidade(osId, [], onConcluir);
+            }, req.equipamentoId);
         }
 
         let _relEspecOnMessageAtual = null;
@@ -30694,6 +30710,7 @@ window._relPrefill = function(msg){
                     }
                     alert('📝 Rascunho guardado. Podes voltar a este relatório mais tarde para continuares a preencher.');
                     overlay.classList.remove('open');
+                    renderizarTudo();
                     onGuardado();
                     window.removeEventListener('message', onMessage);
                     return;
@@ -30748,6 +30765,7 @@ window._relPrefill = function(msg){
                 window.TGContractMaintenance?.registerMaintenance(os,(dados.folhasObra || []).find(f=>f.servicoId===osId && f.adminId===os.adminId));
                 guardarDados(dados);
                 overlay.classList.remove('open');
+                renderizarTudo();
                 onGuardado();
             }
             window.addEventListener('message', onMessage);
@@ -30801,7 +30819,7 @@ window._relPrefill = function(msg){
                     if (select) select.value = os.status;
                     return;
                 }
-                const pendentesEspec = _tiposEspecialidadePendentes(osId);
+                const pendentesEspec = _tiposEspecialidadePorIniciar(osId);
                 if (pendentesEspec.length) {
                     abrirFilaRelatoriosEspecialidade(osId, pendentesEspec, () => {
                         _confirmarConclusaoOSComFolha(os, osId, novoStatus);
@@ -32202,7 +32220,7 @@ window._relPrefill = function(msg){
                     }, { tipo: 'servico', id: os.id });
                 };
                 if (_terminouObra) {
-                    const pendentesEspec = _tiposEspecialidadePendentes(os.id);
+                    const pendentesEspec = _tiposEspecialidadePorIniciar(os.id);
                     if (pendentesEspec.length) {
                         abrirFilaRelatoriosEspecialidade(os.id, pendentesEspec, _finalizarOS);
                         return;

@@ -2379,7 +2379,7 @@
 
 
     <!-- SDK do Supabase (expõe window.supabase) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="vendor/supabase-2.118.0.js"></script>
     <!-- As bibliotecas abaixo (PDF, QR, mapas, Excel — ~650 KiB no total) só são usadas DEPOIS
          do login, nunca na página pública. Mesmo com "defer" o browser continua a DESCARREGÁ-LAS
          em paralelo com a imagem principal, disputando a pouca largura de banda em ligações
@@ -2397,7 +2397,8 @@
 <script defer src="tg-smart-engine.js?v=3.1.1-assist"></script>
 <script defer id="tg-assistente-script" src="tg-assistente.js?v=4.1.1-teste"></script>
 <script src="tg-agenda-touch.js?v=1.0.0"></script>
-<script src="app-principal.js?v=os-draft-exit-20261102"></script>
+<script src="tg-report-autosave.js?v=1.0.0"></script>
+<script src="app-principal.js?v=testetg-offline-autosave-20261102"></script>
 <link rel="stylesheet" href="tg-supervisor-home.css?v=1.0.0">
 <script src="tg-supervisor-home.js?v=prod-sync-20261030"></script>
 <script src="tg-push.js?v=1.2.3"></script>

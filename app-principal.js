@@ -683,9 +683,24 @@ function _assistEstado(value) {
             return aAdicionar.length;
         }
 
+        let _cacheAuthId = null;
+        let _cacheWriteChain = Promise.resolve();
+        async function _obterPerfilSessao(userId) {
+            _cacheAuthId = userId;
+            if (!navigator.onLine) return {data:await _kvCacheGet('tg_profile_v2:'+userId),error:null};
+            const result=await supa.from('perfis').select('*').eq('id',userId).single();
+            if(!result.error && result.data) {
+                try {
+                    await _kvCacheSet('tg_profile_v2:'+userId,result.data);
+                    await _kvCacheSet('tg_offline_active_v2',['funcionario','encarregado'].includes(result.data.papel)?{userId}:null);
+                    localStorage.removeItem('tg_offline_disabled');
+                } catch(e) { console.warn('Este dispositivo não permite guardar uma cópia offline:',e); }
+            }
+            return result;
+        }
         async function _obterTenantDoUser(userId) {
             try {
-                const { data: perfil, error } = await supa.from('perfis').select('*').eq('id', userId).single();
+                const { data: perfil, error } = await _obterPerfilSessao(userId);
                 if (error || !perfil) return { tenantId: null, superAdmin: false };
                 if (perfil.papel === 'superadmin') return { tenantId: null, superAdmin: true };
                 if (perfil.papel === 'admin') return { tenantId: perfil.registo_id, superAdmin: false };
@@ -726,6 +741,14 @@ function _assistEstado(value) {
                 // sem cache nenhuma guardada e sem rede — não há como arrancar
             }
 
+            await _cacheWriteChain.catch(()=>{});
+            const cached=await _carregarCacheLocal();
+            if(cached){
+                dados=cached;await _restaurarSnapshotDaCache();
+                if(_contarAlteracoesPendentes()>0){
+                    try{await guardarDados();}catch(e){mostrarStatusOffline(true);return dados;}
+                }
+            }
             const novos = dadosVazios();
             const tabelas = ORDEM.map(c => M[c].tabela).concat(['licencas','encarregado_funcionarios']);
             _pontoCarregadoDesde = _dataCorteMeses(6);
@@ -791,6 +814,10 @@ function _assistEstado(value) {
                 if (_cache) { dados = _cache; await _restaurarSnapshotDaCache(); mostrarStatusOffline(); return dados; }
                 throw e;
             }
+            if(resultados.some(r=>r.error && /fetch|network|load failed|timeout/i.test(r.error.message||''))){
+                const cache=await _carregarCacheLocal();
+                if(cache){dados=cache;await _restaurarSnapshotDaCache();mostrarStatusOffline(true);return dados;}
+            }
             const map = {};
             tabelas.forEach((t, i) => {
                 if (resultados[i].error) console.error('carregar ' + t + ':', resultados[i].error.message);
@@ -847,62 +874,32 @@ function _assistEstado(value) {
         }
         async function _kvCacheSet(chave, valor) {
             const db = await _kvCacheAbrir();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction('kv', 'readwrite').objectStore('kv').put(valor, chave);
-                tx.onsuccess = () => resolve();
-                tx.onerror = () => reject(tx.error);
+            return new Promise((resolve,reject)=>{
+                const tx=db.transaction('kv','readwrite');
+                tx.objectStore('kv').put(valor,chave);
+                tx.oncomplete=()=>{db.close();resolve();};
+                tx.onerror=tx.onabort=()=>{db.close();reject(tx.error||Error('Falhou a gravação no dispositivo'));};
             });
         }
         async function _guardarCacheLocal() {
-            try {
-                const snapPlano = {};
-                for (const col of ORDEM) snapPlano[col] = Object.fromEntries(_snap[col] || new Map());
-                await _kvCacheSet('tg_cache_dados_v1', dados);
-                await _kvCacheSet('tg_cache_snap_v1', {
-                    porColuna: snapPlano,
-                    lic: Object.fromEntries(_snapLic || new Map()),
-                    junc: Object.fromEntries(_snapJunc || new Map())
-                });
-                await _kvCacheSet('tg_cache_dados_v1_quando', Date.now());
-            } catch (e) {
-                console.warn('cache local (guardar):', e); // não é crítico — é só uma conveniência para arrancar offline
-            }
-        }
-        // Migração de uma vez: se ainda houver uma cópia antiga em localStorage (de antes desta
-        // versão, que usava localStorage em vez de IndexedDB), traz essa cópia para cá e limpa o
-        // localStorage — assim ninguém perde o que já tinha guardado só por causa da mudança.
-        async function _migrarCacheLocalAntiga() {
-            try {
-                const antigos = ['tg_cache_dados_v1', 'tg_cache_snap_v1', 'tg_cache_dados_v1_quando'];
-                for (const chave of antigos) {
-                    const txt = localStorage.getItem(chave);
-                    if (txt == null) continue;
-                    const jaTemNoIndexedDB = await _kvCacheGet(chave);
-                    if (jaTemNoIndexedDB == null) {
-                        try { await _kvCacheSet(chave, JSON.parse(txt)); } catch (e) { /* valor não era JSON — ignora */ }
-                    }
-                    localStorage.removeItem(chave);
-                }
-            } catch (e) { /* migração é best-effort — nunca deve impedir o arranque da app */ }
+            if(!_cacheAuthId)return false;
+            const key='tg_cache_v2:'+_cacheAuthId;
+            const snapPlano={};for(const col of ORDEM)snapPlano[col]=Object.fromEntries(_snap[col]||new Map());
+            const envelope=structuredClone({dados,snapshot:{porColuna:snapPlano,lic:Object.fromEntries(_snapLic||new Map()),junc:Object.fromEntries(_snapJunc||new Map())},quando:Date.now()});
+            const attempt=_cacheWriteChain.catch(()=>{}).then(()=>_kvCacheSet(key,envelope));
+            _cacheWriteChain=attempt;
+            try{await attempt;return true;}catch(e){console.warn('cache local:',e);return false;}
         }
         async function _carregarCacheLocal() {
-            try {
-                await _migrarCacheLocalAntiga();
-                const val = await _kvCacheGet('tg_cache_dados_v1');
-                return val ?? null;
-            } catch (e) { console.warn('cache local (ler):', e); return null; }
+            if(!_cacheAuthId)return null;
+            try{return (await _kvCacheGet('tg_cache_v2:'+_cacheAuthId))?.dados||null;}
+            catch(e){console.warn('cache local:',e);return null;}
         }
-        // Restaura o snapshot guardado (o que já estava confirmado no servidor antes de ficar offline),
-        // em vez de _reconstruirSnapshots() — que marcaria tudo como já sincronizado.
         async function _restaurarSnapshotDaCache() {
-            try {
-                const s = await _kvCacheGet('tg_cache_snap_v1');
-                if (!s) { _reconstruirSnapshots(); return; } // sem snapshot guardado, não há alternativa
-                _snap = {};
-                for (const col of ORDEM) _snap[col] = new Map(Object.entries(s.porColuna?.[col] || {}));
-                _snapLic = new Map(Object.entries(s.lic || {}));
-                _snapJunc = new Map(Object.entries(s.junc || {}));
-            } catch (e) { console.warn('restaurar snapshot da cache:', e); _reconstruirSnapshots(); }
+            const s=(await _kvCacheGet('tg_cache_v2:'+_cacheAuthId))?.snapshot;
+            if(!s)throw Error('Sem cópia confirmada dos dados deste utilizador');
+            _snap={};for(const col of ORDEM)_snap[col]=new Map(Object.entries(s.porColuna?.[col]||{}));
+            _snapLic=new Map(Object.entries(s.lic||{}));_snapJunc=new Map(Object.entries(s.junc||{}));
         }
 
         // -------- sincronização por diferenças (substitui o antigo guardarDados) --------
@@ -1202,14 +1199,14 @@ function _assistEstado(value) {
 
         function guardarDados() {
             // serializa as gravações para evitar corridas; UI já foi atualizada em memória
-            _guardarCacheLocal(); // guarda sempre uma cópia local primeiro — mesmo offline, nada fica só na memória
+            const localSave = _guardarCacheLocal(); // commit local antes de enviar alterações
             if (!navigator.onLine) mostrarStatusOffline(); // feedback imediato, sem esperar pela cadeia de sync
             // IMPORTANTE: a cadeia interna (_syncChain) nunca pode ficar "presa" por uma falha — por isso
             // tem sempre o seu próprio .catch() e continua viva para as próximas chamadas.
             // Mas quem chamou ESTA guardarDados() precisa de saber se ESTA gravação em concreto
             // teve sucesso (ex: antes de criar uma conta de login associada a um registo) — por isso
             // devolvemos uma promise separada, que reflete o resultado real desta chamada específica.
-            const tentativa = _syncChain.then(_sincronizar);
+            const tentativa = _syncChain.then(async()=>{if(!await localSave && !navigator.onLine)throw Error('Não foi possível guardar no dispositivo');return _sincronizar();});
             _syncChain = tentativa.catch(err => { console.error('sync:', err); mostrarStatusSync(1, 'Ligação: ' + (err && err.message ? err.message : err)); });
             return tentativa;
         }
@@ -29936,12 +29933,17 @@ window._relPrefill = function(msg){
         }
 
         async function _obterTextoStorage(caminho) {
+            const cacheKey=_cacheAuthId ? 'tg_report_html:'+_cacheAuthId+':'+caminho : null;
+            const cached=cacheKey ? await _kvCacheGet(cacheKey) : null;
+            if(!navigator.onLine)return cached;
             try {
-                const url = await _obterUrlStorage(caminho);
-                if (!url) return null;
-                const resp = await fetch(url);
-                return await resp.text();
-            } catch (e) { console.error('ler texto do storage:', e); return null; }
+                const url=await _obterUrlStorage(caminho);
+                if(!url)return cached;
+                const resp=await fetch(url);if(!resp.ok)return cached;
+                const html=await resp.text();
+                if(cacheKey)await _kvCacheSet(cacheKey,html);
+                return html;
+            }catch(e){console.warn('ler relatório:',e);return cached;}
         }
 
         // Keep saved reports inside the mobile app; iOS standalone windows may
@@ -30301,9 +30303,64 @@ window._relPrefill = function(msg){
             }, req.equipamentoId);
         }
 
+        // Checkpoints remain local until the server confirms a draft, never a final report.
+        let _relAutosaveAtual = null;
+        let _tgAutoSyncChain = Promise.resolve();
+        async function _tgSincronizarCheckpoint(checkpoint) {
+            const api = window.TGReportAutosave, {scope,record,base} = checkpoint;
+            if (!navigator.onLine || usuarioLogado?.id !== scope.user || _tenantId() !== scope.tenant) return false;
+            const job=(dados.servicos||[]).find(s=>s.id===scope.os&&s.adminId===scope.tenant);
+            if(!job)throw Error('A OS já não está disponível. A cópia local foi preservada.');
+            if(['RAVAC','RLIM','RELE'].includes(scope.type)){
+                if(!window.TGNativeReportModels?.guard(scope.os,scope.type))throw Error('O acesso ao relatório mudou. A cópia local foi preservada.');
+                if(JSON.stringify(record.campos.estadoNativo?.modelKeys)!==JSON.stringify(window.TGNativeReportModels.selection(job,scope.type)))throw Error('Os trabalhos desta OS mudaram. A cópia local foi preservada.');
+            }
+            if(job.relatorioResponsavelId && usuarioLogado.role==='funcionario' && job.relatorioResponsavelId!==usuarioLogado.id)throw Error('O responsável pelo relatório mudou. A cópia local foi preservada.');
+            const {data: rows,error} = await supa.from('relatorios_especialidade').select('*').eq('admin_id',scope.tenant).eq('servico_id',scope.os).eq('tipo',scope.type);
+            if (error) throw Error('Guardado no dispositivo. Não foi possível contactar o servidor.');
+            if (usuarioLogado?.id !== scope.user || _tenantId() !== scope.tenant) return false;
+            if((rows||[]).some(r=>!r.rascunho && (r.campos?.equipamentoId||null)===(scope.equipment||null) && !(checkpoint.knownFinals||[]).includes(r.id)))throw Error('Este relatório foi concluído noutro dispositivo. A cópia local foi preservada.');
+            const current = (rows||[]).find(r=>r.id===record.id);
+            const row = M.relatoriosEspecialidade.to(record);
+            const fingerprint = r=>api.stable([r?.campos,r?.rascunho]);
+            if (current && fingerprint(current) === fingerprint(row)) {
+                // A previous request may have committed before its response was lost.
+            } else {
+                const competing = (rows||[]).some(r=>r.rascunho && r.id!==record.id && (r.campos?.equipamentoId||null)===(scope.equipment||null));
+                if (competing || (base && (!current || fingerprint(current)!==fingerprint(base))) || (!base && current))
+                    throw Error('Este relatório mudou noutro dispositivo. A tua cópia está guardada; reabre e compara antes de substituir.');
+                let q = supa.from('relatorios_especialidade');
+                if(current){
+                    q=q.update(row).eq('id',record.id).eq('admin_id',scope.tenant).eq('rascunho',true);
+                    q=current.campos?.tgAutosaveVersion ? q.eq('campos->>tgAutosaveVersion',current.campos.tgAutosaveVersion) : q.is('campos->>tgAutosaveVersion',null);
+                }else q=q.insert(row);
+                const result = await q.select('id').single();
+                if (result.error || result.data?.id!==record.id) throw Error('Guardado no dispositivo. O servidor ainda não confirmou a gravação.');
+            }
+            if (usuarioLogado?.id !== scope.user || _tenantId() !== scope.tenant) return false;
+            dados.relatoriosEspecialidade = (dados.relatoriosEspecialidade||[]).filter(r=>r.id!==record.id);
+            dados.relatoriosEspecialidade.push(record);
+            _snap.relatoriosEspecialidade.set(record.id,JSON.stringify(row));
+            if(!await _guardarCacheLocal())throw Error('O servidor guardou, mas a cópia do dispositivo ainda não foi confirmada.');
+            await api.remove(scope);
+            return true;
+        }
+        async function _tgReenviarCheckpoints() {
+            if (!usuarioLogado || !navigator.onLine) return;
+            const items = await window.TGReportAutosave.list(_tenantId(),usuarioLogado.id);
+            for (const item of items) {
+                if(window.TGReportAutosave.stable(_relAutosaveAtual?.scope)===window.TGReportAutosave.stable(item.scope))continue;
+                _tgAutoSyncChain = _tgAutoSyncChain.catch(()=>{}).then(()=>_tgSincronizarCheckpoint(item));
+                try { await _tgAutoSyncChain; } catch(e) { mostrarToast(e.message,'aviso'); }
+            }
+        }
+        window.addEventListener('online',()=>{_tgReenviarCheckpoints().catch(console.warn);});
+
         let _relEspecOnMessageAtual = null;
-        function _fecharModalRelatorioEspecialidade() {
-            if (!confirm('Fechar sem gravar? Se ainda não guardaste (rascunho ou concluído), o que preencheste perde-se.')) return;
+        async function _fecharModalRelatorioEspecialidade() {
+            try { await _relAutosaveAtual?.flush(); }
+            catch(e) { alert('Não foi possível guardar no dispositivo. Mantém o relatório aberto e tenta novamente.'); return; }
+            _relAutosaveAtual?.stop(); _relAutosaveAtual = null;
             const overlay = document.getElementById('overlayRelEspec');
             if (overlay) overlay.classList.remove('open');
             if (_relEspecOnMessageAtual) { window.removeEventListener('message', _relEspecOnMessageAtual); _relEspecOnMessageAtual = null; }
@@ -30365,7 +30422,7 @@ window._relPrefill = function(msg){
                     <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid #e2e8f0;">
                         <h3 style="margin:0;"><i class="fas fa-file-signature"></i> Relatório ${def ? def.nome : (tipoCustomDef ? tipoCustomDef.nome : tipo)} (${tipo})${equipamentoId ? ' · '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId) : ''}</h3>
                         <div style="display:flex;align-items:center;gap:14px;">
-                            <span style="font-size:.78rem;color:#6b6a63;">Preenche o relatório e assina no final da folha para concluir.</span>
+                            <span id="tg-report-save-status" role="status" style="font-size:.78rem;">Gravação automática ativa</span>
                             <button type="button" onclick="_fecharModalRelatorioEspecialidade()" title="Fechar" style="background:none;border:none;font-size:1.4rem;line-height:1;color:#6b6a63;cursor:pointer;padding:0 4px;">&times;</button>
                         </div>
                     </div>
@@ -30385,7 +30442,16 @@ window._relPrefill = function(msg){
 
             // Se já existir um rascunho guardado para esta OS+tipo, reabre exatamente onde ficou
             // (em vez do modelo em branco).
-            const rascunhoExistente = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
+            const autosaveScope = {tenant:_tenantId(),user:usuarioLogado.id,os:osId,type:tipo,equipment:equipamentoId};
+            const autosaveIdentity = JSON.stringify([usuarioLogado.id,_tenantId()]);
+            const isAutosaveCurrent = ()=>JSON.stringify([usuarioLogado?.id,_tenantId()])===autosaveIdentity;
+            const serverDraft = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
+            let checkpoint = await window.TGReportAutosave.read(autosaveScope);
+            if (!isAutosaveCurrent()) return;
+            let rascunhoExistente = checkpoint?.record || serverDraft;
+            let autosaveBase = checkpoint?.base || (serverDraft ? M.relatoriosEspecialidade.to(serverDraft) : null);
+            const autosaveId = rascunhoExistente?.id || gerarId();
+            const knownFinals=checkpoint?.knownFinals||(dados.relatoriosEspecialidade||[]).filter(r=>r.servicoId===osId&&r.tipo===tipo&&mesmoEquipamento(r)&&!r.rascunho).map(r=>r.id);
             let usouRascunho = false;
             let estadoRexRestaurar = null;
             const nativeDraftCompatible = !nativeReport || (rascunhoExistente?.campos?.modeloNativo === 2 && JSON.stringify(rascunhoExistente.campos.estadoNativo?.modelKeys) === JSON.stringify(window.TGNativeReportModels.selection(os,tipo)));
@@ -30399,7 +30465,8 @@ window._relPrefill = function(msg){
                     if (!htmlRascunho && rascunhoExistente.campos?.htmlSnapshotPath) {
                         htmlRascunho = await _obterTextoStorage(rascunhoExistente.campos.htmlSnapshotPath) || '';
                     }
-                    if (htmlRascunho) { iframe.srcdoc = _tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho, tipo)); usouRascunho = true; }
+                    if (!htmlRascunho && !navigator.onLine) { alert('Este rascunho ainda não está disponível no dispositivo. Abre-o uma vez com ligação à internet.');overlay.classList.remove('open');return; }
+                    if (htmlRascunho) { iframe.srcdoc = window.TGReportAutosave.prepare(_tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(['RCCTV', 'RIN'].includes(tipo) ? _tgAdicionarSatisfacaoRelatorio(htmlRascunho) : htmlRascunho, tipo))); usouRascunho = true; }
                 }
             }
             // Sem rascunho em aberto: se já existir um relatório CONCLUÍDO anterior desta mesma
@@ -30484,7 +30551,7 @@ window._relPrefill = function(msg){
                     }
                 }
             }
-            if (!usouRascunho) iframe.srcdoc = _tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(template, tipo)); // sempre o modelo normal — nunca o snapshot bloqueado
+            if (!usouRascunho) iframe.srcdoc = window.TGReportAutosave.prepare(_tgPrepararAssinaturasRascunho(_tgPrepararNomeFiscalEspecialidade(template, tipo))); // sempre o modelo normal — nunca o snapshot bloqueado
 
             let numeroInicial = 1;
             // Já não se acrescenta "-L1"/"-L2" ao número — a Sede e cada Local têm o mesmo
@@ -30652,10 +30719,55 @@ window._relPrefill = function(msg){
                 }, '*'), 400));
             }
 
+            async function saveAutomaticDraft(msg) {
+                if (!isAutosaveCurrent()) return false;
+                const previous = checkpoint?.record || rascunhoExistente;
+                const record = {
+                    id:autosaveId,adminId:autosaveScope.tenant,servicoId:osId,clienteId:os.clienteId,localId:os.localId||null,tipo,
+                    numeroDocumento:previous?.numeroDocumento || 'RASCUNHO-'+osId,data:previous?.data||getDataHoje(),rascunho:true,
+                    assinaturaTecnico:msg.assinaturaTecnico||null,assinaturaTecnicoNome:msg.assinaturaTecnicoNome||'',
+                    assinaturaCliente:msg.assinaturaCliente||null,assinaturaClienteNome:msg.assinaturaClienteNome||'',
+                    campos:{tgAutosaveVersion:gerarId(),...(msg.estadoRex ? {estadoRex:msg.estadoRex} : {htmlSnapshot:msg.html||''}),
+                        assinaturasRascunho:msg.assinaturasRascunho||null,
+                        ...(nativeReport ? {estadoNativo:msg.estadoNativo,modeloNativo:2} : {}),
+                        ...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})},
+                    tecnicoId:usuarioLogado.id,criadoEm:previous?.criadoEm||Date.now()
+                };
+                checkpoint={scope:autosaveScope,record,base:autosaveBase,knownFinals,savedAt:Date.now()};
+                await window.TGReportAutosave.write(autosaveScope,checkpoint);
+                const saveStatus=document.getElementById('tg-report-save-status');if(saveStatus)saveStatus.textContent='Guardado no dispositivo · por sincronizar';
+                _tgAutoSyncChain=_tgAutoSyncChain.catch(()=>{}).then(()=>_tgSincronizarCheckpoint(checkpoint));
+                const remote=await _tgAutoSyncChain;
+                if(remote){autosaveBase=M.relatoriosEspecialidade.to(record);rascunhoExistente=record;checkpoint=null;}
+                return remote;
+            }
+            _relAutosaveAtual?.stop();
+            _relAutosaveAtual=window.TGReportAutosave.attach({iframe,save:saveAutomaticDraft,isCurrent:isAutosaveCurrent,
+                status:text=>{const el=document.getElementById('tg-report-save-status');if(el)el.textContent=text;}});
+            _relAutosaveAtual.scope=autosaveScope;
+            if(checkpoint)document.getElementById('tg-report-save-status').textContent='Rascunho recuperado do dispositivo';
             let nativeSaving = false;
             async function onMessage(ev) {
                 if(ev.source!==iframe.contentWindow)return;
                 const msg = {...(ev.data || {})};
+                if (!isAutosaveCurrent()) return;
+                if (msg._tgAutomatic && msg.type==='relatorioEspecialidadeRascunho') { await _relAutosaveAtual?.accept(msg).catch(()=>{}); return; }
+                if (msg.type === 'relatorioEspecialidadeRascunho') {
+                    try {
+                        const remote=await _relAutosaveAtual.accept(msg);
+                        iframe.contentWindow.postMessage({type:'nativeSaveError',message:remote?'Rascunho sincronizado.':'Guardado no dispositivo · por sincronizar'},'*');
+                        if(remote){_relAutosaveAtual.stop();_relAutosaveAtual=null;window.removeEventListener('message',onMessage);overlay.classList.remove('open');renderizarTudo();onGuardado();}
+                    } catch(e) { iframe.contentWindow.postMessage({type:'nativeSaveError',message:e.message},'*'); }
+                    return;
+                }
+                if (msg.type === 'relatorioEspecialidadeConcluido' && !navigator.onLine) {
+                    alert('Sem rede: guarda como rascunho. A conclusão e o número definitivo ficam disponíveis quando houver ligação.');
+                    iframe.contentWindow.postMessage({type:'nativeSaveError',message:'Sem rede. Podes continuar e guardar como rascunho.'},'*');
+                    return;
+                }
+                if (msg.type === 'relatorioEspecialidadeConcluido') {
+                    try { await _relAutosaveAtual?.flush(); } catch(e) { iframe.contentWindow.postMessage({type:'nativeSaveError',message:e.message},'*');return; }
+                }
                 if (nativeReport && ['relatorioEspecialidadeRascunho','relatorioEspecialidadeConcluido'].includes(msg.type)) {
                     if (nativeSaving) return;
                     if (nativeIdentity !== JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role])) return;
@@ -30663,6 +30775,7 @@ window._relPrefill = function(msg){
                     try {
                         const saved = await window.TGNativeReportModels.persist(osId,tipo,equipamentoId,msg);
                         if (!saved) return;
+                        _relAutosaveAtual?.stop();_relAutosaveAtual=null;
                         window.removeEventListener('message', onMessage);
                         overlay.classList.remove('open');
                         if (typeof renderizarTudo === 'function') renderizarTudo();
@@ -30676,46 +30789,8 @@ window._relPrefill = function(msg){
                     const heading='<div data-tg-equipment-report="'+escapeHtmlSimples(equipamentoId)+'" style="padding:12px;border-bottom:1px solid #ccc;font-weight:bold">Equipamento: '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId)+'</div>';
                     msg.html=msg.html.replace(/(<body[^>]*>)/i,'$1'+heading);
                 }
-                if (msg.type === 'relatorioEspecialidadeRascunho') {
-                    const pastaRasc = _tenantId() + '/' + osId + '_' + tipo + (equipamentoId ? '_' + encodeURIComponent(equipamentoId) : '') + '_rascunho';
-                    const htmlOkRasc = msg.html ? await _uploadTextoStorage(pastaRasc + '.html', msg.html, 'text/html') : false;
-                    dados.relatoriosEspecialidade = dados.relatoriosEspecialidade || [];
-                    const idxRasc = dados.relatoriosEspecialidade.findIndex(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
-                    const registoRasc = {
-                        id: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].id : gerarId(),
-                        adminId: _tenantId(),
-                        servicoId: osId,
-                        clienteId: os.clienteId,
-                        tipo,
-                        numeroDocumento: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].numeroDocumento : ('RASCUNHO-' + osId),
-                        data: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].data : getDataHoje(),
-                        rascunho: true,
-                        assinaturaTecnico: msg.assinaturaTecnico || null,
-                        assinaturaTecnicoNome: msg.assinaturaTecnicoNome || '',
-                        assinaturaCliente: msg.assinaturaCliente || null,
-                        assinaturaClienteNome: msg.assinaturaClienteNome || '',
-                        campos: msg.estadoRex ? { estadoRex: msg.estadoRex } : (htmlOkRasc ? { htmlSnapshotPath: pastaRasc + '.html' } : { htmlSnapshot: msg.html || '' }),
-                        tecnicoId: usuarioLogado?.id || null,
-                        criadoEm: idxRasc !== -1 ? dados.relatoriosEspecialidade[idxRasc].criadoEm : Date.now(),
-                        atualizadoEm: Date.now()
-                    };
-                    registoRasc.localId=os.localId || null;
-                    registoRasc.campos={...registoRasc.campos,assinaturasRascunho:msg.assinaturasRascunho || null,...(equipamentoId ? {equipamentoId,equipamentoNome:requisito.equipamentoNome} : {})};
-                    if (idxRasc !== -1) dados.relatoriosEspecialidade[idxRasc] = registoRasc;
-                    else dados.relatoriosEspecialidade.push(registoRasc);
-                    try { await guardarDados(dados); }
-                    catch (error) {
-                        alert('Não foi possível confirmar o rascunho no servidor. A assinatura e os dados continuam neste formulário. Tenta guardar novamente.');
-                        return;
-                    }
-                    alert('📝 Rascunho guardado. Podes voltar a este relatório mais tarde para continuares a preencher.');
-                    overlay.classList.remove('open');
-                    renderizarTudo();
-                    onGuardado();
-                    window.removeEventListener('message', onMessage);
-                    return;
-                }
                 if (msg.type !== 'relatorioEspecialidadeConcluido') return;
+                _relAutosaveAtual?.stop();_relAutosaveAtual=null;
                 window.removeEventListener('message', onMessage);
 
                 const relId = gerarId();
@@ -32873,7 +32948,7 @@ window._relPrefill = function(msg){
         }
         async function aplicarSessaoAuth(user) {
             try {
-                const { data: perfil, error } = await supa.from('perfis').select('*').eq('id', user.id).single();
+                const { data: perfil, error } = await _obterPerfilSessao(user.id);
                 if (error || !perfil) return false;
                 const _okSes = construirUsuarioPorPerfil(perfil, user.email);
                 if (_okSes) {
@@ -32999,12 +33074,26 @@ window._relPrefill = function(msg){
             form?.setAttribute('aria-busy','true');
             if (submit) submit.disabled = true;
             try {
+                if(!navigator.onLine){
+                    if(localStorage.getItem('tg_offline_disabled'))return;
+                    const active=await _kvCacheGet('tg_offline_active_v2');
+                    if(active?.userId){
+                        _cacheAuthId=active.userId;
+                        const profile=await _kvCacheGet('tg_profile_v2:'+active.userId);
+                        const cached=await _carregarCacheLocal();
+                        if(cached && ['funcionario','encarregado'].includes(profile?.papel)){
+                            dados=cached;await _restaurarSnapshotDaCache();
+                            if(await aplicarSessaoAuth({id:active.userId,email:''})){renderizarTudo();mostrarStatusOffline();}
+                        }
+                    }
+                    return;
+                }
                 const { data } = await supa.auth.getSession();
                 if (data && data.session && data.session.user) {
                     const _tenantInfo = await _obterTenantDoUser(data.session.user.id);
                     await recarregarDadosSessao(_tenantInfo.tenantId, _tenantInfo.superAdmin, _tenantInfo.clienteId);
                     const ok = await aplicarSessaoAuth(data.session.user);
-                    if (ok) renderizarTudo();
+                    if (ok) { renderizarTudo(); _tgReenviarCheckpoints().catch(console.warn); }
                 }
             } catch (e) { console.warn('Restaurar sessão:', e); }
             finally { if (status) status.hidden = true; form?.removeAttribute('aria-busy'); if (submit) submit.disabled = previousDisabled; }
@@ -33403,6 +33492,7 @@ window._relPrefill = function(msg){
 
         async function logout() {
             if (_logoutEmCurso) return;
+            try { await _relAutosaveAtual?.flush(); } catch(e) { alert('Ainda não foi possível guardar o relatório. Fecha o relatório antes de terminar a sessão.');return; }
             if (_contarAlteracoesPendentes() > 0) {
                 const espera = confirm('Ainda há alterações por confirmar no servidor. Queres esperar uns segundos para garantir que tudo fica gravado antes de sair?');
                 if (espera) {
@@ -33421,6 +33511,10 @@ window._relPrefill = function(msg){
             _logoutEmCurso = true;
             const aviso = document.getElementById('avisoSessaoOverlay');
             if (aviso) aviso.style.display = 'none';
+            _relAutosaveAtual?.stop(); _relAutosaveAtual=null;
+            try{localStorage.setItem('tg_offline_disabled','1');}catch(e){}
+            try{await _kvCacheSet('tg_offline_active_v2',null);}catch(e){console.warn('Limpar acesso offline:',e);}
+            _cacheAuthId=null;
             try { await supa.auth.signOut(); } catch (e) { console.warn('signOut:', e); }
             usuarioLogado = null;
             document.body.classList.remove('is-cliente-portal');

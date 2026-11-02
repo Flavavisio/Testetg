@@ -17,3 +17,11 @@ Para ativar criação/fecho de OS completamente offline ainda é necessário:
 
 ## SW
 O service worker deve cachear **apenas recursos estáticos de mesma origem**. Nunca guardar respostas de API, pedidos autenticados, páginas com dados privados ou URLs com tokens; instalação da nova versão continua manual.
+
+## Atualização — 2026-11-02
+
+A implementação de rascunhos automáticos na app principal é independente do
+protótipo `tg-offline.js` acima. Consultar
+[employee-offline-autosave.md](employee-offline-autosave.md) para o comportamento
+atual, testes e limites. A conclusão de relatórios e a numeração definitiva
+continuam a exigir ligação; não foi ativado fecho de OS integralmente offline.

@@ -1,0 +1,12 @@
+{
+  "name": "totalgest-web",
+  "private": true,
+  "scripts": {
+    "test:offline": "node --test tests/report-autosave.test.cjs tests/planning-offline.test.cjs tests/logout-session.test.cjs tests/native-specialty-models.test.cjs tests/report-draft-signatures.test.cjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.7",
+    "jsdom": "30.1.3",
+    "playwright": "1.62.1"
+  }
+}

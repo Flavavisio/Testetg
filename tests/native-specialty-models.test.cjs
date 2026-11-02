@@ -46,7 +46,7 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.1'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.1'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.2'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.2'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -77,4 +77,24 @@ for(const [type,code]of [['RAVAC','Recarga de gás'],['RLIM','Limpeza regular'],
   const ctx={tenantId:'a',user:host.usuarioLogado,reports:host.dados.relatoriosEspecialidade,clients:host.dados.clientes};
   const summary=host.TGSatisfaction.summarize(ctx,{ini:'2026-10-30',fim:'2026-10-30'});assert.equal(summary.total,1);assert.equal(summary.counts.muito_satisfeito,1);
  }finally{reopened?.w.close();first.w.close();host.close()}
+});
+test('all fourteen models can save again and finish after reopening a draft saved through the actual buttons',()=>{
+ const host=setup();try{for(const variants of Object.values(host.TGNativeReportModels.models))for(const html of Object.values(variants)){
+  const first=sheet(html);let second,third;try{
+   init(first.w);first.w.document.getElementById('_relBtnRascunho').click();assert.equal(first.messages.length,1);
+   const saved=first.messages[0];second=sheet(saved.html);init(second.w);
+   for(const id of ['_relBtnRascunho','_relBtnConcluir'])assert.equal(second.w.document.getElementById(id).disabled,false);
+   second.w.document.getElementById('_relBtnRascunho').click();assert.equal(second.messages.length,1);
+   third=sheet(second.messages[0].html);init(third.w);complete(third.w);third.w.document.getElementById('_relBtnConcluir').click();
+   assert.equal(third.messages[0]?.type,'relatorioEspecialidadeConcluido');
+  }finally{first.w.close();second?.w.close();third?.w.close()}
+ }}finally{host.close()}
+});
+test('old native draft snapshots with disabled buttons use current templates and restore saved values',async()=>{
+ const host=setup();try{
+  const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
+  host.dados.relatoriosEspecialidade=[{id:'draft',adminId:'a',servicoId:'os',tipo:'RAVAC',rascunho:true,campos:{modeloNativo:2,estadoNativo:{type:'RAVAC',version:2,modelKeys:['Recarga de gás'],values:{'native-work':'Trabalho guardado'}},htmlSnapshot:'<html><body>OLD DISABLED SNAPSHOT</body></html>'}}];
+  host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.eval('var _relEspecOnMessageAtual=null;'+fn);
+  const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>{});const frame=host.document.getElementById('re_iframe');assert(!frame.srcdoc.includes('OLD DISABLED SNAPSHOT'));assert(frame.srcdoc.includes('Registo de refrigerante'));let message;frame.contentWindow.postMessage=m=>{if(m.type==='init')message=m};frame.dispatchEvent(new host.Event('load'));await opening;await new Promise(r=>setTimeout(r,180));assert.equal(message.nativeRestoreState.values['native-work'],'Trabalho guardado');
+ }finally{host.close()}
 });

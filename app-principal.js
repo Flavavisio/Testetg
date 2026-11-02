@@ -355,7 +355,7 @@ function _assistEstado(value) {
             },
             ponto: {
                 tabela: 'ponto',
-                from: r => ({ id: r.id, funcionarioId: r.funcionario_id, adminId: r.admin_id, data: r.data || '', entrada: hhmm(r.entrada), saida: hhmm(r.saida), obraDescricao: r.obra_descricao, foto: r.foto, servicoId: r.servico_id, clienteId: r.cliente_id, lat: r.lat, lng: r.lng, latSaida: r.lat_saida, lngSaida: r.lng_saida, kmInicio: r.km_inicio != null ? Number(r.km_inicio) : null, kmFim: r.km_fim != null ? Number(r.km_fim) : null, saidaAutomatica: r.saida_automatica === true, pausaAlmoco: r.pausa_almoco === true, usadoEmFolha: r.usado_em_folha === true, entradaOriginal: hhmm(r.entrada_original), saidaOriginal: hhmm(r.saida_original), editadoPor: r.editado_por || '', editadoEm: isoToMs(r.editado_em), motivoEdicao: r.motivo_edicao || '' }),
+                from: r => ({ id: r.id, funcionarioId: r.funcionario_id, adminId: r.admin_id, data: r.data || '', entrada: r.entrada ? String(r.entrada).slice(0, 8) : hhmm(r.entrada), saida: r.saida ? String(r.saida).slice(0, 8) : hhmm(r.saida), obraDescricao: r.obra_descricao, foto: r.foto, servicoId: r.servico_id, clienteId: r.cliente_id, lat: r.lat, lng: r.lng, latSaida: r.lat_saida, lngSaida: r.lng_saida, kmInicio: r.km_inicio != null ? Number(r.km_inicio) : null, kmFim: r.km_fim != null ? Number(r.km_fim) : null, saidaAutomatica: r.saida_automatica === true, pausaAlmoco: r.pausa_almoco === true, usadoEmFolha: r.usado_em_folha === true, entradaOriginal: hhmm(r.entrada_original), saidaOriginal: hhmm(r.saida_original), editadoPor: r.editado_por || '', editadoEm: isoToMs(r.editado_em), motivoEdicao: r.motivo_edicao || '' }),
                 to:   o => ({ id: o.id, funcionario_id: o.funcionarioId, admin_id: o.adminId || null, data: nn(o.data), entrada: nn(o.entrada), saida: nn(o.saida), obra_descricao: o.obraDescricao || null, foto: o.foto || null, servico_id: o.servicoId || null, cliente_id: o.clienteId || null, lat: o.lat ?? null, lng: o.lng ?? null, lat_saida: o.latSaida ?? null, lng_saida: o.lngSaida ?? null, km_inicio: o.kmInicio ?? null, km_fim: o.kmFim ?? null, saida_automatica: o.saidaAutomatica === true, pausa_almoco: o.pausaAlmoco === true, usado_em_folha: o.usadoEmFolha === true, entrada_original: nn(o.entradaOriginal), saida_original: nn(o.saidaOriginal), editado_por: o.editadoPor || null, editado_em: o.editadoEm ? msToISO(o.editadoEm) : null, motivo_edicao: o.motivoEdicao || null })
             },
             pedidos: {
@@ -486,7 +486,7 @@ function _assistEstado(value) {
             },
             obraPontoLonga: {
                 tabela: 'obra_ponto_longa',
-                from: r => ({ id: r.id, funcionarioId: r.funcionario_id, adminId: r.admin_id, obraId: r.obra_id, data: r.data || '', entrada: hhmm(r.entrada), saida: hhmm(r.saida), lat: r.lat, lng: r.lng, latSaida: r.lat_saida, lngSaida: r.lng_saida, kmInicio: r.km_inicio != null ? Number(r.km_inicio) : null, kmFim: r.km_fim != null ? Number(r.km_fim) : null, pausaAlmoco: r.pausa_almoco === true, entradaOriginal: hhmm(r.entrada_original), saidaOriginal: hhmm(r.saida_original), editadoPor: r.editado_por || '', editadoEm: isoToMs(r.editado_em), motivoEdicao: r.motivo_edicao || '' }),
+                from: r => ({ id: r.id, funcionarioId: r.funcionario_id, adminId: r.admin_id, obraId: r.obra_id, data: r.data || '', entrada: r.entrada ? String(r.entrada).slice(0, 8) : hhmm(r.entrada), saida: r.saida ? String(r.saida).slice(0, 8) : hhmm(r.saida), lat: r.lat, lng: r.lng, latSaida: r.lat_saida, lngSaida: r.lng_saida, kmInicio: r.km_inicio != null ? Number(r.km_inicio) : null, kmFim: r.km_fim != null ? Number(r.km_fim) : null, pausaAlmoco: r.pausa_almoco === true, entradaOriginal: hhmm(r.entrada_original), saidaOriginal: hhmm(r.saida_original), editadoPor: r.editado_por || '', editadoEm: isoToMs(r.editado_em), motivoEdicao: r.motivo_edicao || '' }),
                 to:   o => ({ id: o.id, funcionario_id: o.funcionarioId, admin_id: o.adminId || null, obra_id: o.obraId, data: nn(o.data), entrada: nn(o.entrada), saida: nn(o.saida), lat: o.lat ?? null, lng: o.lng ?? null, lat_saida: o.latSaida ?? null, lng_saida: o.lngSaida ?? null, km_inicio: o.kmInicio ?? null, km_fim: o.kmFim ?? null, pausa_almoco: o.pausaAlmoco === true, entrada_original: nn(o.entradaOriginal), saida_original: nn(o.saidaOriginal), editado_por: o.editadoPor || null, editado_em: o.editadoEm ? msToISO(o.editadoEm) : null, motivo_edicao: o.motivoEdicao || null })
             },
             autosMedicao: {
@@ -3177,7 +3177,7 @@ function _assistEstado(value) {
             if (!p || !s) return;
             const adminId = _tenantQuiosque();
             const hoje = getDataHoje();
-            const hora = new Date().toTimeString().slice(0, 5);
+            const hora = new Date().toTimeString().slice(0, 8);
             if (acao === 'entrada') {
                 // Obrigatório picar primeiro o Ponto Geral — sem isso, não entra em OS/Obra.
                 const geralAberto = (dados.ponto || []).find(r => r.funcionarioId === p.id && r.data === hoje && r.entrada && !r.saida);
@@ -3651,7 +3651,7 @@ function _assistEstado(value) {
             const obraNome = localStorage.getItem('tg_quiosque_obra_nome') || 'Obra';
             const adminId = _tenantQuiosque();
             const hoje = getDataHoje();
-            const hora = new Date().toTimeString().slice(0, 5);
+            const hora = new Date().toTimeString().slice(0, 8);
             // Localização capturada agora, no momento exato desta picagem — não reutiliza a
             // localização fixa gravada quando o tablet foi configurado (essa era só um fallback
             // do passado; agora tenta sempre uma leitura fresca do GPS a cada picagem).
@@ -14715,7 +14715,7 @@ function _assistEstado(value) {
             abrirSliderConfirmacao('Confirmar entrada', 'Vais dar entrada na obra "' + obra.nome + '".', async () => {
                 if (_picandoEntradaObraLonga) return;
                 _picandoEntradaObraLonga = true;
-                const agora = new Date().toTimeString().slice(0, 5);
+                const agora = new Date().toTimeString().slice(0, 8);
                 const loc = _gpsPontoAtivo() ? await obterLocalizacao() : null;
                 const rec = {
                     id: gerarId(), funcionarioId: usuarioLogado.id, adminId: _tenantIdAtual() || usuarioLogado.adminId || null,
@@ -14753,7 +14753,7 @@ function _assistEstado(value) {
             const aberto = _obraLongaPontoAberto(obraId);
             if (!aberto) { alert('Não tens entrada em aberto nesta obra.'); return; }
             const obra = (dados.obras || []).find(o => o.id === obraId); if (!obra) return;
-            const hora = new Date().toTimeString().slice(0, 5);
+            const hora = new Date().toTimeString().slice(0, 8);
             const horasDestaSessao = aberto.entrada ? calcularHoras(aberto.entrada, hora) : 0;
             if (obra.estado === 'concluida') {
                 // A obra já foi finalizada por outra pessoa entretanto — só fecha esta entrada,
@@ -14852,7 +14852,7 @@ function _assistEstado(value) {
         async function _obraLongaRegistarSaida(obraId) {
             const aberto = _obraLongaPontoAberto(obraId);
             if (!aberto) return true;
-            aberto.saida = new Date().toTimeString().slice(0, 5);
+            aberto.saida = new Date().toTimeString().slice(0, 8);
             let erro = null;
             _mostrarCarregando('A confirmar saída...');
             try { await guardarDados(dados); } catch (e) { erro = e; } finally { _esconderCarregando(); }
@@ -28284,7 +28284,7 @@ async function salvarAdmin(e) {
             if (!_atribuidos.includes(usuarioLogado.id)) { alert('Só quem está atribuído a esta OS pode picar o ponto aqui.'); return; }
             if (tipo === 'entrada' && os.status === 'concluído') { alert('Esta OS já está Concluída — não é possível dar entrada. Fala com o admin/encarregado se for preciso reabrir.'); return; }
             const hoje = getDataHoje();
-            const hora = new Date().toTimeString().slice(0, 5);
+            const hora = new Date().toTimeString().slice(0, 8);
             const adminId = _tenantId();
             const loc = _gpsPontoAtivo() ? await obterLocalizacao() : null;
             if (tipo === 'entrada') {
@@ -30293,7 +30293,7 @@ window._relPrefill = function(msg){
             let usouRascunho = false;
             let estadoRexRestaurar = null;
             const nativeDraftCompatible = !nativeReport || (rascunhoExistente?.campos?.modeloNativo === 2 && JSON.stringify(rascunhoExistente.campos.estadoNativo?.modelKeys) === JSON.stringify(window.TGNativeReportModels.selection(os,tipo)));
-            if (rascunhoExistente && nativeDraftCompatible) {
+            if (rascunhoExistente && nativeDraftCompatible && !nativeReport) {
                 if (rascunhoExistente.campos?.estadoRex) {
                     // REX: o modelo continua a carregar em branco (precisa dos scripts a correr
                     // normalmente); o estado guardado é reenviado a seguir, já com o iframe pronto.
@@ -32250,7 +32250,7 @@ window._relPrefill = function(msg){
             _picandoEntrada = true;
             const _btnSub = document.querySelector('#modalGenericoForm button[type="submit"]'); if (_btnSub) _btnSub.disabled = true;
             const fileInput = document.getElementById('pe_foto');
-            const agora = new Date().toTimeString().slice(0, 5);
+            const agora = new Date().toTimeString().slice(0, 8);
             const loc = _gpsPontoAtivo() ? await obterLocalizacao() : null;
 
             function criar(fotoData, kmInicio) {

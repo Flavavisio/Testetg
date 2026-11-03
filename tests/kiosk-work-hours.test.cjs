@@ -128,23 +128,23 @@ test('individual internal PDF resolves supervisor salary through the same cost f
  const {ctx,dados}=setup();dados.encarregados.push(own({id:'supervisor',ordenadoBruto:1732,horasSemanais:40}));const pdf=source.slice(source.indexOf('        async function gerarPDFFolha('));const start=pdf.indexOf('            const custoHora =');const end=pdf.indexOf('            const custoTotal =',start);Object.assign(ctx,{tipo:'empresa',f:{funcionarioId:'supervisor',adminId:'a'}});vm.runInContext(pdf.slice(start,end)+'\nvar taxaPdf=custoHora;',ctx);assert.equal(ctx.taxaPdf,10);
 });
 function standaloneTeamExample(){
- const t=setup({obras:[],servicos:[own({id:'os',numeroRegisto:'OS-BL1103-2',obraId:null,valor:80,status:'concluído'})],ponto:[clock('ant','f','2026-11-03','08:34:49','09:04:26',{servicoId:'os'}),clock('ped','r','2026-11-03','08:34:58','09:04:00',{servicoId:'os'})],folhasObra:[sheet('signed','r','2026-11-03',0.5,{obraId:null,servicoId:'os',assinatura:'original-signature'})]});
- t.dados.funcionarios[0].nome='Pedro';t.dados.funcionarios[0].ordenadoBruto=1100;t.dados.funcionarios[1].nome='António';t.dados.funcionarios[1].ordenadoBruto=1000;
+ const t=setup({obras:[],servicos:[own({id:'os',numeroRegisto:'OS-EXEMPLO-2',obraId:null,valor:80,status:'concluído'})],ponto:[clock('ant','f','2026-11-03','08:34:49','09:04:26',{servicoId:'os'}),clock('ped','r','2026-11-03','08:34:58','09:04:00',{servicoId:'os'})],folhasObra:[sheet('signed','r','2026-11-03',0.5,{obraId:null,servicoId:'os',assinatura:'original-signature'})]});
+ t.dados.funcionarios[0].nome='Técnico A';t.dados.funcionarios[1].nome='Técnico B';
  Object.assign(t.ctx,{_kmPercorridosOS:()=>0,obterNomeFuncionario:id=>t.dados.funcionarios.find(f=>f.id===id)?.nome,_colegasEnvolvidosNaFolha:()=>['f']});return t;
 }
 test('standalone OS with two precise clock records and one signed sheet totals 58 min 39 s, never 30 or 88 minutes',()=>{
  const {ctx,dados}=standaloneTeamExample(),before=JSON.stringify(dados);const mapa=ctx._horasContabilizadasOSPorPessoa('os');assert.equal(Math.round(mapa.f*3600),1777);assert.equal(Math.round(mapa.r*3600),1742);
- const resumo=ctx._resumoTempoFolha(dados.folhasObra[0]);assert.equal(ctx._formatarTempoTrabalhado(resumo.horas),'58 min 39 s');assert.equal(resumo.total,5.92);assert.equal(JSON.stringify(dados),before);
+ const resumo=ctx._resumoTempoFolha(dados.folhasObra[0]);assert.equal(ctx._formatarTempoTrabalhado(resumo.horas),'58 min 39 s');assert.equal(resumo.total,10.76);assert.equal(JSON.stringify(dados),before);
 });
 test('OS PDF header, generated-sheet row and per-technician table agree; margin includes both salaries',()=>{
  const {ctx,tables}=standaloneTeamExample();ctx._gerarPDFRelatorioOS('os',false);
  const summary=tables.find(t=>t.body?.some(r=>r[0]==='Tempo total de mão de obra')).body;assert.equal(summary.find(r=>r[0]==='Tempo total de mão de obra')[1],'58 min 39 s');assert.equal(summary.find(r=>r[0]==='Nº de funcionários envolvidos')[1],'2');
  const sheets=tables.find(t=>t.head?.[0].includes('Tempo da equipa (dia)'));assert.equal(sheets.body[0][3],'58 min 39 s');
- const people=tables.find(t=>t.head?.[0].includes('Custo/hora'));assert.deepEqual(plain(people.body.map(r=>r[1])),['29 min 2 s','29 min 37 s']);assert.deepEqual(plain(people.body.map(r=>r[3])),['3.07 €','2.85 €']);
- const fin=tables.find(t=>t.body?.some(r=>r[0]==='Valor a faturar')).body;assert.equal(fin.find(r=>r[0]==='Custo de mão de obra')[1],'5.92 €');assert.equal(fin.find(r=>String(r[0]).startsWith('Margem'))[1],'74.08 €');
+ const people=tables.find(t=>t.head?.[0].includes('Custo/hora'));assert.deepEqual(plain(people.body.map(r=>r[1])),['29 min 2 s','29 min 37 s']);assert.deepEqual(plain(people.body.map(r=>r[3])),['4.84 €','5.92 €']);
+ const fin=tables.find(t=>t.body?.some(r=>r[0]==='Valor a faturar')).body;assert.equal(fin.find(r=>r[0]==='Custo de mão de obra')[1],'10.76 €');assert.equal(fin.find(r=>String(r[0]).startsWith('Margem'))[1],'69.24 €');
 });
 test('client OS report retains combined exact time but excludes rates, costs, margins and missing-cost messages',()=>{
- const {ctx,tables,texts}=standaloneTeamExample();ctx._gerarPDFRelatorioOS('os',true);const output=JSON.stringify({tables,texts});assert.match(output,/58 min 39 s/);assert(!/Custo\/hora|Margem|5\.92|74\.08|Custo em falta/.test(output));
+ const {ctx,tables,texts}=standaloneTeamExample();ctx._gerarPDFRelatorioOS('os',true);const output=JSON.stringify({tables,texts});assert.match(output,/58 min 39 s/);assert(!/Custo\/hora|Margem|10\.76|69\.24|Custo em falta/.test(output));
 });
 test('several sheets for the same team/day cannot multiply the time displayed in list totals',()=>{
  const {ctx,dados}=standaloneTeamExample();const extra={...dados.folhasObra[0],id:'second',funcionarioId:'f',horasTrabalhadas:0.5};dados.folhasObra.push(extra);
@@ -161,10 +161,10 @@ test('the generated signed sheet PDF itself shows the combined team time and kee
   const {ctx,dados}=standaloneTeamExample(),output=[];const before=JSON.stringify(dados);
   const target={lastAutoTable:{finalY:30},text:t=>output.push(String(t)),splitTextToSize:t=>[String(t)],getTextWidth:t=>String(t).length*2,autoTable:o=>{output.push(JSON.stringify(o.body));target.lastAutoTable={finalY:30}}};
   const doc=new Proxy(target,{get:(o,k)=>k in o?o[k]:()=>{}});
-  Object.assign(ctx,{window:{jspdf:{jsPDF:class{constructor(){return doc}}}},obterDescricaoOS:()=> 'OS-BL1103-2',obterLogoEmpresa:()=>({nome:'BM',logo:null}),obterClienteDaFolha:()=>null});
+  Object.assign(ctx,{window:{jspdf:{jsPDF:class{constructor(){return doc}}}},obterDescricaoOS:()=> 'OS-EXEMPLO-2',obterLogoEmpresa:()=>({nome:'Empresa exemplo',logo:null}),obterClienteDaFolha:()=>null});
   vm.runInContext(fn('gerarPDFFolha'),ctx);await ctx.gerarPDFFolha('signed',tipo);
   const text=output.join(' ');assert.match(text,/58 min 39 s/);assert.match(text,/29 min 37 s/);assert.match(text,/29 min 2 s/);assert.match(text,/Responsável pela folha/i);
-  if(tipo==='empresa')assert.match(text,/5\.92 €/);else assert.doesNotMatch(text,/5\.92|3\.07|2\.85|USO INTERNO/);
+  if(tipo==='empresa')assert.match(text,/10\.76 €/);else assert.doesNotMatch(text,/10\.76|4\.84|5\.92|USO INTERNO/);
   assert.equal(JSON.stringify(dados),before);
  }
 });

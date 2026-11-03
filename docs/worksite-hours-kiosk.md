@@ -59,3 +59,11 @@ O cálculo de intervalos usa segundos inteiros; a apresentação usa horas, minu
 Nos agrupamentos da lista, várias folhas da mesma OS/obra/dia não repetem o tempo da equipa. O total da OS é calculado pelas sessões de cada pessoa; não resulta da soma dos totais de equipa apresentados em cada documento.
 
 Testes adicionais: OS sem obra e dois técnicos com uma assinatura; soma exata de segundos; saída ao almoço; faltas; folha/PDF e total iguais; custos com ordenados diferentes; proteção do PDF do cliente; várias folhas no mesmo dia; folhas de obra e OS associadas sem duplicações.
+
+## Relatórios de obra com o mesmo detalhe da OS
+
+Obras ativas e concluídas passam a incluir picagens diretas e das OS associadas, folhas geradas com tempo conjunto da equipa no dia e relatórios de especialidade concluídos dessas OS. O cabeçalho conta apenas as pessoas com registos efetivos, sem somar técnicos apenas atribuídos.
+
+Os totais mantêm a conciliação por pessoa/dia, em horas, minutos e segundos. A tabela de picagens apresenta os registos originais e avisa que sobreposições não são somadas duas vezes. As folhas e os seus totais de equipa são contexto documental, não novas parcelas do total.
+
+O relatório interno mantém taxas e custos por pessoa, materiais, avisos de custos em falta e margem. A versão de cliente apresenta o mesmo tempo e documentos, sem informação financeira interna. Os originais, assinaturas e Autos de Medição emitidos não são alterados.

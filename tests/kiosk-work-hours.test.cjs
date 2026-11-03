@@ -14,7 +14,7 @@ function setup(extra={}){
  const doc={lastAutoTable:{finalY:20},setFontSize(){},setTextColor(){},text(t){texts.push(t)},addPage(){},autoTable(o){tables.push(o);this.lastAutoTable={finalY:(o.startY||20)+20}}};
  const context={dados,Date:Now,getDataHoje:()=> '2026-11-03',_folhasSuspeitasUltimoCalculo:[],usuarioLogado:{id:'a',role:'admin'},document:{getElementById:()=>screen},_obraMatRows:()=>[],_finEur:n=>Number(n).toFixed(2)+' €',escapeHtmlSimples:s=>String(s).replace(/</g,'&lt;'),_novoPdf:()=>doc,_pdfArmHeader:()=>20,_hexParaRgb:()=>[0,0,100],_tenantArmazem:()=> 'a',_moradaCompletaObra:()=> 'Morada',obterNomeFuncionario:id=>id,obterNomeCliente:()=> 'Cliente',_estadoBadgeObra:()=>{},_kmPercorridosObra:()=>0,_tgGuardarPdf:()=>{},_hoje10:()=> '2026-11-03'};
  const ctx=vm.createContext(context);
- vm.runInContext(['_formatarTempoTrabalhado','_horasContabilizadasOSPorPessoa','_custosPessoasHoras','_resumoTempoFolha','_totalTempoFolhasEquipa','_gerarPDFRelatorioOS','_picagensParaFolha','_vincularPicagensFolha','_horasPicadasPessoa','_horasPicadasOS','_horasPicadasObra','_folhaObrigCalcularHoras','_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
+ vm.runInContext(['_colegasEnvolvidosNaFolha','_formatarTempoTrabalhado','_horasContabilizadasOSPorPessoa','_custosPessoasHoras','_resumoTempoFolha','_totalTempoFolhasEquipa','_gerarPDFRelatorioOS','_picagensParaFolha','_vincularPicagensFolha','_horasPicadasPessoa','_horasPicadasOS','_horasPicadasObra','_folhaObrigCalcularHoras','_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
  return {ctx,dados,tables,texts,screen};
 }
 test('kiosk morning and afternoon count for responsible and colleague, without adding the afternoon sheet again',()=>{
@@ -57,7 +57,7 @@ test('Financeiro, PDF summary and both per-person PDF tables consume the same re
  const {ctx,tables,screen}=setup({ponto:[clock('1','r','2026-11-02','08:00','12:00',{servicoId:'os'}),clock('2','f','2026-11-02','08:00','12:00',{servicoId:'os'})],folhasObra:[sheet('wrong','r','2026-11-02',15)]});
  ctx._renderizarFinanceiroObra('w');assert.match(screen.innerHTML,/8 h/);assert.match(screen.innerHTML,/88\.00 €/);assert.match(screen.innerHTML,/Responsável/);assert.match(screen.innerHTML,/Colega/);
  ctx.gerarReportFinalObra('w',false);
- assert.equal(tables.find(t=>t.body?.some(r=>r[0]==='Total de horas trabalhadas')).body.find(r=>r[0]==='Total de horas trabalhadas')[1],'8 h');
+ assert.equal(tables.find(t=>t.body?.some(r=>r[0]==='Tempo total de mão de obra')).body.find(r=>r[0]==='Tempo total de mão de obra')[1],'8 h');
  const cost=tables.find(t=>t.head?.[0].includes('Horas contabilizadas')).body;assert.equal(cost.at(-1)[1],'8 h');assert.equal(cost.at(-1)[4],'88.00 €');
  assert.equal(tables.at(-1).body.at(-1)[1],'8 h');
 });
@@ -170,4 +170,24 @@ test('the generated signed sheet PDF itself shows the combined team time and kee
 });
 test('work and linked OS sheets in the same day cannot duplicate a group total',()=>{
  const {ctx,dados}=setup({ponto:[clock('os','r','2026-11-03','08:00','12:00',{servicoId:'os'})],obraPontoLonga:[clock('direct','r','2026-11-03','13:00','17:00',{obraId:'w'})],folhasObra:[sheet('direct','r','2026-11-03',4),sheet('os','r','2026-11-03',4,{servicoId:'os'})]});assert.equal(ctx._totalTempoFolhasEquipa(dados.folhasObra),8);
+});
+function workReportExample(estado='ativa'){
+ const t=setup({obras:[own({id:'w',nome:'Obra exemplo',estado,valor:350,responsaveisIds:['r','f','absent']})],ponto:[clock('osr','r','2026-11-03','08:34:58','09:04:00',{servicoId:'os'}),clock('osf','f','2026-11-03','08:34:49','09:04:26',{servicoId:'os'})],obraPontoLonga:[clock('duplicate','f','2026-11-03','08:34:49','09:04:26',{obraId:'w'})],folhasObra:[sheet('one-signature','r','2026-11-03',0.5)],relatoriosEspecialidade:[own({id:'done',servicoId:'os',tipo:'RSI',numeroDocumento:'DEMO-RSI-1',data:'2026-11-03'}),own({id:'draft',servicoId:'os',tipo:'RSI',numeroDocumento:'DRAFT-DO-NOT-SHOW',rascunho:true}),{id:'foreign',servicoId:'os',tipo:'RSI',numeroDocumento:'FOREIGN-DO-NOT-SHOW',adminId:'other'}]});
+ t.dados.servicos[0].numeroRegisto='OS-EXEMPLO-2';Object.assign(t.ctx,{obterNomeFuncionario:id=>t.dados.funcionarios.find(f=>f.id===id)?.nome||'Pessoa'});return t;
+}
+test('active and completed works show combined exact time, direct and linked OS clocks, team sheet and completed specialties',()=>{
+ for(const estado of ['ativa','concluida']){
+  const {ctx,dados,tables,texts}=workReportExample(estado),before=JSON.stringify(dados);ctx.gerarReportFinalObra('w',false);
+  const summary=tables.find(t=>t.body?.some(r=>r[0]==='Tempo total de mão de obra')).body;assert.equal(summary.find(r=>r[0]==='Tempo total de mão de obra')[1],'58 min 39 s');assert.equal(summary.find(r=>r[0]==='Nº de funcionários envolvidos')[1],'2');
+  const clocks=tables.find(t=>t.head?.[0].includes('Origem'));assert.equal(clocks.body.length,3);assert(clocks.body.some(r=>r[2]==='Obra'));assert(clocks.body.some(r=>r[2]==='OS OS-EXEMPLO-2'));
+  const sheetTable=tables.find(t=>t.head?.[0].includes('Tempo da equipa (dia)'));assert.equal(sheetTable.body[0][3],'58 min 39 s');
+  const reports=tables.find(t=>t.head?.[0].includes('Nº do documento'));assert.equal(reports.body.length,1);assert.equal(reports.body[0][1],'DEMO-RSI-1');
+  const output=JSON.stringify({tables,texts});assert(!output.includes('DO-NOT-SHOW'));assert.equal(JSON.stringify(dados),before);
+ }
+});
+test('work client PDF retains team time, sheets and specialty documents without any internal money or salary rates',()=>{
+ const {ctx,tables,texts}=workReportExample();ctx.gerarReportFinalObra('w',true);const output=JSON.stringify({tables,texts});assert.match(output,/58 min 39 s/);assert.match(output,/DEMO-RSI-1/);assert.doesNotMatch(output,/Financeiro|Custo\/hora|Custo de mão|Margem de lucro|10\.00 €/);
+});
+test('works with no clocks keep valid manual-sheet time without adding assigned absentees',()=>{
+ const {ctx,tables}=setup({obras:[own({id:'w',nome:'Manual',responsaveisIds:['r','f']})],folhasObra:[sheet('manual','r','2026-11-03',1.25,{picagensVinculadas:[]})]});ctx.gerarReportFinalObra('w',false);const summary=tables.find(t=>t.body?.some(r=>r[0]==='Tempo total de mão de obra')).body;assert.equal(summary.find(r=>r[0]==='Tempo total de mão de obra')[1],'1 h 15 min');assert.equal(summary.find(r=>r[0]==='Nº de funcionários envolvidos')[1],'1');assert(!tables.some(t=>t.head?.[0].includes('Origem')));
 });

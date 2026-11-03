@@ -14607,7 +14607,7 @@ function _assistEstado(value) {
             const horas = custos.horas;
             const doc = _novoPdf(false); if (!doc) return;
             const _concluidaTitulo = obra.estado === 'concluida';
-            let y = _pdfArmHeader(doc, (paraCliente ? 'Relatório de Obra — ' : (_concluidaTitulo ? 'Relatório Final de Obra (interno) — ' : 'Relatório de Obra em curso (interno) — ')) + (_concluidaTitulo ? 'Concluída' : 'Em curso'), obra.nome);
+            let y = _pdfArmHeader(doc, (paraCliente ? 'Relatório de Obra' : 'Relatório de Obra (interno)'), obra.nome);
             const _corRel = _hexParaRgb(dados.administradores?.find(a => a.id === _tenantArmazem())?.corCorporativa);
 
             // Folhas sem descrição são tratadas como dados corrompidos/de teste — ficam de fora
@@ -14615,13 +14615,16 @@ function _assistEstado(value) {
             const _osIdsObraRel = new Set((dados.servicos || []).filter(os => os.obraId === obraId && os.adminId === obra.adminId).map(os => os.id));
             const folhas = (dados.folhasObra || []).filter(f => f.adminId === obra.adminId && f.descricao && (f.obraId === obraId || (f.servicoId && _osIdsObraRel.has(f.servicoId))));
             const responsavelNome = obra.responsavelId ? (obterNomeFuncionario(obra.responsavelId) || '—') : '—';
-            const funcionariosEnvolvidos = [...new Set(folhas.map(f => f.funcionarioId))];
-            const idsAtribuidosObraHdr = (obra.responsaveisIds && obra.responsaveisIds.length) ? obra.responsaveisIds : [obra.responsavelId].filter(Boolean);
             const _mapaHorasHdr = _horasObraPorFuncionario(obraId);
-            const totalEnvolvidos = new Set([...funcionariosEnvolvidos, ...idsAtribuidosObraHdr, ...Object.keys(_mapaHorasHdr)]).size;
+            const totalEnvolvidos = Object.keys(_mapaHorasHdr).length;
+            const linhasTempo = custos.linhas.filter(x => Object.prototype.hasOwnProperty.call(_mapaHorasHdr, x.id));
+            const picagens = [
+                ...(dados.obraPontoLonga || []).filter(p => p.adminId === obra.adminId && p.obraId === obraId).map(p => ({...p, origemRelatorio: 'Obra'})),
+                ...(dados.ponto || []).filter(p => p.adminId === obra.adminId && _osIdsObraRel.has(p.servicoId)).map(p => ({...p, origemRelatorio: 'OS ' + ((dados.servicos || []).find(os => os.id === p.servicoId)?.numeroRegisto || p.servicoId)}))
+            ].sort((a,b) => ((a.data || '') + (a.entrada || '')).localeCompare((b.data || '') + (b.entrada || '')));
             const datasAtividade = [
                 ...folhas.map(f => f.data).filter(Boolean),
-                ...(dados.obraPontoLonga || []).filter(p => p.obraId === obraId).map(p => p.data).filter(Boolean)
+                ...picagens.map(p => p.data).filter(Boolean)
             ].sort();
             const dataInicio = datasAtividade.length ? datasAtividade[0] : (obra.dataCriacao ? new Date(obra.dataCriacao).toISOString().slice(0, 10) : null);
             const dataFim = getDataHoje();
@@ -14641,7 +14644,7 @@ function _assistEstado(value) {
                     ['Data de início (1ª atividade)', dataInicio ? dataInicio.split('-').reverse().join('/') : '—'],
                     [_concluidaTitulo ? 'Data de finalização' : 'Data do relatório', dataFim.split('-').reverse().join('/')],
                     ['Duração da obra', duracaoDias ? (duracaoDias + ' dia(s)') : '—'],
-                    ['Total de horas trabalhadas', _formatarTempoTrabalhado(horas)],
+                    ['Tempo total de mão de obra', _formatarTempoTrabalhado(horas)],
                     ['Nº de folhas de obra registadas', String(folhas.length)],
                     ['Nº de funcionários envolvidos', String(totalEnvolvidos)]
                 ],
@@ -14649,6 +14652,33 @@ function _assistEstado(value) {
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
 
+
+            if (picagens.length) {
+                if (y > 240) { doc.addPage(); y = 20; }
+                doc.setFontSize(12); doc.setTextColor(..._corRel); doc.text('Picagens (entrada / saída)', 14, y); y += 4;
+                doc.autoTable({startY:y, head:[['Técnico','Data','Origem','Entrada','Saída','Tempo','Nota']],
+                    body:picagens.map(p => [obterNomeFuncionario(p.funcionarioId) || '—', p.data || '—', p.origemRelatorio, p.entrada || '—', p.saida || '(em aberto)', _formatarTempoTrabalhado(_somarIntervalosPicagem([p], getDataHoje(), new Date().toTimeString().slice(0,8)).horas), p.pausaAlmoco ? 'Saída para almoço' : '']),
+                    styles:{fontSize:8,cellPadding:2},headStyles:{fillColor:_corRel}});
+                y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 5;
+                doc.setFontSize(8); doc.setTextColor(90); doc.text('Picagens sobrepostas contam uma única vez no total de mão de obra.',14,y); y += 10;
+            }
+            if (folhas.length) {
+                if (y > 240) { doc.addPage(); y = 20; }
+                doc.setFontSize(12); doc.setTextColor(..._corRel); doc.text('Folhas de obra geradas',14,y); y += 4;
+                doc.autoTable({startY:y,head:[['Data','Responsável','Colegas envolvidos','Tempo da equipa (dia)','Descrição']],
+                    body:folhas.map(f => [f.data || '—', obterNomeFuncionario(f.funcionarioId) || '—', _colegasEnvolvidosNaFolha(f).map(id => obterNomeFuncionario(id) || '—').join(', ') || '—', _formatarTempoTrabalhado(_resumoTempoFolha(f).horas), f.descricao || '—']),
+                    styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:_corRel}});
+                y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
+            }
+            const especialidades = (dados.relatoriosEspecialidade || []).filter(r => r.adminId === obra.adminId && _osIdsObraRel.has(r.servicoId) && !r.rascunho);
+            if (especialidades.length) {
+                if (y > 240) { doc.addPage(); y = 20; }
+                doc.setFontSize(12); doc.setTextColor(..._corRel); doc.text('Relatórios de especialidade realizados',14,y); y += 4;
+                doc.autoTable({startY:y,head:[['Relatório','Nº do documento','OS','Data']],
+                    body:especialidades.map(r => [r.tipo || '—', r.numeroDocumento || '—', (dados.servicos || []).find(os => os.id === r.servicoId)?.numeroRegisto || r.servicoId, r.data || '—']),
+                    styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:_corRel}});
+                y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
+            }
 
             if ((usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') && !paraCliente) {
                 const valorFaturado = obra.valor != null ? Number(obra.valor) : (dados.servicos || []).filter(s => s.obraId === obraId).reduce((s, x) => s + (Number(x.valor) || 0), 0);
@@ -14680,10 +14710,10 @@ function _assistEstado(value) {
             }
 
             if ((usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') && !paraCliente) {
-                if (custos.linhas.length) {
+                if (linhasTempo.length) {
                     if (y > 240) { doc.addPage(); y = 20; }
                     doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas e custo por pessoa (uso interno)', 14, y); y += 4;
-                    const porFuncCusto = custos.linhas.map(x => [x.nome, _formatarTempoTrabalhado(x.horas),
+                    const porFuncCusto = linhasTempo.map(x => [x.nome, _formatarTempoTrabalhado(x.horas),
                         x.taxa != null ? _finEur(x.taxa) + '/h' : 'Por definir', x.origem,
                         x.custo != null ? _finEur(x.custo) : 'Custo em falta']);
                     porFuncCusto.push([custos.semCusto.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL', _formatarTempoTrabalhado(horas), '', '', _finEur(custos.subtotalPessoal)]);
@@ -14736,10 +14766,10 @@ function _assistEstado(value) {
                 }
             }
 
-            if (custos.linhas.length) {
+            if (linhasTempo.length) {
                 if (y > 250) { doc.addPage(); y = 20; }
                 doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas por pessoa', 14, y); y += 4;
-                const porFunc = custos.linhas.map(x => [x.nome, _formatarTempoTrabalhado(x.horas)]);
+                const porFunc = linhasTempo.map(x => [x.nome, _formatarTempoTrabalhado(x.horas)]);
                 porFunc.push(['TOTAL', _formatarTempoTrabalhado(horas)]);
                 doc.autoTable({startY: y, head: [['Pessoa', 'Horas']], body: porFunc,
                     styles: {fontSize:9, cellPadding:2}, headStyles: {fillColor:_corRel},

@@ -90,7 +90,7 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.1.0-avac'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.1.0-avac'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.2.0-cleaning'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.2.0-cleaning'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo,modeloCodigo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -173,4 +173,41 @@ for(const type of ['REX','RCCTV'])test(type+' actual host saves customer signatu
   const record=host.dados.relatoriosEspecialidade[0];assert(record.rascunho);assert.equal(record.assinaturaCliente,png);assert.equal(record.assinaturaClienteNome,'Cliente QA');assert.deepEqual(plain(record.campos.assinaturasRascunho),signatureState);assert.equal(closed,0);assert(host.document.getElementById('overlayRelEspec').classList.contains('open'));
   release();await settled();assert.equal(confirmed,1);assert.equal(closed,1);
  }finally{doc?.w.close();host.close()}
+});
+
+test('four cleaning works save separate signed drafts and finalizing one leaves the other three pending',async()=>{
+ const host=setup();try{
+  const os=host.dados.servicos[0],works=host.TGSpecialtyCatalog.list.find(c=>c.type==='RLIM').work;os.tiposTrabalho=works.map(w=>w[1]);let next=0;host.gerarId=()=> 'clean-'+(++next);
+  const requirements=host.TGEquipmentReports.requirements(os);assert.equal(requirements.length,4);assert.equal(new Set(requirements.map(r=>r.modeloCodigo)).size,4);assert.equal(host.TGNativeReportModels.templateFor(os,'RLIM'),null);
+  const photos={src:png,caption:'Antes do serviço'};
+  for(const [code] of works){const {w}=sheet(host.TGNativeReportModels.templateFor(os,'RLIM',code));try{
+   init(w);assert.equal(w.document.getElementById('modeloNome').textContent,code);w.document.getElementById('native-work').value='Trabalho '+code;w.document.getElementById('native-sign-cliente').value=png;w.document.getElementById('sign_cliente_nome').value='Cliente '+code;
+   const snapshot=w.TGNativeSheet.serialize(false);snapshot.estadoNativo.photos=[photos];await host.TGNativeReportModels.persist('os','RLIM',null,{type:'relatorioEspecialidadeRascunho',...snapshot},code);
+  }finally{w.close()}}
+  assert.equal(host.dados.relatoriosEspecialidade.length,4);assert.equal(host.TGEquipmentReports.pending(os).length,4);assert.equal(new Set(host.dados.relatoriosEspecialidade.map(r=>r.id)).size,4);
+  for(const [code] of works){const draft=host.TGNativeReportModels.draftFor(os,'RLIM',null,code);assert.equal(draft.assinaturaClienteNome,'Cliente '+code);assert.deepEqual(plain(draft.campos.estadoNativo.modelKeys),[code]);assert.equal(draft.campos.estadoNativo.photos[0].caption,photos.caption);}
+  const draft=host.TGNativeReportModels.draftFor(os,'RLIM',null,'Desinfeção'),{w}=sheet(host.TGNativeReportModels.templateFor(os,'RLIM','Desinfeção'));try{
+   init(w);w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data:{type:'init',podeAssinar:true,nativeRestoreState:draft.campos.estadoNativo}}));assert.equal(w.document.getElementById('native-work').value,'Trabalho Desinfeção');assert.equal(w.document.getElementById('native-sign-cliente').value,png);complete(w);
+   const final={type:'relatorioEspecialidadeConcluido',...w.TGNativeSheet.serialize(true)};
+   await assert.rejects(()=>host.TGNativeReportModels.persist('os','RLIM',null,final,'Limpeza profunda'),/trabalhos da OS mudaram/);
+   await host.TGNativeReportModels.persist('os','RLIM',null,final,'Desinfeção');assert.equal(host.numberCalls,1);assert.equal(host.dados.relatoriosEspecialidade.length,4);assert.equal(host.dados.relatoriosEspecialidade.find(r=>!r.rascunho).id,draft.id);assert.equal(host.TGEquipmentReports.pending(os).length,3);
+   assert(final.html.includes('Produto e aplicação'));assert(!final.html.includes('Remoção de resíduos e limpeza'));assert(!final.html.includes('Tratamentos e execução'));
+   os.tiposTrabalho=['Limpeza profunda'];await assert.rejects(()=>host.TGNativeReportModels.persist('os','RLIM',null,final,'Desinfeção'),/trabalhos da OS mudaram/);
+  }finally{w.close()}
+ }finally{host.close()}
+});
+test('cleaning entry and work badges target each exact form while generic entry offers four choices',async()=>{
+ const host=setup();try{
+  installEntry(host);const os=host.dados.servicos[0];os.tiposTrabalho=['Limpeza regular','Limpeza profunda','Limpeza pós-obra','Desinfeção'];host.HTMLDialogElement.prototype.showModal=function(){this.open=true};
+  await host._abrirModalRelatorioEspecialidade('os','RLIM',()=>{});const picker=host.document.getElementById('native-work-picker');assert.equal(picker.querySelectorAll('[data-native-work]').length,4);assert(!picker.textContent.includes('AVAC'));picker.remove();
+  for(const code of os.tiposTrabalho){const opening=host._abrirModalRelatorioEspecialidade('os','RLIM',()=>{},null,code),frame=host.document.getElementById('re_iframe');await ready(frame);const {w}=sheet(frame.srcdoc);try{assert.equal(w.document.getElementById('modeloNome').textContent,code);assert.deepEqual(plain(w.TGNativeSheet.state().modelKeys),[code]);}finally{w.close()}frame.dispatchEvent(new host.Event('load'));await opening;}
+  const main=fs.readFileSync('app-principal.js','utf8');host.TIPOS_ESPECIALIDADE=['RAVAC','RLIM'];host.eval(main.match(/        function _tiposTrabalhoBadgesHTML\([^]*?\n        \}/)[0]);const dom=new JSDOM(host._tiposTrabalhoBadgesHTML(os));try{const badges=dom.window.document.querySelectorAll('span[onclick]');assert.equal(badges.length,4);for(const code of os.tiposTrabalho)assert([...badges].some(b=>b.getAttribute('onclick').includes("'RLIM'")&&b.getAttribute('onclick').includes("'"+code+"'")));}finally{dom.window.close()}
+ }finally{host.close()}
+});
+test('cleaning exit queue starts four distinct reports and retains historical combined documents',()=>{
+ const host=setup();try{
+  const os=host.dados.servicos[0];os.tiposTrabalho=['Limpeza regular','Limpeza profunda','Limpeza pós-obra','Desinfeção'];const main=fs.readFileSync('app-principal.js','utf8');for(const name of ['_requisitosEspecialidadePorIniciar','abrirFilaRelatoriosEspecialidade'])host.eval(main.match(new RegExp('        function '+name+'\\([^]*?\\n        \\}'))[0]);
+  const opened=[];host._abrirModalRelatorioEspecialidade=(id,type,saved,equipment,model)=>{opened.push(model);host.dados.relatoriosEspecialidade.push({id:model,adminId:'a',servicoId:id,tipo:type,rascunho:true,campos:{estadoNativo:{modelKeys:[model]}}});saved()};let finished=0;host.abrirFilaRelatoriosEspecialidade('os',[],()=>finished++);assert.deepEqual(plain(opened),os.tiposTrabalho);assert.equal(finished,1);assert.equal(host.TGEquipmentReports.pending(os).length,4);
+  const old={id:'legacy-clean',adminId:'a',servicoId:'os',tipo:'RLIM',rascunho:false,campos:{estadoNativo:{modelKeys:os.tiposTrabalho}}};host.dados.relatoriosEspecialidade=[old];assert.equal(host.TGEquipmentReports.pending(os).length,0);assert.equal(host.dados.relatoriosEspecialidade[0],old);
+ }finally{host.close()}
 });

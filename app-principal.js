@@ -12473,9 +12473,9 @@ function _assistEstado(value) {
                 s.tiposTrabalho.map(t => {
                     const nome = nomes[t] || (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t)?.nome || t;
                     const cor = cores[t] || '#64748b';
-                    const avac = window.TGSpecialtyCatalog?.available().find(c=>c.type==='RAVAC');
-                    const work = avac?.work.find(([code,label])=>[code,label].includes(t));
-                    const req = work ? window.TGEquipmentReports?.requirements(s).find(r=>r.tipo==='RAVAC'&&r.modeloCodigo===work[0]) : null;
+                    const specialty = window.TGSpecialtyCatalog?.available().find(c=>['RAVAC','RLIM'].includes(c.type)&&c.work.some(([code,label])=>[code,label].includes(t)));
+                    const work = specialty?.work.find(([code,label])=>[code,label].includes(t));
+                    const req = work ? window.TGEquipmentReports?.requirements(s).find(r=>r.tipo===specialty.type&&r.modeloCodigo===work[0]) : null;
                     const isEspec = !!req || TIPOS_ESPECIALIDADE.includes(t);
                     const matched = req ? relacionados.filter(r=>window.TGEquipmentReports.matches(r,s,req)) : [];
                     const pendente = req ? !matched.some(r=>!r.rascunho) : isEspec && !feitos.includes(t);
@@ -30450,7 +30450,7 @@ window._relPrefill = function(msg){
             const nativeContext = nativeReport ? window.TGNativeReportModels?.guard(osId,tipo) : null;
             if (nativeReport && !nativeContext) { alert('O relatório exige acesso a esta OS, licença válida e a área de negócio correspondente.'); return; }
             const nativeIdentity = nativeReport ? JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role]) : '';
-            if (tipo === 'RAVAC') {
+            if (['RAVAC','RLIM'].includes(tipo)) {
                 const modelos = window.TGNativeReportModels.selection(os,tipo,modeloCodigo);
                 if (!modeloCodigo && modelos.length > 1) return window.TGNativeReportModels.chooseWork(osId,tipo,onGuardado,equipamentoId);
                 if (modelos.length !== 1) { alert('Este tipo de trabalho já não está associado à OS.'); return; }

@@ -3,6 +3,13 @@ const {IDBFactory}=require('fake-indexeddb'),{JSDOM}=require('jsdom');
 global.indexedDB=new IDBFactory();const api=require('../tg-report-autosave');
 const scope={tenant:'t',user:'u',os:'os',type:'REX'};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+test('cleaning autosave keeps four intervention checkpoints independent',async()=>{
+ const models=['Limpeza regular','Limpeza profunda','Limpeza pós-obra','Desinfeção'];
+ for(const model of models){const s={...scope,type:'RLIM',model};await api.write(s,{scope:s,record:{work:model,signature:'signed-'+model}});}
+ for(const model of models){const row=await api.read({...scope,type:'RLIM',model});assert.equal(row.record.work,model);assert.equal(row.record.signature,'signed-'+model);}
+ await api.remove({...scope,type:'RLIM',model:models[0]});assert.equal(await api.read({...scope,type:'RLIM',model:models[0]}),undefined);
+ for(const model of models.slice(1)){assert(await api.read({...scope,type:'RLIM',model}));await api.remove({...scope,type:'RLIM',model});}
+});
 test('AVAC autosave isolates each intervention while preserving legacy checkpoint keys',async()=>{
  const install={...scope,type:'RAVAC',model:'Instalação AVAC'},gas={...scope,type:'RAVAC',model:'Recarga de gás'};
  for(const s of [install,gas])await api.write(s,{scope:s,record:{work:s.model}});

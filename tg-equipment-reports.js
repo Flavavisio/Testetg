@@ -20,9 +20,9 @@
    ?os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId)
    :(os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
   return [...security,...native.filter(n=>!security.some(r=>r.tipo===n.tipo))].flatMap(req=>{
-   if(req.tipo!=='RAVAC'||!window.TGNativeReportModels)return [req];
-   const config=window.TGSpecialtyCatalog.list.find(c=>c.type==='RAVAC');
-   return window.TGNativeReportModels.selection(os,'RAVAC').map(modeloCodigo=>({...req,modeloCodigo,modeloNome:config.work.find(w=>w[0]===modeloCodigo)?.[1]||modeloCodigo}));
+   if(!['RAVAC','RLIM'].includes(req.tipo)||!window.TGNativeReportModels)return [req];
+   const config=window.TGSpecialtyCatalog.list.find(c=>c.type===req.tipo);
+   return window.TGNativeReportModels.selection(os,req.tipo).map(modeloCodigo=>({...req,modeloCodigo,modeloNome:config.work.find(w=>w[0]===modeloCodigo)?.[1]||modeloCodigo}));
   });
  }
  function matches(r,os,req){return r.adminId===os.adminId&&r.servicoId===os.id&&(window.TGSpecialtyCatalog?.canonical(r.tipo)||r.tipo)===(window.TGSpecialtyCatalog?.canonical(req.tipo)||req.tipo)&&(r.campos?.equipamentoId||null)===(req.equipamentoId||null)&&(!req.modeloCodigo||(r.campos?.estadoNativo?.modelKeys||[]).includes(req.modeloCodigo)&&(!r.rascunho||r.campos.estadoNativo.modelKeys.length===1));}

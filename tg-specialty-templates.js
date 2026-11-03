@@ -7,6 +7,7 @@
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
  const canonical=type=>type==='AVAC'?'RAVAC':type;
  const configFor=type=>window.TGSpecialtyCatalog.list.find(c=>c.type===canonical(type));
+ const separate=type=>['RAVAC','RLIM'].includes(canonical(type));
  const actor=()=>typeof usuarioLogado==='undefined'?null:usuarioLogado;
  const safeImage=v=>typeof v==='string'&&/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(v)&&v.length<1500000;
  function selection(os,type,modelKey){const c=configFor(type),keys=Object.keys(MODEL_DATA[canonical(type)]||{});const selected=keys.filter(code=>(os?.tiposTrabalho||[]).some(t=>[norm(code),norm(c.work.find(w=>w[0]===code)?.[1])].includes(norm(t))));const available=selected.length?selected:keys.slice(0,1);return modelKey?available.filter(k=>k===modelKey):available;}
@@ -14,7 +15,7 @@
  function chooseWork(osId,type,onSaved,equipmentId){
   const ctx=guard(osId,type);if(!ctx)return;
   const config=configFor(type),dialog=document.createElement('dialog');dialog.id='native-work-picker';dialog.style='border:0;border-radius:12px;max-width:540px;width:92vw;padding:20px';
-  dialog.innerHTML='<h2>Selecionar relatório AVAC</h2><p>Cada tipo de trabalho tem o seu relatório e rascunho.</p>'+selection(ctx.os,type).map(key=>'<button type="button" data-native-work="'+esc(key)+'" style="display:block;width:100%;padding:14px;margin:8px 0;font-size:16px">'+esc(config.work.find(w=>w[0]===key)?.[1]||key)+'</button>').join('')+'<button type="button" data-close>Cancelar</button>';
+  dialog.innerHTML='<h2>Selecionar relatório — '+esc(config.title)+'</h2><p>Cada tipo de trabalho tem o seu relatório e rascunho.</p>'+selection(ctx.os,type).map(key=>'<button type="button" data-native-work="'+esc(key)+'" style="display:block;width:100%;padding:14px;margin:8px 0;font-size:16px">'+esc(config.work.find(w=>w[0]===key)?.[1]||key)+'</button>').join('')+'<button type="button" data-close>Cancelar</button>';
   document.body.append(dialog);dialog.querySelector('[data-close]').onclick=()=>dialog.remove();dialog.addEventListener('cancel',()=>dialog.remove());
   dialog.querySelectorAll('[data-native-work]').forEach(b=>b.onclick=()=>{const key=b.dataset.nativeWork;dialog.remove();open(osId,type,onSaved,equipmentId,key);});dialog.showModal();
  }
@@ -35,7 +36,7 @@
   const labels=[['contrato','Ref.ª contrato'],['numero','Relatório n.º'],['data','Data'],['nCliente','N.º cliente'],['cliente','Cliente',true],['morada','Morada da instalação',true],['porta','Número de porta'],['localidade','Localidade'],['codigoPostal','Código postal'],['os','Ordem de serviço'],['instalacao','Instalação / local',true],['tecnico','Técnico responsável',true]];
   const meta=labels.map(([id,label,wide])=>'<label class="cell'+(wide?' wide':'')+'">'+esc(label)+'<input id="native-'+id+'" type="'+(id==='data'?'date':'text')+'"></label>').join('');
   const subtitle=keys.map(k=>c.work.find(([code])=>code===k)?.[1]||k).join(' · ');
-  const title=type==='RAVAC'?'Relatório AVAC — '+subtitle:c.title+' — '+subtitle;
+  const title=type==='RAVAC'?'Relatório AVAC — '+subtitle:type==='RLIM'?'Relatório de limpeza — '+subtitle:c.title+' — '+subtitle;
   const replacements={TITLE:title,TYPE:type,TRADE:c.area==='avac'?'AVAC':c.area==='limpeza'?'Limpeza e Desinfeção':'Eletricidade',SUBTITLE:subtitle,META:meta,SECTIONS:spec.html,FINAL_NUMBER:spec.count+1,RESULTS:'<option value="">Escolher…</option>'+(c.results||['Operacional','Operacional com recomendações','Não operacional','Desativado']).map(x=>'<option>'+esc(x)+'</option>').join(''),NOTE:esc(c.note),CONFIG_JSON:JSON.stringify({type,keys,checkIds:spec.checkIds,requiredFields:spec.requiredFields}).replace(/</g,'\\u003c')};
   return SHELL.replace(/__(TITLE|TYPE|TRADE|SUBTITLE|META|SECTIONS|FINAL_NUMBER|RESULTS|NOTE|CONFIG_JSON)__/g,(_,key)=>replacements[key]);
  }
@@ -75,11 +76,11 @@
   const draft=msg.type==='relatorioEspecialidadeRascunho',state=msg.estadoNativo,errors=validate(type,state,!draft);
   if(!draft&&!ctx.canSign)errors.push('Não tens autorização para assinar este relatório.');
   const expected=selection(ctx.os,type,modelKey);
-  if((type==='RAVAC'&&expected.length!==1)||JSON.stringify(state?.modelKeys)!==JSON.stringify(expected))errors.push('Os trabalhos da OS mudaram. Reabre o relatório para carregar o modelo atual.');
+  if((separate(type)&&expected.length!==1)||JSON.stringify(state?.modelKeys)!==JSON.stringify(expected))errors.push('Os trabalhos da OS mudaram. Reabre o relatório para carregar o modelo atual.');
   if(errors.length)throw Error(errors.join(' '));
   if(!msg.html?.includes('data-native-model="'+type+'"'))throw Error('O documento não corresponde ao modelo da especialidade.');
   if(equipmentId&&!window.TGEquipmentReports?.requirements(ctx.os).some(r=>r.tipo===type&&r.equipamentoId===equipmentId))throw Error('O equipamento já não está associado a este relatório.');
-  const existing=draftFor(ctx.os,type,equipmentId,type==='RAVAC'?expected[0]:null);
+  const existing=draftFor(ctx.os,type,equipmentId,separate(type)?expected[0]:null);
   const id=existing?.id||gerarId();let number=existing?.numeroDocumento||'RASCUNHO-'+type+'-'+id;
   if(!draft){const n=await proximoNumeroRelatorio(ctx.customer.id,type,1);if(n==null)throw Error('Não foi possível reservar o número do relatório.');number=type+'-'+(ctx.customer.numeroCliente||ctx.customer.id.slice(0,6))+'-'+String(n).padStart(3,'0');}
   const current=guard(osId,type);if(!current||actor().id!==user.id||(!draft&&!current.canSign))throw Error('A sessão ou as permissões mudaram. Reabre o relatório.');
@@ -109,7 +110,7 @@
   }
  }
  const models={};for(const type of Object.keys(MODEL_DATA)){models[type]={};for(const key of Object.keys(MODEL_DATA[type]))models[type][key]=build(type,[key]);if(typeof REPORT_TEMPLATES!=='undefined')REPORT_TEMPLATES[type]=build(type);}
- window.TGNativeReportModels={models,build,selection,templateFor:(os,type,modelKey)=>{const keys=selection(os,type,modelKey);return canonical(type)==='RAVAC'&&keys.length!==1?null:build(type,keys);},draftFor,chooseWork,blueprint,guard,scope,validate,persist,open,refresh};
+ window.TGNativeReportModels={models,build,selection,templateFor:(os,type,modelKey)=>{const keys=selection(os,type,modelKey);return separate(type)&&keys.length!==1?null:build(type,keys);},draftFor,chooseWork,blueprint,guard,scope,validate,persist,open,refresh};
  window.TGSpecialtyReports={open};window.TGAVACReport={openForOS:(id,cb)=>open(id,'RAVAC',cb),isAVAC:()=>window.TGSpecialtyCatalog.available().some(c=>c.type==='RAVAC')};
  if(typeof window.prepararRelatoriosGestao==='function'){const original=window.prepararRelatoriosGestao;window.prepararRelatoriosGestao=function(...args){const value=original.apply(this,args);refresh();return value;};}
  document.addEventListener('tg:interface-updated',refresh);

@@ -20,7 +20,7 @@
    ?os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId)
    :(os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
   return [...security,...native.filter(n=>!security.some(r=>r.tipo===n.tipo))].flatMap(req=>{
-   if(!['RAVAC','RLIM'].includes(req.tipo)||!window.TGNativeReportModels)return [req];
+   if(!['RAVAC','RLIM','RELE'].includes(req.tipo)||!window.TGNativeReportModels)return [req];
    const config=window.TGSpecialtyCatalog.list.find(c=>c.type===req.tipo);
    return window.TGNativeReportModels.selection(os,req.tipo).map(modeloCodigo=>({...req,modeloCodigo,modeloNome:config.work.find(w=>w[0]===modeloCodigo)?.[1]||modeloCodigo}));
   });

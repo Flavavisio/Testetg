@@ -1,0 +1,1385 @@
+{
+  "model": "DGEG.DSEE.Mod_Relatorio_v2024",
+  "approvedBy": "Despacho DGEG n.º 31/2026, de 16 de abril",
+  "source": "https://www.dgeg.gov.pt/media/nplnli53/anexo-1.pdf",
+  "template": "templates/dgeg/relatorio-exploracao-31-2026.pdf",
+  "fields": [
+    {
+      "key": "division",
+      "page": 0,
+      "x": 294,
+      "top": 139,
+      "width": 227,
+      "height": 12,
+      "label": "Divisão da DGEG"
+    },
+    {
+      "key": "period_start",
+      "page": 0,
+      "x": 215,
+      "top": 168,
+      "width": 107,
+      "height": 12,
+      "label": "Início do período"
+    },
+    {
+      "key": "period_end",
+      "page": 0,
+      "x": 366,
+      "top": 168,
+      "width": 155,
+      "height": 12,
+      "label": "Fim do período"
+    },
+    {
+      "key": "responsibility_start",
+      "page": 0,
+      "x": 215,
+      "top": 198,
+      "width": 107,
+      "height": 12,
+      "label": "Início da responsabilidade"
+    },
+    {
+      "key": "owner_name",
+      "page": 0,
+      "x": 128,
+      "top": 240,
+      "width": 393,
+      "height": 12,
+      "label": "Nome / denominação da entidade exploradora"
+    },
+    {
+      "key": "owner_address",
+      "page": 0,
+      "x": 128,
+      "top": 255,
+      "width": 393,
+      "height": 12,
+      "label": "Morada da entidade exploradora"
+    },
+    {
+      "key": "owner_postcode",
+      "page": 0,
+      "x": 128,
+      "top": 269,
+      "width": 130,
+      "height": 12,
+      "label": "Código postal da entidade exploradora"
+    },
+    {
+      "key": "owner_city",
+      "page": 0,
+      "x": 326,
+      "top": 269,
+      "width": 195,
+      "height": 12,
+      "label": "Localidade da entidade exploradora"
+    },
+    {
+      "key": "owner_phone",
+      "page": 0,
+      "x": 128,
+      "top": 284,
+      "width": 52,
+      "height": 12,
+      "label": "Telefone da entidade exploradora"
+    },
+    {
+      "key": "owner_email",
+      "page": 0,
+      "x": 227,
+      "top": 284,
+      "width": 215,
+      "height": 12,
+      "label": "E-mail da entidade exploradora"
+    },
+    {
+      "key": "owner_nif",
+      "page": 0,
+      "x": 474,
+      "top": 284,
+      "width": 47,
+      "height": 12,
+      "label": "NIF da entidade exploradora"
+    },
+    {
+      "key": "tech_name",
+      "page": 0,
+      "x": 128,
+      "top": 326,
+      "width": 393,
+      "height": 12,
+      "label": "Nome completo do técnico responsável pela exploração"
+    },
+    {
+      "key": "tech_cc",
+      "page": 0,
+      "x": 128,
+      "top": 341,
+      "width": 393,
+      "height": 12,
+      "label": "N.º BI / CC do técnico"
+    },
+    {
+      "key": "tech_phone",
+      "page": 0,
+      "x": 128,
+      "top": 356,
+      "width": 52,
+      "height": 12,
+      "label": "Telefone do técnico"
+    },
+    {
+      "key": "tech_email",
+      "page": 0,
+      "x": 226,
+      "top": 356,
+      "width": 209,
+      "height": 12,
+      "label": "E-mail do técnico"
+    },
+    {
+      "key": "tech_nif",
+      "page": 0,
+      "x": 466,
+      "top": 356,
+      "width": 55,
+      "height": 12,
+      "label": "NIF do técnico"
+    },
+    {
+      "key": "tech_dgeg",
+      "page": 0,
+      "x": 128,
+      "top": 370,
+      "width": 52,
+      "height": 12,
+      "label": "N.º de registo DGEG"
+    },
+    {
+      "key": "tech_oe",
+      "page": 0,
+      "x": 226,
+      "top": 370,
+      "width": 71,
+      "height": 12,
+      "label": "N.º OE"
+    },
+    {
+      "key": "tech_oet",
+      "page": 0,
+      "x": 350,
+      "top": 370,
+      "width": 171,
+      "height": 12,
+      "label": "N.º OET"
+    },
+    {
+      "key": "tech_address",
+      "page": 0,
+      "x": 128,
+      "top": 385,
+      "width": 393,
+      "height": 12,
+      "label": "Morada do técnico"
+    },
+    {
+      "key": "tech_postcode",
+      "page": 0,
+      "x": 128,
+      "top": 400,
+      "width": 126,
+      "height": 12,
+      "label": "Código postal do técnico"
+    },
+    {
+      "key": "tech_city",
+      "page": 0,
+      "x": 322,
+      "top": 400,
+      "width": 199,
+      "height": 12,
+      "label": "Localidade do técnico"
+    },
+    {
+      "key": "site_address",
+      "page": 0,
+      "x": 128,
+      "top": 442,
+      "width": 393,
+      "height": 12,
+      "label": "Lugar / rua da instalação"
+    },
+    {
+      "key": "site_parish",
+      "page": 0,
+      "x": 128,
+      "top": 457,
+      "width": 146,
+      "height": 12,
+      "label": "Freguesia"
+    },
+    {
+      "key": "site_county",
+      "page": 0,
+      "x": 350,
+      "top": 457,
+      "width": 171,
+      "height": 12,
+      "label": "Concelho"
+    },
+    {
+      "key": "nip",
+      "page": 0,
+      "x": 194,
+      "top": 499,
+      "width": 121,
+      "height": 12,
+      "label": "NIP / referência da instalação"
+    },
+    {
+      "key": "installation_type",
+      "page": 0,
+      "x": 456,
+      "top": 499,
+      "width": 65,
+      "height": 12,
+      "label": "Tipo de instalação"
+    },
+    {
+      "key": "cpes",
+      "page": 0,
+      "x": 194,
+      "top": 513,
+      "width": 121,
+      "height": 12,
+      "label": "CPE(s), quando existentes"
+    },
+    {
+      "key": "ptc",
+      "page": 0,
+      "x": 348,
+      "top": 513,
+      "width": 173,
+      "height": 12,
+      "label": "PTC (instalações do tipo B)"
+    },
+    {
+      "key": "process",
+      "page": 0,
+      "x": 194,
+      "top": 528,
+      "width": 121,
+      "height": 12,
+      "label": "N.º de processo, quando aplicável"
+    },
+    {
+      "key": "power",
+      "page": 0,
+      "x": 456,
+      "top": 528,
+      "width": 65,
+      "height": 12,
+      "label": "Potência instalada total (kVA)"
+    },
+    {
+      "key": "pt1",
+      "page": 0,
+      "x": 218,
+      "top": 543,
+      "width": 24,
+      "height": 12,
+      "label": "Potência PT1 (kVA)"
+    },
+    {
+      "key": "pt2",
+      "page": 0,
+      "x": 268,
+      "top": 543,
+      "width": 27,
+      "height": 12,
+      "label": "Potência PT2 (kVA)"
+    },
+    {
+      "key": "pt3",
+      "page": 0,
+      "x": 320,
+      "top": 543,
+      "width": 25,
+      "height": 12,
+      "label": "Potência PT3 (kVA)"
+    },
+    {
+      "key": "pt4",
+      "page": 0,
+      "x": 370,
+      "top": 543,
+      "width": 34,
+      "height": 12,
+      "label": "Potência PT4 (kVA)"
+    },
+    {
+      "key": "pt5",
+      "page": 0,
+      "x": 432,
+      "top": 543,
+      "width": 34,
+      "height": 12,
+      "label": "Potência PT5 (kVA)"
+    },
+    {
+      "key": "pt6",
+      "page": 0,
+      "x": 492,
+      "top": 543,
+      "width": 29,
+      "height": 12,
+      "label": "Potência PT6 (kVA)"
+    },
+    {
+      "key": "gg1",
+      "page": 0,
+      "x": 218,
+      "top": 558,
+      "width": 24,
+      "height": 12,
+      "label": "Potência GG1 (kVA)"
+    },
+    {
+      "key": "gg2",
+      "page": 0,
+      "x": 268,
+      "top": 558,
+      "width": 27,
+      "height": 12,
+      "label": "Potência GG2 (kVA)"
+    },
+    {
+      "key": "gg3",
+      "page": 0,
+      "x": 320,
+      "top": 558,
+      "width": 25,
+      "height": 12,
+      "label": "Potência GG3 (kVA)"
+    },
+    {
+      "key": "gg4",
+      "page": 0,
+      "x": 370,
+      "top": 558,
+      "width": 34,
+      "height": 12,
+      "label": "Potência GG4 (kVA)"
+    },
+    {
+      "key": "gg5",
+      "page": 0,
+      "x": 432,
+      "top": 558,
+      "width": 34,
+      "height": 12,
+      "label": "Potência GG5 (kVA)"
+    },
+    {
+      "key": "gg6",
+      "page": 0,
+      "x": 492,
+      "top": 558,
+      "width": 29,
+      "height": 12,
+      "label": "Potência GG6 (kVA)"
+    },
+    {
+      "key": "description",
+      "page": 0,
+      "x": 77,
+      "top": 590,
+      "width": 442,
+      "height": 124,
+      "label": "Descrição sumária e características principais; PT / GG adicionais"
+    },
+    {
+      "key": "safety",
+      "page": 0,
+      "x": 400,
+      "top": 183,
+      "width": 43,
+      "height": 12,
+      "choices": {
+        "Sim": "X",
+        "Não": ""
+      },
+      "label": "Instalações em boas condições de segurança"
+    },
+    {
+      "key": "safety",
+      "page": 0,
+      "x": 478,
+      "top": 183,
+      "width": 43,
+      "height": 12,
+      "choices": {
+        "Não": "X",
+        "Sim": ""
+      },
+      "label": "Instalações em boas condições de segurança"
+    },
+    {
+      "key": "resignation",
+      "page": 0,
+      "x": 480,
+      "top": 198,
+      "width": 41,
+      "height": 12,
+      "choices": {
+        "Sim": "X",
+        "Não": ""
+      },
+      "label": "Desistência da responsabilidade"
+    },
+    {
+      "key": "pt_protection_summer_date",
+      "page": 1,
+      "x": 255,
+      "top": 182,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "protection",
+      "label": "Terra de proteção — data de verão"
+    },
+    {
+      "key": "pt_protection_summer",
+      "page": 1,
+      "x": 333,
+      "top": 182,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no verão (Ω)"
+    },
+    {
+      "key": "pt_protection_winter_date",
+      "page": 1,
+      "x": 411,
+      "top": 182,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "protection",
+      "label": "Terra de proteção — data de inverno"
+    },
+    {
+      "key": "pt_protection_winter",
+      "page": 1,
+      "x": 481,
+      "top": 182,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no inverno (Ω)"
+    },
+    {
+      "key": "pt_service_summer_date",
+      "page": 1,
+      "x": 255,
+      "top": 197,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "service",
+      "label": "Terra de serviço — data de verão"
+    },
+    {
+      "key": "pt_service_summer",
+      "page": 1,
+      "x": 333,
+      "top": 197,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no verão (Ω)"
+    },
+    {
+      "key": "pt_service_winter_date",
+      "page": 1,
+      "x": 411,
+      "top": 197,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "service",
+      "label": "Terra de serviço — data de inverno"
+    },
+    {
+      "key": "pt_service_winter",
+      "page": 1,
+      "x": 481,
+      "top": 197,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no inverno (Ω)"
+    },
+    {
+      "key": "pt_unique_earth_summer_date",
+      "page": 1,
+      "x": 255,
+      "top": 212,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de verão"
+    },
+    {
+      "key": "pt_unique_earth_summer",
+      "page": 1,
+      "x": 333,
+      "top": 212,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no verão (Ω)"
+    },
+    {
+      "key": "pt_unique_earth_winter_date",
+      "page": 1,
+      "x": 411,
+      "top": 212,
+      "width": 65,
+      "height": 12,
+      "group": "pt",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de inverno"
+    },
+    {
+      "key": "pt_unique_earth_winter",
+      "page": 1,
+      "x": 481,
+      "top": 212,
+      "width": 24,
+      "height": 12,
+      "group": "pt",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no inverno (Ω)"
+    },
+    {
+      "key": "soc_protection_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 339,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "protection",
+      "label": "Terra de proteção — data de verão"
+    },
+    {
+      "key": "soc_protection_summer",
+      "page": 1,
+      "x": 316,
+      "top": 339,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no verão (Ω)"
+    },
+    {
+      "key": "soc_protection_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 339,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "protection",
+      "label": "Terra de proteção — data de inverno"
+    },
+    {
+      "key": "soc_protection_winter",
+      "page": 1,
+      "x": 459,
+      "top": 339,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no inverno (Ω)"
+    },
+    {
+      "key": "soc_service_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 359,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "service",
+      "label": "Terra de serviço — data de verão"
+    },
+    {
+      "key": "soc_service_summer",
+      "page": 1,
+      "x": 316,
+      "top": 359,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no verão (Ω)"
+    },
+    {
+      "key": "soc_service_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 359,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "service",
+      "label": "Terra de serviço — data de inverno"
+    },
+    {
+      "key": "soc_service_winter",
+      "page": 1,
+      "x": 459,
+      "top": 359,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no inverno (Ω)"
+    },
+    {
+      "key": "soc_unique_earth_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 374,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de verão"
+    },
+    {
+      "key": "soc_unique_earth_summer",
+      "page": 1,
+      "x": 316,
+      "top": 374,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no verão (Ω)"
+    },
+    {
+      "key": "soc_unique_earth_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 374,
+      "width": 65,
+      "height": 12,
+      "group": "soc",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de inverno"
+    },
+    {
+      "key": "soc_unique_earth_winter",
+      "page": 1,
+      "x": 459,
+      "top": 374,
+      "width": 24,
+      "height": 12,
+      "group": "soc",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no inverno (Ω)"
+    },
+    {
+      "key": "seg_protection_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 437,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "protection",
+      "label": "Terra de proteção — data de verão"
+    },
+    {
+      "key": "seg_protection_summer",
+      "page": 1,
+      "x": 316,
+      "top": 437,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no verão (Ω)"
+    },
+    {
+      "key": "seg_protection_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 437,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "protection",
+      "label": "Terra de proteção — data de inverno"
+    },
+    {
+      "key": "seg_protection_winter",
+      "page": 1,
+      "x": 459,
+      "top": 437,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "protection",
+      "label": "Terra de proteção — resistência no inverno (Ω)"
+    },
+    {
+      "key": "seg_service_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 458,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "service",
+      "label": "Terra de serviço — data de verão"
+    },
+    {
+      "key": "seg_service_summer",
+      "page": 1,
+      "x": 316,
+      "top": 458,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no verão (Ω)"
+    },
+    {
+      "key": "seg_service_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 458,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "service",
+      "label": "Terra de serviço — data de inverno"
+    },
+    {
+      "key": "seg_service_winter",
+      "page": 1,
+      "x": 459,
+      "top": 458,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "service",
+      "label": "Terra de serviço — resistência no inverno (Ω)"
+    },
+    {
+      "key": "seg_unique_earth_summer_date",
+      "page": 1,
+      "x": 243,
+      "top": 472,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de verão"
+    },
+    {
+      "key": "seg_unique_earth_summer",
+      "page": 1,
+      "x": 316,
+      "top": 472,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no verão (Ω)"
+    },
+    {
+      "key": "seg_unique_earth_winter_date",
+      "page": 1,
+      "x": 391,
+      "top": 472,
+      "width": 65,
+      "height": 12,
+      "group": "seg",
+      "earth": "unique_earth",
+      "label": "Terra de única — data de inverno"
+    },
+    {
+      "key": "seg_unique_earth_winter",
+      "page": 1,
+      "x": 459,
+      "top": 472,
+      "width": 24,
+      "height": 12,
+      "group": "seg",
+      "earth": "unique_earth",
+      "label": "Terra de única — resistência no inverno (Ω)"
+    },
+    {
+      "key": "pt_unique",
+      "page": 1,
+      "x": 451,
+      "top": 167,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Sim": "X",
+        "Não": ""
+      },
+      "group": "pt",
+      "label": "Terra única"
+    },
+    {
+      "key": "pt_unique",
+      "page": 1,
+      "x": 502,
+      "top": 167,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Não": "X",
+        "Sim": ""
+      },
+      "group": "pt",
+      "label": "Terra única"
+    },
+    {
+      "key": "soc_unique",
+      "page": 1,
+      "x": 432,
+      "top": 320,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Sim": "X",
+        "Não": ""
+      },
+      "group": "soc",
+      "label": "Terra única"
+    },
+    {
+      "key": "soc_unique",
+      "page": 1,
+      "x": 481,
+      "top": 320,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Não": "X",
+        "Sim": ""
+      },
+      "group": "soc",
+      "label": "Terra única"
+    },
+    {
+      "key": "seg_unique",
+      "page": 1,
+      "x": 432,
+      "top": 418,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Sim": "X",
+        "Não": ""
+      },
+      "group": "seg",
+      "label": "Terra única"
+    },
+    {
+      "key": "seg_unique",
+      "page": 1,
+      "x": 481,
+      "top": 418,
+      "width": 19,
+      "height": 12,
+      "choices": {
+        "Não": "X",
+        "Sim": ""
+      },
+      "group": "seg",
+      "label": "Terra única"
+    },
+    {
+      "key": "pt_oil",
+      "page": 1,
+      "x": 428,
+      "top": 226,
+      "width": 93,
+      "height": 12,
+      "group": "pt",
+      "label": "Acidez e rigidez dos óleos / dielétricos — resultados e unidades"
+    },
+    {
+      "key": "pt_continuity",
+      "page": 1,
+      "x": 452,
+      "top": 241,
+      "width": 69,
+      "height": 12,
+      "group": "pt",
+      "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados"
+    },
+    {
+      "key": "soc_continuity",
+      "page": 1,
+      "x": 452,
+      "top": 389,
+      "width": 69,
+      "height": 12,
+      "group": "soc",
+      "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados"
+    },
+    {
+      "key": "seg_continuity",
+      "page": 1,
+      "x": 452,
+      "top": 487,
+      "width": 69,
+      "height": 12,
+      "group": "seg",
+      "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados"
+    },
+    {
+      "key": "bt_earthing",
+      "page": 1,
+      "x": 413,
+      "top": 534,
+      "width": 15,
+      "height": 12,
+      "group": "bt",
+      "choices": {
+        "TT": "X"
+      },
+      "label": "Esquema de ligação à terra"
+    },
+    {
+      "key": "bt_earthing",
+      "page": 1,
+      "x": 462,
+      "top": 534,
+      "width": 15,
+      "height": 12,
+      "group": "bt",
+      "choices": {
+        "TN": "X"
+      },
+      "label": "Esquema de ligação à terra"
+    },
+    {
+      "key": "bt_earthing",
+      "page": 1,
+      "x": 504,
+      "top": 534,
+      "width": 15,
+      "height": 12,
+      "group": "bt",
+      "choices": {
+        "IT": "X"
+      },
+      "label": "Esquema de ligação à terra"
+    },
+    {
+      "key": "bt_protection_summer_date",
+      "page": 1,
+      "x": 255,
+      "top": 548,
+      "width": 65,
+      "height": 12,
+      "group": "bt",
+      "label": "Terra de proteção — data de verão"
+    },
+    {
+      "key": "bt_protection_summer",
+      "page": 1,
+      "x": 333,
+      "top": 548,
+      "width": 24,
+      "height": 12,
+      "group": "bt",
+      "label": "Terra de proteção — resistência no verão (Ω)"
+    },
+    {
+      "key": "bt_protection_winter_date",
+      "page": 1,
+      "x": 411,
+      "top": 548,
+      "width": 65,
+      "height": 12,
+      "group": "bt",
+      "label": "Terra de proteção — data de inverno"
+    },
+    {
+      "key": "bt_protection_winter",
+      "page": 1,
+      "x": 481,
+      "top": 548,
+      "width": 24,
+      "height": 12,
+      "group": "bt",
+      "label": "Terra de proteção — resistência no inverno (Ω)"
+    },
+    {
+      "key": "bt_insulation",
+      "page": 1,
+      "x": 292,
+      "top": 563,
+      "width": 42,
+      "height": 12,
+      "group": "bt",
+      "label": "Resistência de isolamento (MΩ)"
+    },
+    {
+      "key": "bt_test_voltage",
+      "page": 1,
+      "x": 455,
+      "top": 563,
+      "width": 53,
+      "height": 12,
+      "group": "bt",
+      "label": "Tensão de ensaio de isolamento (V)"
+    },
+    {
+      "key": "bt_power_factor",
+      "page": 1,
+      "x": 195,
+      "top": 578,
+      "width": 326,
+      "height": 12,
+      "group": "bt",
+      "label": "Fator de potência (cos φ)"
+    },
+    {
+      "key": "bt_continuity",
+      "page": 1,
+      "x": 452,
+      "top": 593,
+      "width": 69,
+      "height": 12,
+      "group": "bt",
+      "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados"
+    },
+    {
+      "key": "bt_rcd",
+      "page": 1,
+      "x": 280,
+      "top": 607,
+      "width": 241,
+      "height": 23,
+      "group": "bt",
+      "label": "Contactos indiretos / teste de diferenciais — identificação, corrente, tempo e resultado"
+    },
+    {
+      "key": "bt_other_tests",
+      "page": 1,
+      "x": 77,
+      "top": 651,
+      "width": 444,
+      "height": 40,
+      "group": "bt",
+      "label": "Outros ensaios, medições e ensaios funcionais"
+    },
+    {
+      "key": "check_1",
+      "page": 1,
+      "x": 478,
+      "top": 743,
+      "width": 43,
+      "height": 12,
+      "label": "check_1"
+    },
+    {
+      "key": "check_2",
+      "page": 1,
+      "x": 478,
+      "top": 758,
+      "width": 43,
+      "height": 12,
+      "label": "check_2"
+    },
+    {
+      "key": "check_3",
+      "page": 1,
+      "x": 478,
+      "top": 773,
+      "width": 43,
+      "height": 12,
+      "label": "check_3"
+    },
+    {
+      "key": "check_4",
+      "page": 2,
+      "x": 478,
+      "top": 61,
+      "width": 43,
+      "height": 12,
+      "label": "check_4"
+    },
+    {
+      "key": "check_5",
+      "page": 2,
+      "x": 478,
+      "top": 79,
+      "width": 43,
+      "height": 12,
+      "label": "check_5"
+    },
+    {
+      "key": "check_6",
+      "page": 2,
+      "x": 478,
+      "top": 94,
+      "width": 43,
+      "height": 12,
+      "label": "check_6"
+    },
+    {
+      "key": "check_7",
+      "page": 2,
+      "x": 478,
+      "top": 109,
+      "width": 43,
+      "height": 12,
+      "label": "check_7"
+    },
+    {
+      "key": "check_8",
+      "page": 2,
+      "x": 478,
+      "top": 124,
+      "width": 43,
+      "height": 12,
+      "label": "check_8"
+    },
+    {
+      "key": "check_9",
+      "page": 2,
+      "x": 478,
+      "top": 138,
+      "width": 43,
+      "height": 12,
+      "label": "check_9"
+    },
+    {
+      "key": "check_10",
+      "page": 2,
+      "x": 478,
+      "top": 153,
+      "width": 43,
+      "height": 12,
+      "label": "check_10"
+    },
+    {
+      "key": "check_11",
+      "page": 2,
+      "x": 478,
+      "top": 168,
+      "width": 43,
+      "height": 12,
+      "label": "check_11"
+    },
+    {
+      "key": "check_12",
+      "page": 2,
+      "x": 478,
+      "top": 186,
+      "width": 43,
+      "height": 12,
+      "label": "check_12"
+    },
+    {
+      "key": "check_13",
+      "page": 2,
+      "x": 478,
+      "top": 203,
+      "width": 43,
+      "height": 12,
+      "label": "check_13"
+    },
+    {
+      "key": "check_14",
+      "page": 2,
+      "x": 478,
+      "top": 218,
+      "width": 43,
+      "height": 12,
+      "label": "check_14"
+    },
+    {
+      "key": "check_15",
+      "page": 2,
+      "x": 478,
+      "top": 233,
+      "width": 43,
+      "height": 12,
+      "label": "check_15"
+    },
+    {
+      "key": "check_16",
+      "page": 2,
+      "x": 478,
+      "top": 247,
+      "width": 43,
+      "height": 12,
+      "label": "check_16"
+    },
+    {
+      "key": "check_17",
+      "page": 2,
+      "x": 478,
+      "top": 262,
+      "width": 43,
+      "height": 12,
+      "label": "check_17"
+    },
+    {
+      "key": "check_18",
+      "page": 2,
+      "x": 478,
+      "top": 277,
+      "width": 43,
+      "height": 12,
+      "label": "check_18"
+    },
+    {
+      "key": "check_19",
+      "page": 2,
+      "x": 478,
+      "top": 291,
+      "width": 43,
+      "height": 12,
+      "label": "check_19"
+    },
+    {
+      "key": "check_20",
+      "page": 2,
+      "x": 478,
+      "top": 306,
+      "width": 43,
+      "height": 12,
+      "label": "check_20"
+    },
+    {
+      "key": "check_21",
+      "page": 2,
+      "x": 478,
+      "top": 321,
+      "width": 43,
+      "height": 12,
+      "label": "check_21"
+    },
+    {
+      "key": "check_22",
+      "page": 2,
+      "x": 478,
+      "top": 335,
+      "width": 43,
+      "height": 12,
+      "label": "check_22"
+    },
+    {
+      "key": "check_23",
+      "page": 2,
+      "x": 478,
+      "top": 350,
+      "width": 43,
+      "height": 12,
+      "label": "check_23"
+    },
+    {
+      "key": "observations",
+      "page": 2,
+      "x": 78,
+      "top": 426,
+      "width": 443,
+      "height": 157,
+      "label": "Observações 6A — identificar ponto, deficiência, risco, medida e comunicação"
+    },
+    {
+      "key": "related",
+      "page": 2,
+      "x": 78,
+      "top": 630,
+      "width": 443,
+      "height": 74,
+      "label": "Instalações relacionadas — UPAC, PCVE e outras; indicar inexistência quando aplicável"
+    },
+    {
+      "key": "changes",
+      "page": 3,
+      "x": 78,
+      "top": 84,
+      "width": 443,
+      "height": 158,
+      "label": "Modificações / ampliações e respetivos documentos; indicar se não existiram"
+    },
+    {
+      "key": "owner_relations",
+      "page": 3,
+      "x": 78,
+      "top": 305,
+      "width": 443,
+      "height": 111,
+      "label": "Recomendações, comunicação de deficiências e relações com o proprietário"
+    },
+    {
+      "key": "report_date",
+      "page": 3,
+      "x": 335,
+      "top": 504,
+      "width": 186,
+      "height": 13,
+      "label": "Data do relatório / assinatura"
+    },
+    {
+      "key": "signature",
+      "page": 3,
+      "x": 325,
+      "top": 522,
+      "width": 196,
+      "height": 31,
+      "label": "signature"
+    }
+  ],
+  "groups": {
+    "pt": {
+      "page": 1,
+      "x": 455,
+      "top": 153
+    },
+    "soc": {
+      "page": 1,
+      "x": 455,
+      "top": 305
+    },
+    "seg": {
+      "page": 1,
+      "x": 455,
+      "top": 404
+    },
+    "bt": {
+      "page": 1,
+      "x": 455,
+      "top": 519
+    }
+  }
+}

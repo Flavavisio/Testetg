@@ -12471,10 +12471,11 @@ function _assistEstado(value) {
             const rascunhos = relacionados.filter(r => r.rascunho).map(r => r.tipo);
             return `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0;">` +
                 s.tiposTrabalho.map(t => {
-                    const nome = nomes[t] || (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t)?.nome || t;
+                    let nome = nomes[t] || (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t)?.nome || t;
                     const cor = cores[t] || '#64748b';
-                    const specialty = window.TGSpecialtyCatalog?.available().find(c=>['RAVAC','RLIM'].includes(c.type)&&c.work.some(([code,label])=>[code,label].includes(t)));
-                    const work = specialty?.work.find(([code,label])=>[code,label].includes(t));
+                    const specialty = window.TGSpecialtyCatalog?.available().find(c=>['RAVAC','RLIM','RELE'].includes(c.type)&&c.codeFor(t));
+                    const work = specialty?.work.find(([code])=>code===specialty.codeFor(t));
+                    if (work) nome = work[1];
                     const req = work ? window.TGEquipmentReports?.requirements(s).find(r=>r.tipo===specialty.type&&r.modeloCodigo===work[0]) : null;
                     const isEspec = !!req || TIPOS_ESPECIALIDADE.includes(t);
                     const matched = req ? relacionados.filter(r=>window.TGEquipmentReports.matches(r,s,req)) : [];
@@ -30450,7 +30451,7 @@ window._relPrefill = function(msg){
             const nativeContext = nativeReport ? window.TGNativeReportModels?.guard(osId,tipo) : null;
             if (nativeReport && !nativeContext) { alert('O relatório exige acesso a esta OS, licença válida e a área de negócio correspondente.'); return; }
             const nativeIdentity = nativeReport ? JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role]) : '';
-            if (['RAVAC','RLIM'].includes(tipo)) {
+            if (['RAVAC','RLIM','RELE'].includes(tipo)) {
                 const modelos = window.TGNativeReportModels.selection(os,tipo,modeloCodigo);
                 if (!modeloCodigo && modelos.length > 1) return window.TGNativeReportModels.chooseWork(osId,tipo,onGuardado,equipamentoId);
                 if (modelos.length !== 1) { alert('Este tipo de trabalho já não está associado à OS.'); return; }
@@ -30832,6 +30833,15 @@ window._relPrefill = function(msg){
             async function onMessage(ev) {
                 if(ev.source!==iframe.contentWindow)return;
                 const msg = {...(ev.data || {})};
+                if (nativeReport && msg.type === 'nativeOfficialPDF') {
+                    try {
+                        if (nativeIdentity !== JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role]) || !window.TGNativeReportModels.guard(osId,tipo)) return;
+                        if (tipo !== 'RELE' || modeloCodigo !== 'Relatório de exploração' || !window.TGElectricalRules.active(msg.estadoNativo)) throw Error('O documento não corresponde ao modelo DGEG aberto.');
+                        await window.TGElectricalLegal.download(msg.estadoNativo,{final:false});
+                        iframe.contentWindow.postMessage({type:'nativePDFStatus',message:'PDF DGEG gerado como rascunho. Conclui o relatório para emitir a versão assinada.'},'*');
+                    } catch(error) { iframe.contentWindow.postMessage({type:'nativePDFStatus',message:'Não foi possível gerar o PDF: '+error.message},'*'); }
+                    return;
+                }
                 if (!isAutosaveCurrent()) return;
                 if (msg._tgAutomatic && msg.type==='relatorioEspecialidadeRascunho') { await _relAutosaveAtual?.accept(msg).catch(()=>{}); return; }
                 if (msg.type === 'relatorioEspecialidadeRascunho') {

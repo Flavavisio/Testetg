@@ -562,7 +562,10 @@
           "CPE ou referência, se disponível",
           "Alimentação — fases, tensão e potência",
           "Esquema de ligação à terra",
-          "Identificação / habilitação profissional do técnico"
+          "Identificação / habilitação profissional do técnico",
+          "N.º de registo DGEG / OE / OET e âmbito da habilitação",
+          "Regime / tipo da instalação (A / B / C), quando identificado",
+          "Referências aplicáveis: RTIEBT; DL 96/2017; Lei 14/2015 e documentos do projeto"
         ],
         "checks": [
           "Âmbito da intervenção e documentação disponível identificados.",
@@ -613,7 +616,9 @@
         "fields": [
           "Anomalias / circuitos retirados de serviço",
           "Documentação / esquemas atualizados",
-          "Termo / inspeção / documento oficial — necessidade e referência"
+          "Termo / inspeção / documento oficial — necessidade e referência",
+          "Ficha de execução (Anexo II do Despacho DGEG 31/2026) — referência / arquivo",
+          "Declaração de conformidade / termo pela execução — referência e entrega à entidade exploradora"
         ],
         "checks": [
           "Identificação e documentação da instalação entregues quando previstas.",
@@ -628,7 +633,10 @@
           "Instalação / localização / CPE",
           "Entidade / técnico responsável e habilitação",
           "Tipo e objetivo da verificação",
-          "Documentação e referências disponíveis"
+          "Documentação e referências disponíveis",
+          "N.º de registo DGEG / OE / OET e âmbito da habilitação",
+          "Regime / tipo da instalação (A / B / C), quando identificado",
+          "Referências aplicáveis: RTIEBT; DL 96/2017; Lei 14/2015 e documentos do projeto"
         ],
         "checks": [
           "Âmbito, acessos e condições de segurança confirmados.",
@@ -691,7 +699,10 @@
           "Quadro / localização / referência",
           "Alimentação / tensão nominal / fases",
           "Circuitos abrangidos",
-          "Identificação / habilitação do técnico"
+          "Identificação / habilitação do técnico",
+          "N.º de registo DGEG / OE / OET e âmbito da habilitação",
+          "Regime / tipo da instalação (A / B / C), quando identificado",
+          "Referências aplicáveis: RTIEBT; DL 96/2017; Lei 14/2015 e documentos do projeto"
         ],
         "checks": [
           "Identificação e acessibilidade verificadas.",
@@ -745,7 +756,10 @@
           "Zonas e circuitos intervencionados",
           "Luminárias — tipo, referência e quantidade",
           "Alimentação / comandos",
-          "Identificação / habilitação do técnico"
+          "Identificação / habilitação do técnico",
+          "N.º de registo DGEG / OE / OET e âmbito da habilitação",
+          "Regime / tipo da instalação (A / B / C), quando identificado",
+          "Referências aplicáveis: RTIEBT; DL 96/2017; Lei 14/2015 e documentos do projeto"
         ],
         "checks": [
           "Circuitos e equipamentos identificados.",
@@ -794,7 +808,10 @@
           "Local / quadro / circuito afetado",
           "Sintomas e momento da ocorrência",
           "Identificação / habilitação do técnico",
-          "Riscos e medidas iniciais"
+          "Riscos e medidas iniciais",
+          "N.º de registo DGEG / OE / OET e âmbito da habilitação",
+          "Regime / tipo da instalação (A / B / C), quando identificado",
+          "Referências aplicáveis: RTIEBT; DL 96/2017; Lei 14/2015 e documentos do projeto"
         ],
         "checks": [
           "Ocorrência e circuitos afetados identificados.",
@@ -836,6 +853,916 @@
           "Reposição de serviço controlada e resultado verificado.",
           "Riscos residuais e necessidade de intervenção adicional comunicados ao responsável."
         ]
+      }
+    ],
+    "Relatório de exploração": [
+      {
+        "title": "Enquadramento e período do relatório",
+        "fields": [
+          {
+            "key": "division",
+            "label": "Divisão da DGEG",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "period_start",
+            "label": "Início do período",
+            "type": "date",
+            "required": true
+          },
+          {
+            "key": "period_end",
+            "label": "Fim do período",
+            "type": "date",
+            "required": true
+          },
+          {
+            "key": "safety",
+            "label": "Instalações em boas condições de segurança",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "responsibility_start",
+            "label": "Início da responsabilidade",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "resignation",
+            "label": "Desistência da responsabilidade",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "visit_dates",
+            "label": "Datas das inspeções efetuadas (verão / inverno / outras)",
+            "type": "textarea",
+            "required": true
+          },
+          {
+            "key": "report_date",
+            "label": "Data do relatório / assinatura",
+            "type": "date",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "0"
+      },
+      {
+        "title": "Promotor / Entidade exploradora",
+        "fields": [
+          {
+            "key": "owner_name",
+            "label": "Nome / denominação da entidade exploradora",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "owner_address",
+            "label": "Morada da entidade exploradora",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "owner_postcode",
+            "label": "Código postal da entidade exploradora",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "owner_city",
+            "label": "Localidade da entidade exploradora",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "owner_phone",
+            "label": "Telefone da entidade exploradora",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "owner_email",
+            "label": "E-mail da entidade exploradora",
+            "type": "email",
+            "required": false
+          },
+          {
+            "key": "owner_nif",
+            "label": "NIF da entidade exploradora",
+            "type": "text",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "1"
+      },
+      {
+        "title": "Técnico responsável pela exploração",
+        "fields": [
+          {
+            "key": "tech_name",
+            "label": "Nome completo do técnico responsável pela exploração",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_cc",
+            "label": "N.º BI / CC do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_phone",
+            "label": "Telefone do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_email",
+            "label": "E-mail do técnico",
+            "type": "email",
+            "required": true
+          },
+          {
+            "key": "tech_nif",
+            "label": "NIF do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_dgeg",
+            "label": "N.º de registo DGEG",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "tech_oe",
+            "label": "N.º OE",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "tech_oet",
+            "label": "N.º OET",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "tech_address",
+            "label": "Morada do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_postcode",
+            "label": "Código postal do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "tech_city",
+            "label": "Localidade do técnico",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "qualification",
+            "label": "Habilitação e registo para assumir esta instalação",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Confirmo a habilitação e o registo aplicáveis",
+              "Por confirmar"
+            ]
+          }
+        ],
+        "checks": [],
+        "code": "2"
+      },
+      {
+        "title": "Identificação do local da instalação",
+        "fields": [
+          {
+            "key": "site_address",
+            "label": "Lugar / rua da instalação",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "site_parish",
+            "label": "Freguesia",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "site_county",
+            "label": "Concelho",
+            "type": "text",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "3"
+      },
+      {
+        "title": "Identificação da instalação elétrica",
+        "fields": [
+          {
+            "key": "nip",
+            "label": "NIP / referência da instalação",
+            "type": "text",
+            "required": true
+          },
+          {
+            "key": "installation_type",
+            "label": "Tipo de instalação",
+            "type": "select",
+            "required": true,
+            "options": [
+              "A",
+              "B",
+              "C"
+            ]
+          },
+          {
+            "key": "cpes",
+            "label": "CPE(s), quando existentes",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "ptc",
+            "label": "PTC (instalações do tipo B)",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "process",
+            "label": "N.º de processo, quando aplicável",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "power",
+            "label": "Potência instalada total (kVA)",
+            "type": "number",
+            "required": true
+          },
+          {
+            "key": "pt1",
+            "label": "Potência PT1 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt2",
+            "label": "Potência PT2 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt3",
+            "label": "Potência PT3 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt4",
+            "label": "Potência PT4 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt5",
+            "label": "Potência PT5 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt6",
+            "label": "Potência PT6 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg1",
+            "label": "Potência GG1 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg2",
+            "label": "Potência GG2 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg3",
+            "label": "Potência GG3 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg4",
+            "label": "Potência GG4 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg5",
+            "label": "Potência GG5 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "gg6",
+            "label": "Potência GG6 (kVA)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "description",
+            "label": "Descrição sumária e características principais; PT / GG adicionais",
+            "type": "textarea",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "4"
+      },
+      {
+        "title": "Subestações, postos de transformação e de seccionamento",
+        "fields": [
+          {
+            "key": "pt_app",
+            "label": "Existem subestações, postos de transformação e de seccionamento abrangidos neste relatório",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "pt_unique",
+            "label": "Terra única",
+            "type": "select",
+            "required": false,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "pt_protection_summer_date",
+            "label": "Terra de proteção — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_protection_summer",
+            "label": "Terra de proteção — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_protection_winter_date",
+            "label": "Terra de proteção — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_protection_winter",
+            "label": "Terra de proteção — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_service_summer_date",
+            "label": "Terra de serviço — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_service_summer",
+            "label": "Terra de serviço — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_service_winter_date",
+            "label": "Terra de serviço — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_service_winter",
+            "label": "Terra de serviço — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_unique_earth_summer_date",
+            "label": "Terra de única — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_unique_earth_summer",
+            "label": "Terra de única — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_unique_earth_winter_date",
+            "label": "Terra de única — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "pt_unique_earth_winter",
+            "label": "Terra de única — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "pt_oil",
+            "label": "Acidez e rigidez dos óleos / dielétricos — resultados e unidades",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "pt_continuity",
+            "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "pt_limitations",
+            "label": "Medições / ensaios não realizados, não aplicáveis ou limitações e respetiva justificação",
+            "type": "textarea",
+            "required": false
+          }
+        ],
+        "checks": [],
+        "code": "5a",
+        "group": "pt"
+      },
+      {
+        "title": "Grupos geradores de socorro",
+        "fields": [
+          {
+            "key": "soc_app",
+            "label": "Existem grupos geradores de socorro abrangidos neste relatório",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "soc_unique",
+            "label": "Terra única",
+            "type": "select",
+            "required": false,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "soc_protection_summer_date",
+            "label": "Terra de proteção — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_protection_summer",
+            "label": "Terra de proteção — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_protection_winter_date",
+            "label": "Terra de proteção — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_protection_winter",
+            "label": "Terra de proteção — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_service_summer_date",
+            "label": "Terra de serviço — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_service_summer",
+            "label": "Terra de serviço — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_service_winter_date",
+            "label": "Terra de serviço — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_service_winter",
+            "label": "Terra de serviço — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_unique_earth_summer_date",
+            "label": "Terra de única — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_unique_earth_summer",
+            "label": "Terra de única — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_unique_earth_winter_date",
+            "label": "Terra de única — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "soc_unique_earth_winter",
+            "label": "Terra de única — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "soc_continuity",
+            "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "soc_limitations",
+            "label": "Medições / ensaios não realizados, não aplicáveis ou limitações e respetiva justificação",
+            "type": "textarea",
+            "required": false
+          }
+        ],
+        "checks": [],
+        "code": "5b — Socorro",
+        "group": "soc"
+      },
+      {
+        "title": "Grupos geradores de segurança",
+        "fields": [
+          {
+            "key": "seg_app",
+            "label": "Existem grupos geradores de segurança abrangidos neste relatório",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "seg_unique",
+            "label": "Terra única",
+            "type": "select",
+            "required": false,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "seg_protection_summer_date",
+            "label": "Terra de proteção — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_protection_summer",
+            "label": "Terra de proteção — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_protection_winter_date",
+            "label": "Terra de proteção — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_protection_winter",
+            "label": "Terra de proteção — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_service_summer_date",
+            "label": "Terra de serviço — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_service_summer",
+            "label": "Terra de serviço — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_service_winter_date",
+            "label": "Terra de serviço — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_service_winter",
+            "label": "Terra de serviço — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_unique_earth_summer_date",
+            "label": "Terra de única — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_unique_earth_summer",
+            "label": "Terra de única — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_unique_earth_winter_date",
+            "label": "Terra de única — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "seg_unique_earth_winter",
+            "label": "Terra de única — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "seg_continuity",
+            "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "seg_limitations",
+            "label": "Medições / ensaios não realizados, não aplicáveis ou limitações e respetiva justificação",
+            "type": "textarea",
+            "required": false
+          }
+        ],
+        "checks": [],
+        "code": "5b — Segurança",
+        "group": "seg"
+      },
+      {
+        "title": "Instalação de utilização em baixa tensão",
+        "fields": [
+          {
+            "key": "bt_app",
+            "label": "Existe instalação de utilização BT abrangida",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Sim",
+              "Não"
+            ]
+          },
+          {
+            "key": "bt_earthing",
+            "label": "Esquema de ligação à terra",
+            "type": "select",
+            "required": false,
+            "options": [
+              "TT",
+              "TN",
+              "IT"
+            ]
+          },
+          {
+            "key": "bt_protection_summer_date",
+            "label": "Terra de proteção — data de verão",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "bt_protection_summer",
+            "label": "Terra de proteção — resistência no verão (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "bt_protection_winter_date",
+            "label": "Terra de proteção — data de inverno",
+            "type": "date",
+            "required": false
+          },
+          {
+            "key": "bt_protection_winter",
+            "label": "Terra de proteção — resistência no inverno (Ω)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "bt_insulation",
+            "label": "Resistência de isolamento (MΩ)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "bt_test_voltage",
+            "label": "Tensão de ensaio de isolamento (V)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "bt_power_factor",
+            "label": "Fator de potência (cos φ)",
+            "type": "number",
+            "required": false
+          },
+          {
+            "key": "bt_continuity",
+            "label": "Continuidade dos condutores de proteção e ligações equipotenciais — resultados",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "bt_rcd",
+            "label": "Contactos indiretos / teste de diferenciais — identificação, corrente, tempo e resultado",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "bt_other_tests",
+            "label": "Outros ensaios, medições e ensaios funcionais",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "bt_limitations",
+            "label": "Medições / ensaios não realizados, não aplicáveis ou limitações e respetiva justificação",
+            "type": "textarea",
+            "required": false
+          }
+        ],
+        "checks": [],
+        "code": "5c",
+        "group": "bt"
+      },
+      {
+        "title": "Verificações — pontos 6.1 a 6.23 do modelo DGEG",
+        "fields": [],
+        "checks": [
+          "Nível de óleo nos transformadores e disjuntores AT/MT",
+          "Estado dos contactos dos disjuntores e câmaras de corte dos interruptores",
+          "Estado de conservação dos elétrodos e condutores de terra",
+          "Acessórios no PST (luvas, tapete, mapa de primeiros socorros, lanterna) e dispositivos de manobra",
+          "Carga do transformador e temperatura do óleo nos períodos de maior carga",
+          "Funcionamento dos dispositivos de corte e alarme",
+          "Arranque das fontes de alimentação das instalações de emergência",
+          "Estado das baterias e respetivo eletrólito",
+          "Funcionamento dos blocos autónomos",
+          "Existência de instruções de primeiros socorros",
+          "Estado dos encravamentos",
+          "Existência de esquemas, avisos e informações análogas",
+          "Continuidade dos condutores de proteção e ligações equipotenciais principais e suplementares",
+          "Funcionamento dos aparelhos de proteção contra sobreintensidades",
+          "Identificação dos condutores de neutro e de proteção",
+          "Ligações dos condutores, incluindo apertos",
+          "Eficácia das proteções contra contactos diretos e indiretos",
+          "Isolamento dos condutores e cabos",
+          "Aparelhos de corte e comando",
+          "Aparelhos de utilização",
+          "Queda de tensão",
+          "Iluminação de segurança, se existente",
+          "Alimentação da instalação de segurança, se existente"
+        ],
+        "code": "6",
+        "checkPrefix": "6",
+        "officialChecks": true
+      },
+      {
+        "title": "Observações e não conformidades",
+        "fields": [
+          {
+            "key": "observations",
+            "label": "Observações 6A — identificar ponto, deficiência, risco, medida e comunicação",
+            "type": "textarea",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "6A"
+      },
+      {
+        "title": "Instalações relacionadas",
+        "fields": [
+          {
+            "key": "related",
+            "label": "Instalações relacionadas — UPAC, PCVE e outras; indicar inexistência quando aplicável",
+            "type": "textarea",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "7"
+      },
+      {
+        "title": "Modificações e ampliações",
+        "fields": [
+          {
+            "key": "changes",
+            "label": "Modificações / ampliações e respetivos documentos; indicar se não existiram",
+            "type": "textarea",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "8"
+      },
+      {
+        "title": "Relações com o proprietário",
+        "fields": [
+          {
+            "key": "owner_relations",
+            "label": "Recomendações, comunicação de deficiências e relações com o proprietário",
+            "type": "textarea",
+            "required": true
+          }
+        ],
+        "checks": [],
+        "code": "9"
+      },
+      {
+        "title": "Anexos, instrumentos e registo",
+        "fields": [
+          {
+            "key": "attachment_count",
+            "label": "Número de anexos documentais referidos",
+            "type": "number",
+            "required": true
+          },
+          {
+            "key": "attachments",
+            "label": "Identificação dos anexos, documentos e referências de arquivo",
+            "type": "textarea",
+            "required": false
+          },
+          {
+            "key": "instruments",
+            "label": "Instrumentos — marca, modelo, série, estado de verificação / calibração e métodos",
+            "type": "textarea",
+            "required": true
+          },
+          {
+            "key": "sriesp",
+            "label": "Referência de registo / submissão no SRIESP, quando efetuada",
+            "type": "text",
+            "required": false
+          },
+          {
+            "key": "submission",
+            "label": "Situação do registo do ato no SRIESP",
+            "type": "select",
+            "required": true,
+            "options": [
+              "Por registar pelo técnico responsável",
+              "Registado — indicar referência"
+            ]
+          }
+        ],
+        "checks": [],
+        "code": "Anexos"
       }
     ]
   }

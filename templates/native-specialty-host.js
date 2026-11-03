@@ -2,10 +2,10 @@
  const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
  const canonical=type=>type==='AVAC'?'RAVAC':type;
  const configFor=type=>window.TGSpecialtyCatalog.list.find(c=>c.type===canonical(type));
- const separate=type=>['RAVAC','RLIM'].includes(canonical(type));
+ const separate=type=>['RAVAC','RLIM','RELE'].includes(canonical(type));
  const actor=()=>typeof usuarioLogado==='undefined'?null:usuarioLogado;
  const safeImage=v=>typeof v==='string'&&/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(v)&&v.length<1500000;
- function selection(os,type,modelKey){const c=configFor(type),keys=Object.keys(MODEL_DATA[canonical(type)]||{});const selected=keys.filter(code=>(os?.tiposTrabalho||[]).some(t=>[norm(code),norm(c.work.find(w=>w[0]===code)?.[1])].includes(norm(t))));const available=selected.length?selected:keys.slice(0,1);return modelKey?available.filter(k=>k===modelKey):available;}
+ function selection(os,type,modelKey){const c=configFor(type),keys=Object.keys(MODEL_DATA[canonical(type)]||{});const selected=keys.filter(code=>(os?.tiposTrabalho||[]).some(t=>c.codeFor(t)===code));const available=selected.length?selected:keys.slice(0,1);return modelKey?available.filter(k=>k===modelKey):available;}
  function draftFor(os,type,equipmentId,modelKey){return (dados.relatoriosEspecialidade||[]).find(r=>r.adminId===os.adminId&&r.servicoId===os.id&&canonical(r.tipo)===canonical(type)&&(r.campos?.equipamentoId||null)===(equipmentId||null)&&r.rascunho&&(!modelKey||JSON.stringify(r.campos?.estadoNativo?.modelKeys)===JSON.stringify([modelKey])));}
  function chooseWork(osId,type,onSaved,equipmentId){
   const ctx=guard(osId,type);if(!ctx)return;
@@ -19,9 +19,17 @@
   for(const key of keys){if(!models?.[key])continue;const modelIndex=Object.keys(models).indexOf(key);
    models[key].forEach((section,sectionIndex)=>{
     const id=type+'_'+modelIndex+'_'+sectionIndex;number++;
-    const fields=section.fields.map((label,i)=>{const fid='field_'+id+'_'+i;const required=(section.required||[]).includes(label);if(required)requiredFields.push({id:fid,label});const tag=label.length>65||/trabalhos|anomalias|reparaç|diagnóstico|tarefas|resíduos|limitações|observações|condições|materiais|ensaios|circuitos intervencionados/i.test(label)?'textarea':'input';return '<label class="config-field">'+esc(label)+(tag==='textarea'?'<textarea id="'+fid+'" data-native-label="'+esc(label)+'" '+(required?'data-native-required':'')+' rows="2"></textarea>':'<input type="text" id="'+fid+'" data-native-label="'+esc(label)+'" '+(required?'data-native-required':'')+'>')+'</label>';}).join('');
-    const checks=section.checks.map((text,i)=>{const name='check_'+id+'_'+i;checkIds.push(name);return '<tr><td class="code">'+number+'.'+(i+1)+'</td><td class="desc">'+esc(text)+'<input class="obs-input" id="obs_'+name+'" type="text" aria-label="Observação da verificação '+number+'.'+(i+1)+'" placeholder="Observação / valor / limitação"></td><td class="result"><div class="seg" role="radiogroup" aria-label="'+esc(text)+'">'+[['OK','OK','ok'],['NOK','NÃO OK','nok'],['N/A','N/A','na']].map(([value,label,cls],j)=>'<input type="radio" name="'+name+'" id="'+name+'_'+j+'" value="'+value+'"><label class="'+cls+'" for="'+name+'_'+j+'">'+label+'</label>').join('')+'</div></td></tr>';}).join('');
-    sections.push('<section class="section"><div class="section-head"><span class="num">'+number+'</span><h2>'+esc(section.title)+'</h2></div><div class="config-row">'+fields+'</div><table class="checklist" aria-label="'+esc(section.title)+'">'+checks+'</table></section>');
+    const fields=section.fields.map((item,i)=>{
+     const def=typeof item==='string'?{label:item}:item,label=def.label,fid=def.key?'electric-'+def.key:'field_'+id+'_'+i,required=def.required||(section.required||[]).includes(label);
+     if(required)requiredFields.push({id:fid,label});
+     const kind=def.type||(label.length>65||/trabalhos|anomalias|reparaç|diagnóstico|tarefas|resíduos|limitações|observações|condições|materiais|ensaios|circuitos intervencionados/i.test(label)?'textarea':'text');
+     const attrs=' id="'+fid+'" data-native-label="'+esc(label)+'" '+(required?'data-native-required':'');
+     const control=kind==='textarea'?'<textarea'+attrs+' rows="'+(def.rows||3)+'"></textarea>':kind==='select'?'<select'+attrs+'><option value="">Escolher…</option>'+(def.options||[]).map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')+'</select>':'<input type="'+esc(kind)+'"'+attrs+(kind==='number'?' min="0" step="any"':'')+'>';
+     const group=section.group&&def.key!==section.group+'_app'?' data-electric-detail="'+section.group+'"':'';
+     return '<label class="config-field"'+group+'>'+esc(label)+control+'</label>';
+    }).join('');
+    const checks=section.checks.map((text,i)=>{const name='check_'+id+'_'+i;checkIds.push(name);return '<tr><td class="code">'+(section.checkPrefix||number)+'.'+(i+1)+'</td><td class="desc">'+esc(text)+'<input class="obs-input" id="obs_'+name+'" type="text" aria-label="Observação da verificação '+(section.checkPrefix||number)+'.'+(i+1)+'" placeholder="Observação / valor / limitação"></td><td class="result"><div class="seg" role="radiogroup" aria-label="'+esc(text)+'">'+[['OK',section.officialChecks?'C':'OK','ok'],['NOK',section.officialChecks?'NC':'NÃO OK','nok'],['N/A',section.officialChecks?'NA':'N/A','na']].map(([value,label,cls],j)=>'<input type="radio" name="'+name+'" id="'+name+'_'+j+'" value="'+value+'"><label class="'+cls+'" for="'+name+'_'+j+'">'+label+'</label>').join('')+'</div></td></tr>';}).join('');
+    sections.push('<section class="section"><div class="section-head"><span class="num">'+esc(section.code||number)+'</span><h2>'+esc(section.title)+'</h2></div><div class="config-row">'+fields+'</div><table class="checklist" aria-label="'+esc(section.title)+'">'+checks+'</table></section>');
    });
   }
   return {html:sections.join(''),checkIds,requiredFields,count:number};
@@ -32,7 +40,9 @@
   const meta=labels.map(([id,label,wide])=>'<label class="cell'+(wide?' wide':'')+'">'+esc(label)+'<input id="native-'+id+'" type="'+(id==='data'?'date':'text')+'"></label>').join('');
   const subtitle=keys.map(k=>c.work.find(([code])=>code===k)?.[1]||k).join(' · ');
   const title=type==='RAVAC'?'Relatório AVAC — '+subtitle:type==='RLIM'?'Relatório de limpeza — '+subtitle:c.title+' — '+subtitle;
-  const replacements={TITLE:title,TYPE:type,TRADE:c.area==='avac'?'AVAC':c.area==='limpeza'?'Limpeza e Desinfeção':'Eletricidade',SUBTITLE:subtitle,META:meta,SECTIONS:spec.html,FINAL_NUMBER:spec.count+1,RESULTS:'<option value="">Escolher…</option>'+(c.results||['Operacional','Operacional com recomendações','Não operacional','Desativado']).map(x=>'<option>'+esc(x)+'</option>').join(''),NOTE:esc(c.note),CONFIG_JSON:JSON.stringify({type,keys,checkIds:spec.checkIds,requiredFields:spec.requiredFields}).replace(/</g,'\\u003c')};
+  const legal=type==='RELE'&&keys.length===1&&keys[0]==='Relatório de exploração';
+  const note=legal?'Modelo DGEG completo: Anexo I do Despacho n.º 31/2026, de 16 de abril. O relatório deve ser emitido pelo técnico habilitado responsável pela exploração. O registo do ato no SRIESP é efetuado pelo técnico; a Total Gest não efetua a submissão nem valida o registo profissional. Inspeções de verão e inverno: artigo 16.º do DL 96/2017.':c.note;
+  const replacements={TITLE:title,TYPE:type,TRADE:c.area==='avac'?'AVAC':c.area==='limpeza'?'Limpeza e Desinfeção':'Eletricidade',SUBTITLE:subtitle,META:meta,SECTIONS:spec.html,FINAL_NUMBER:spec.count+1,RESULTS:'<option value="">Escolher…</option>'+(legal?['Boas condições de segurança','Condições deficientes','Cessação da responsabilidade']:c.results||['Operacional','Operacional com recomendações','Não operacional','Desativado']).map(x=>'<option>'+esc(x)+'</option>').join(''),NOTE:esc(note),CONFIG_JSON:JSON.stringify({type,keys,checkIds:spec.checkIds,requiredFields:spec.requiredFields,legal}).replace(/</g,'\\u003c')};
   return SHELL.replace(/__(TITLE|TYPE|TRADE|SUBTITLE|META|SECTIONS|FINAL_NUMBER|RESULTS|NOTE|CONFIG_JSON)__/g,(_,key)=>replacements[key]);
  }
  function scope(data,user,osId,type,licensed=true){
@@ -63,7 +73,8 @@
   if(!v.sign_tecnico_nome?.trim()||!safeImage(state.techSignature))errors.push('Falta o nome ou a assinatura do técnico.');
   if(!['Assinado','Cliente ausente','Cliente não assinou'].includes(v['native-client-status']))errors.push('Regista a receção pelo cliente.');
   if(v['native-client-status']==='Assinado'&&(!v.sign_cliente_nome?.trim()||!safeImage(state.clientSignature)))errors.push('Falta o nome ou a assinatura do cliente.');
-  if(Object.values(state.answers||{}).includes('NOK')&&!v['native-observations']?.trim())errors.push('Descreve as anomalias nas observações.');
+  if(Object.values(state.answers||{}).includes('NOK')&&!v['native-observations']?.trim()&&!v['electric-observations']?.trim())errors.push('Descreve as anomalias nas observações.');
+  errors.push(...window.TGElectricalRules.validate(state,final));
   return errors;
  }
  async function persist(osId,type,equipmentId,msg,modelKey){
@@ -80,8 +91,12 @@
   if(!draft){const n=await proximoNumeroRelatorio(ctx.customer.id,type,1);if(n==null)throw Error('Não foi possível reservar o número do relatório.');number=type+'-'+(ctx.customer.numeroCliente||ctx.customer.id.slice(0,6))+'-'+String(n).padStart(3,'0');}
   const current=guard(osId,type);if(!current||actor().id!==user.id||(!draft&&!current.canSign))throw Error('A sessão ou as permissões mudaram. Reabre o relatório.');
   const document=new DOMParser().parseFromString(msg.html,'text/html'),no=document.getElementById('native-numero');if(no){if(no.tagName==='INPUT')no.setAttribute('value',number);else no.textContent=number;}
+  state.values['native-numero']=number;
+  const official=window.TGElectricalRules.active(state)&&!draft?await window.TGElectricalLegal.exportPDF(state,{final:true}):null;
+  if(actor()?.id!==user.id||!guard(osId,type))throw Error('A sessão ou as permissões mudaram durante a preparação do PDF. Reabre o relatório.');
+  if(official){const link=document.createElement('a');link.className='native-screen';link.dataset.nativeOfficialPdf='';link.href=official.dataUri;link.download=official.filename;link.textContent='Descarregar relatório no modelo DGEG completo ('+official.pages+' páginas, incluindo anexos)';link.style='display:block;padding:16px;background:#123f55;color:white;font-weight:bold';document.body.prepend(link);}
   const html='<!doctype html>'+document.documentElement.outerHTML;
-  const record={id,adminId:ctx.tenant,servicoId:osId,clienteId:ctx.customer.id,localId:ctx.os.localId||null,tipo:type,numeroDocumento:number,data:state.values['native-data']||getDataHoje(),local:state.values['native-morada']||'',rascunho:draft,campos:{htmlSnapshot:html,estadoNativo:state,modeloNativo:2,equipamentoId:equipmentId||null,...(existing&&!existing.campos?.modeloNativo?{rascunhoAnterior:existing.campos}:{})},assinaturaTecnico:state.techSignature||null,assinaturaTecnicoNome:state.values.sign_tecnico_nome||'',assinaturaCliente:(draft||state.values['native-client-status']==='Assinado')?state.clientSignature||null:null,assinaturaClienteNome:state.values.sign_cliente_nome||'',tecnicoId:user.id,criadoEm:existing?.criadoEm||Date.now()};
+  const record={id,adminId:ctx.tenant,servicoId:osId,clienteId:ctx.customer.id,localId:ctx.os.localId||null,tipo:type,numeroDocumento:number,data:state.values['native-data']||getDataHoje(),local:state.values['native-morada']||'',rascunho:draft,campos:{htmlSnapshot:html,estadoNativo:state,modeloNativo:2,equipamentoId:equipmentId||null,...(official?{modeloPdfDgeg:official.model,fonteDgeg:official.source}:{}),...(existing&&!existing.campos?.modeloNativo?{rascunhoAnterior:existing.campos}:{})},assinaturaTecnico:state.techSignature||null,assinaturaTecnicoNome:state.values.sign_tecnico_nome||'',assinaturaCliente:(draft||state.values['native-client-status']==='Assinado')?state.clientSignature||null:null,assinaturaClienteNome:state.values.sign_cliente_nome||'',tecnicoId:user.id,criadoEm:existing?.criadoEm||Date.now()};
   let query=supa.from('relatorios_especialidade');query=existing?query.update(M.relatoriosEspecialidade.to(record)).eq('id',id).eq('admin_id',ctx.tenant).eq('rascunho',true):query.insert(M.relatoriosEspecialidade.to(record));
   const result=await query.select('id').single();if(result.error||result.data?.id!==id)throw Error(result.error?.message||'O servidor não confirmou a gravação.');
   if(actor()?.id!==user.id||!guard(osId,type))return false;

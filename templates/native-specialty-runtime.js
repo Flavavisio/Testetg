@@ -24,15 +24,18 @@
   const legacy=msg.legacyValues||{};Object.assign(known,{'Marca':eq.marca||legacy.brand||legacy.marca,'Modelo':eq.fichaTecnica?.modelo||legacy.model||legacy.modelo,'Número de série':eq.numeroSerie||legacy.serial||legacy.serie});
   document.querySelectorAll('[data-native-label]').forEach(el=>{const v=known[el.dataset.nativeLabel];if(v&&!el.value)el.value=v;});
   if(legacy.work||legacy.trabalhos)set('native-work',legacy.work||legacy.trabalhos);
+  if(config.legal){set('electric-owner_name',msg.clienteFiscal||msg.cliente);set('electric-site_address',msg.morada);set('electric-tech_name',msg.tecnicoNome);}
   const restore=msg.nativeRestoreState;
   if(restore?.type===config.type){Object.entries(restore.values||{}).forEach(([id,value])=>set(id,value));Object.entries(restore.answers||{}).forEach(([name,value])=>{const el=[...document.querySelectorAll('input[type=radio]')].find(x=>x.name===name&&x.value===value);if(el)el.checked=true;});
    ['tecnico','cliente'].forEach(key=>paintSignature(key));
    for(const photo of restore.photos||[]){if(!safeImage(photo.src))continue;const figure=document.createElement('figure');figure.dataset.nativePhoto='';figure.innerHTML='<img src="'+photo.src+'" alt="Fotografia da intervenção"><input type="text" aria-label="Legenda da fotografia" value="'+esc(photo.caption||'')+'"><button class="native-screen" type="button" data-photo-remove>Retirar fotografia</button>';byId('native-photos').append(figure);}
   }
+  toggleElectricGroups();
  }
  window._relPrefill=prefill;
  function state(){
   const values={};document.querySelectorAll('input[id],textarea[id],select[id]').forEach(el=>{if(el.type!=='radio'&&el.type!=='file')values[el.id]=el.value;});
+  values['native-company-name']=byId('native-company').textContent;values['native-company-fiscal']=byId('native-fiscal').textContent;
   const answers={};document.querySelectorAll('input[type=radio]:checked').forEach(el=>answers[el.name]=el.value);
   return {version:2,type:config.type,modelKeys:config.keys,values,answers,photos:[...document.querySelectorAll('[data-native-photo]')].map(el=>({src:el.querySelector('img').src,caption:el.querySelector('input').value})),techSignature:byId('native-sign-tecnico').value,clientSignature:byId('native-sign-cliente').value};
  }
@@ -49,7 +52,8 @@
   const receipt=s.values['native-client-status'];
   if(!receipt)errors.push('Regista a receção pelo cliente, ausência ou recusa de assinatura.');
   if(receipt==='Assinado'&&(!s.values.sign_cliente_nome?.trim()||!safeImage(s.clientSignature)))errors.push('Recolhe o nome e a assinatura do cliente.');
-  if(Object.values(s.answers).includes('NOK')&&!s.values['native-observations']?.trim())errors.push('Descreve as anomalias e medidas adotadas nas observações.');
+  if(Object.values(s.answers).includes('NOK')&&!s.values['native-observations']?.trim()&&!s.values['electric-observations']?.trim())errors.push('Descreve as anomalias e medidas adotadas nas observações.');
+  errors.push(...window.TGElectricalRules.validate(s,final));
   return errors;
  }
  function serialize(final){
@@ -105,8 +109,11 @@
  }
  byId('native-photo-file').onchange=async e=>{try{for(const file of e.target.files)await photo(file);}catch(err){status(err.message||'Não foi possível ler a fotografia.');}finally{e.target.value='';}};
  byId('native-photos').onclick=e=>{const button=e.target.closest('[data-photo-remove]');if(button&&!busy)button.closest('figure').remove();};
- byId('_relBtnRascunho').onclick=()=>send(false);byId('_relBtnConcluir').onclick=()=>send(true);byId('native-print').onclick=()=>window.print();
- window.addEventListener('message',event=>{if(event.source!==window.parent)return;const msg=event.data||{};if(msg.type==='init'){permitted=msg.podeAssinar===true;prefill(msg);}if(msg.type==='permissao')permitted=msg.podeAssinar===true;if(msg.type==='nativeSaveError'){busy=false;document.querySelectorAll('.native-footer button').forEach(b=>b.disabled=false);status(msg.message||'Não foi possível guardar.');}});
+ function toggleElectricGroups(){if(!config.legal)return;for(const group of ['pt','soc','seg','bt'])document.querySelectorAll('[data-electric-detail="'+group+'"]').forEach(el=>el.hidden=byId('electric-'+group+'_app')?.value!=='Sim');}
+ document.addEventListener('change',toggleElectricGroups);toggleElectricGroups();
+ byId('_relBtnRascunho').onclick=()=>send(false);byId('_relBtnConcluir').onclick=()=>send(true);byId('native-print').onclick=()=>{if(config.legal){status('A preparar o PDF no modelo DGEG…');window.parent.postMessage({type:'nativeOfficialPDF',estadoNativo:state()},'*');}else window.print();};
+ if(config.legal)byId('native-print').textContent='PDF DGEG (rascunho)';
+ window.addEventListener('message',event=>{if(event.source!==window.parent)return;const msg=event.data||{};if(msg.type==='init'){permitted=msg.podeAssinar===true;prefill(msg);}if(msg.type==='permissao')permitted=msg.podeAssinar===true;if(msg.type==='nativePDFStatus')status(msg.message||'PDF preparado.');if(msg.type==='nativeSaveError'){busy=false;document.querySelectorAll('.native-footer button').forEach(b=>b.disabled=false);status(msg.message||'Não foi possível guardar.');}});
  document.querySelectorAll('.native-footer button').forEach(button=>button.disabled=false);
  ['tecnico','cliente'].forEach(bindSignature);
  window.TGNativeSheet={state,serialize,validate};

@@ -6417,7 +6417,7 @@ function _assistEstado(value) {
                 } else {
                     cont.innerHTML = tiposDaOS.map(req => {
                         const tipo=req.tipo;
-                        const rels = relatoriosDaOS.filter(r => r.tipo === tipo && (r.campos?.equipamentoId || null)===(req.equipamentoId || null)).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+                        const rels = relatoriosDaOS.filter(r => window.TGEquipmentReports ? window.TGEquipmentReports.matches(r,os,req) : r.tipo === tipo && (r.campos?.equipamentoId || null)===(req.equipamentoId || null)).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
                         const feito = rels.find(r => !r.rascunho);
                         const rascunho = rels.find(r => r.rascunho);
                         let estadoHtml, acaoHtml;
@@ -6426,14 +6426,14 @@ function _assistEstado(value) {
                             acaoHtml = `<button type="button" class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="_verRelatorioEspecialidadeSnapshot('${feito.id}')">Ver</button>`;
                         } else if (rascunho) {
                             estadoHtml = `<span style="color:#d97706;font-weight:700;"><i class="fas fa-pen"></i> Rascunho — por assinar</span>`;
-                            acaoHtml = `<button type="button" class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}')"><i class="fas fa-pen"></i> Continuar</button>`;
+                            acaoHtml = `<button type="button" class="btn btn-sm" style="background:#f59e0b;color:#fff;" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}','${req.modeloCodigo || ''}')"><i class="fas fa-pen"></i> Continuar</button>`;
                         } else {
                             estadoHtml = `<span style="color:#94a3b8;">Ainda não foi iniciado</span>`;
-                            acaoHtml = `<button type="button" class="btn btn-sm btn-outline" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}')"><i class="fas fa-plus"></i> Iniciar</button>`;
+                            acaoHtml = `<button type="button" class="btn btn-sm btn-outline" onclick="_fecharModalGenerico();_abrirModalRelatorioEspecialidade('${osId}','${tipo}',()=>renderizarTudo(),'${req.equipamentoId || ''}','${req.modeloCodigo || ''}')"><i class="fas fa-plus"></i> Iniciar</button>`;
                         }
                         return `<div style="border:1px solid #e6eaf2;border-radius:8px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                             <div>
-                                <div style="font-weight:700;">${tipo} — ${nomes[tipo] || tipo}${req.equipamentoId ? ' · '+escapeHtmlSimples(req.equipamentoNome || req.equipamentoId) : ''}</div>
+                                <div style="font-weight:700;">${tipo} — ${escapeHtmlSimples(req.modeloNome || nomes[tipo] || tipo)}${req.equipamentoId ? ' · '+escapeHtmlSimples(req.equipamentoNome || req.equipamentoId) : ''}</div>
                                 <div style="font-size:.82rem;margin-top:2px;">${estadoHtml}</div>
                             </div>
                             ${acaoHtml}
@@ -12473,13 +12473,17 @@ function _assistEstado(value) {
                 s.tiposTrabalho.map(t => {
                     const nome = nomes[t] || (dados.tiposTrabalhoCustom || []).find(c => c.codigo === t)?.nome || t;
                     const cor = cores[t] || '#64748b';
-                    const isEspec = TIPOS_ESPECIALIDADE.includes(t);
-                    const pendente = isEspec && !feitos.includes(t);
-                    const temRascunho = pendente && rascunhos.includes(t);
+                    const avac = window.TGSpecialtyCatalog?.available().find(c=>c.type==='RAVAC');
+                    const work = avac?.work.find(([code,label])=>[code,label].includes(t));
+                    const req = work ? window.TGEquipmentReports?.requirements(s).find(r=>r.tipo==='RAVAC'&&r.modeloCodigo===work[0]) : null;
+                    const isEspec = !!req || TIPOS_ESPECIALIDADE.includes(t);
+                    const matched = req ? relacionados.filter(r=>window.TGEquipmentReports.matches(r,s,req)) : [];
+                    const pendente = req ? !matched.some(r=>!r.rascunho) : isEspec && !feitos.includes(t);
+                    const temRascunho = pendente && (req ? matched.some(r=>r.rascunho) : rascunhos.includes(t));
                     const iconeCirculo = (icone) => ` <span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#fff;margin-left:2px;vertical-align:middle;"><i class="fas ${icone}" style="font-size:9px;color:${cor};"></i></span>`;
                     const concluidoIcon = isEspec && !pendente ? iconeCirculo('fa-check') : (pendente ? iconeCirculo(temRascunho ? 'fa-pencil' : 'fa-hourglass-half') : '');
                     const tituloPendente = temRascunho ? 'Rascunho guardado — clica para continuar a preencher' : 'Por preencher — clica para preencher agora';
-                    const clique = pendente ? ` onclick="_abrirModalRelatorioEspecialidade('${s.id}', '${t}', () => renderizarTudo())" style="cursor:pointer;" title="${tituloPendente}"` : (isEspec ? ' title="Já preenchido"' : '');
+                    const clique = pendente ? ` onclick="_abrirModalRelatorioEspecialidade('${s.id}', '${req?.tipo || t}', () => renderizarTudo(), '${req?.equipamentoId || ''}', '${req?.modeloCodigo || ''}')" style="cursor:pointer;" title="${tituloPendente}"` : (isEspec ? ' title="Já preenchido"' : '');
                     return `<span${clique} style="background:${cor};color:#fff;font-size:.7rem;font-weight:700;padding:4px 6px 4px 10px;border-radius:999px;letter-spacing:.2px;display:inline-flex;align-items:center;">${nome}${concluidoIcon}</span>`;
                 }).join('') + `</div>`;
         }
@@ -30369,10 +30373,10 @@ window._relPrefill = function(msg){
             if (!req) { onConcluir(); return; }
             _abrirModalRelatorioEspecialidade(osId, req.tipo, () => {
                 // A failed save or a dismissed form must never complete the OS.
-                const aindaPorIniciar = _requisitosEspecialidadePorIniciar(os).some(r => r.tipo === req.tipo && r.equipamentoId === req.equipamentoId);
+                const aindaPorIniciar = _requisitosEspecialidadePorIniciar(os).some(r => r.tipo === req.tipo && r.equipamentoId === req.equipamentoId && r.modeloCodigo === req.modeloCodigo);
                 if (aindaPorIniciar) return;
                 abrirFilaRelatoriosEspecialidade(osId, [], onConcluir);
-            }, req.equipamentoId);
+            }, req.equipamentoId, req.modeloCodigo);
         }
 
         // Checkpoints remain local until the server confirms a draft, never a final report.
@@ -30385,13 +30389,13 @@ window._relPrefill = function(msg){
             if(!job)throw Error('A OS já não está disponível. A cópia local foi preservada.');
             if(['RAVAC','RLIM','RELE'].includes(scope.type)){
                 if(!window.TGNativeReportModels?.guard(scope.os,scope.type))throw Error('O acesso ao relatório mudou. A cópia local foi preservada.');
-                if(JSON.stringify(record.campos.estadoNativo?.modelKeys)!==JSON.stringify(window.TGNativeReportModels.selection(job,scope.type)))throw Error('Os trabalhos desta OS mudaram. A cópia local foi preservada.');
+                if(JSON.stringify(record.campos.estadoNativo?.modelKeys)!==JSON.stringify(window.TGNativeReportModels.selection(job,scope.type,scope.model)))throw Error('Os trabalhos desta OS mudaram. A cópia local foi preservada.');
             }
             if(job.relatorioResponsavelId && usuarioLogado.role==='funcionario' && job.relatorioResponsavelId!==usuarioLogado.id)throw Error('O responsável pelo relatório mudou. A cópia local foi preservada.');
             const {data: rows,error} = await supa.from('relatorios_especialidade').select('*').eq('admin_id',scope.tenant).eq('servico_id',scope.os).eq('tipo',scope.type);
             if (error) throw Error('Guardado no dispositivo. Não foi possível contactar o servidor.');
             if (usuarioLogado?.id !== scope.user || _tenantId() !== scope.tenant) return false;
-            if((rows||[]).some(r=>!r.rascunho && (r.campos?.equipamentoId||null)===(scope.equipment||null) && !(checkpoint.knownFinals||[]).includes(r.id)))throw Error('Este relatório foi concluído noutro dispositivo. A cópia local foi preservada.');
+            if((rows||[]).some(r=>!r.rascunho && (r.campos?.equipamentoId||null)===(scope.equipment||null) && (!scope.model||(r.campos?.estadoNativo?.modelKeys||[]).includes(scope.model)) && !(checkpoint.knownFinals||[]).includes(r.id)))throw Error('Este relatório foi concluído noutro dispositivo. A cópia local foi preservada.');
             const current = (rows||[]).find(r=>r.id===record.id);
             const row = M.relatoriosEspecialidade.to(record);
             const fingerprint = r=>api.stable([r?.campos,r?.rascunho]);
@@ -30438,7 +30442,7 @@ window._relPrefill = function(msg){
             if (_relEspecOnMessageAtual) { window.removeEventListener('message', _relEspecOnMessageAtual); _relEspecOnMessageAtual = null; }
         }
 
-        async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null) {
+        async function _abrirModalRelatorioEspecialidade(osId, tipo, onGuardado, equipamentoId = null, modeloCodigo = null) {
             const os = dados.servicos?.find(s => s.id === osId);
             if(!os)return;
             tipo = tipo === 'AVAC' ? 'RAVAC' : tipo;
@@ -30446,7 +30450,13 @@ window._relPrefill = function(msg){
             const nativeContext = nativeReport ? window.TGNativeReportModels?.guard(osId,tipo) : null;
             if (nativeReport && !nativeContext) { alert('O relatório exige acesso a esta OS, licença válida e a área de negócio correspondente.'); return; }
             const nativeIdentity = nativeReport ? JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role]) : '';
-            const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId);
+            if (tipo === 'RAVAC') {
+                const modelos = window.TGNativeReportModels.selection(os,tipo,modeloCodigo);
+                if (!modeloCodigo && modelos.length > 1) return window.TGNativeReportModels.chooseWork(osId,tipo,onGuardado,equipamentoId);
+                if (modelos.length !== 1) { alert('Este tipo de trabalho já não está associado à OS.'); return; }
+                modeloCodigo = modelos[0];
+            }
+            const requisito=window.TGEquipmentReports?.resolve(os,tipo,equipamentoId,modeloCodigo);
             equipamentoId=requisito?.equipamentoId || null;
             if(Array.isArray(os.planoManutencao?.relatoriosEquipamentos) && !requisito){alert('Este relatório não está associado a um equipamento desta OS.');return;}
             const mesmoEquipamento=r=>r.adminId===os.adminId && (r.campos?.equipamentoId || null)===equipamentoId;
@@ -30460,7 +30470,7 @@ window._relPrefill = function(msg){
             }
             const cliente = dados.clientes?.find(c => c.id === os.clienteId);
             const def = REPORT_TYPE_DEFS[tipo];
-            let template = nativeReport ? window.TGNativeReportModels.templateFor(os,tipo) : REPORT_TEMPLATES[tipo];
+            let template = nativeReport ? window.TGNativeReportModels.templateFor(os,tipo,modeloCodigo) : REPORT_TEMPLATES[tipo];
             // Se não é um tipo fixo (REX, RBI, etc.), procura um tipo de trabalho personalizado
             // criado pelo admin com esse código, e gera o formulário na hora a partir dos campos
             // que ele próprio definiu em "Relatórios personalizados por tipo".
@@ -30492,7 +30502,7 @@ window._relPrefill = function(msg){
             overlay.innerHTML = `
                 <div class="modal" style="max-width:1100px;width:96vw;height:92vh;display:flex;flex-direction:column;padding:0;">
                     <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid #e2e8f0;">
-                        <h3 style="margin:0;"><i class="fas fa-file-signature"></i> Relatório ${def ? def.nome : (tipoCustomDef ? tipoCustomDef.nome : tipo)} (${tipo})${equipamentoId ? ' · '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId) : ''}</h3>
+                        <h3 style="margin:0;"><i class="fas fa-file-signature"></i> Relatório ${escapeHtmlSimples(requisito?.modeloNome || (def ? def.nome : (tipoCustomDef ? tipoCustomDef.nome : tipo)))} (${tipo})${equipamentoId ? ' · '+escapeHtmlSimples(requisito.equipamentoNome || equipamentoId) : ''}</h3>
                         <div style="display:flex;align-items:center;gap:14px;">
                             <span id="tg-report-save-status" role="status" style="font-size:.78rem;">Gravação automática ativa</span>
                             <button type="button" onclick="_fecharModalRelatorioEspecialidade()" title="Fechar" style="background:none;border:none;font-size:1.4rem;line-height:1;color:#6b6a63;cursor:pointer;padding:0 4px;">&times;</button>
@@ -30514,10 +30524,10 @@ window._relPrefill = function(msg){
 
             // Se já existir um rascunho guardado para esta OS+tipo, reabre exatamente onde ficou
             // (em vez do modelo em branco).
-            const autosaveScope = {tenant:_tenantId(),user:usuarioLogado.id,os:osId,type:tipo,equipment:equipamentoId};
+            const autosaveScope = {tenant:_tenantId(),user:usuarioLogado.id,os:osId,type:tipo,equipment:equipamentoId,...(modeloCodigo?{model:modeloCodigo}:{})};
             const autosaveIdentity = JSON.stringify([usuarioLogado.id,_tenantId()]);
             const isAutosaveCurrent = ()=>JSON.stringify([usuarioLogado?.id,_tenantId()])===autosaveIdentity;
-            const serverDraft = (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
+            const serverDraft = nativeReport ? window.TGNativeReportModels.draftFor(os,tipo,equipamentoId,modeloCodigo) : (dados.relatoriosEspecialidade || []).find(r => r.servicoId === osId && r.tipo === tipo && mesmoEquipamento(r) && r.rascunho);
             let checkpoint = await window.TGReportAutosave.read(autosaveScope);
             if (!isAutosaveCurrent()) return;
             let rascunhoExistente = checkpoint?.record || serverDraft;
@@ -30526,7 +30536,7 @@ window._relPrefill = function(msg){
             const knownFinals=checkpoint?.knownFinals||(dados.relatoriosEspecialidade||[]).filter(r=>r.servicoId===osId&&r.tipo===tipo&&mesmoEquipamento(r)&&!r.rascunho).map(r=>r.id);
             let usouRascunho = false;
             let estadoRexRestaurar = null;
-            const nativeDraftCompatible = !nativeReport || (rascunhoExistente?.campos?.modeloNativo === 2 && JSON.stringify(rascunhoExistente.campos.estadoNativo?.modelKeys) === JSON.stringify(window.TGNativeReportModels.selection(os,tipo)));
+            const nativeDraftCompatible = !nativeReport || (rascunhoExistente?.campos?.modeloNativo === 2 && JSON.stringify(rascunhoExistente.campos.estadoNativo?.modelKeys) === JSON.stringify(window.TGNativeReportModels.selection(os,tipo,modeloCodigo)));
             if (rascunhoExistente && nativeDraftCompatible && !nativeReport) {
                 if (rascunhoExistente.campos?.estadoRex) {
                     // REX: o modelo continua a carregar em branco (precisa dos scripts a correr
@@ -30845,7 +30855,7 @@ window._relPrefill = function(msg){
                     if (nativeIdentity !== JSON.stringify([usuarioLogado?.id,usuarioLogado?.adminId,usuarioLogado?.role])) return;
                     nativeSaving = true;
                     try {
-                        const saved = await window.TGNativeReportModels.persist(osId,tipo,equipamentoId,msg);
+                        const saved = await window.TGNativeReportModels.persist(osId,tipo,equipamentoId,msg,modeloCodigo);
                         if (!saved) return;
                         _relAutosaveAtual?.stop();_relAutosaveAtual=null;
                         window.removeEventListener('message', onMessage);

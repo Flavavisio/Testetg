@@ -19,11 +19,15 @@
   const security=Array.isArray(os?.planoManutencao?.relatoriosEquipamentos)
    ?os.planoManutencao.relatoriosEquipamentos.filter(r=>r&&Object.hasOwn(types,r.tipo)&&r.equipamentoId)
    :(os?.tiposTrabalho||[]).filter(t=>Object.hasOwn(types,t)).map(tipo=>({tipo,equipamentoId:null,equipamentoNome:''}));
-  return [...security,...native.filter(n=>!security.some(r=>r.tipo===n.tipo))];
+  return [...security,...native.filter(n=>!security.some(r=>r.tipo===n.tipo))].flatMap(req=>{
+   if(req.tipo!=='RAVAC'||!window.TGNativeReportModels)return [req];
+   const config=window.TGSpecialtyCatalog.list.find(c=>c.type==='RAVAC');
+   return window.TGNativeReportModels.selection(os,'RAVAC').map(modeloCodigo=>({...req,modeloCodigo,modeloNome:config.work.find(w=>w[0]===modeloCodigo)?.[1]||modeloCodigo}));
+  });
  }
- function matches(r,os,req){return r.adminId===os.adminId&&r.servicoId===os.id&&(window.TGSpecialtyCatalog?.canonical(r.tipo)||r.tipo)===(window.TGSpecialtyCatalog?.canonical(req.tipo)||req.tipo)&&(r.campos?.equipamentoId||null)===(req.equipamentoId||null);}
+ function matches(r,os,req){return r.adminId===os.adminId&&r.servicoId===os.id&&(window.TGSpecialtyCatalog?.canonical(r.tipo)||r.tipo)===(window.TGSpecialtyCatalog?.canonical(req.tipo)||req.tipo)&&(r.campos?.equipamentoId||null)===(req.equipamentoId||null)&&(!req.modeloCodigo||(r.campos?.estadoNativo?.modelKeys||[]).includes(req.modeloCodigo)&&(!r.rascunho||r.campos.estadoNativo.modelKeys.length===1));}
  function pending(os){return requirements(os).filter(req=>!(dados.relatoriosEspecialidade||[]).some(r=>matches(r,os,req)&&!r.rascunho));}
- function resolve(os,tipo,id){return id?requirements(os).find(r=>r.tipo===tipo&&r.equipamentoId===id):pending(os).find(r=>r.tipo===tipo)||requirements(os).find(r=>r.tipo===tipo);}
+ function resolve(os,tipo,id,modelKey){const accepts=r=>r.tipo===tipo&&(!id||r.equipamentoId===id)&&(!modelKey||r.modeloCodigo===modelKey);return pending(os).find(accepts)||requirements(os).find(accepts);}
  const periods={semanal:'Semanal',quinzenal:'Quinzenal',mensal:'Mensal',trimestral:'Trimestral',semestral:'Semestral',anual:'Anual'};
  function maintenanceValidate(periodicidade,proximaData){
   if(!Object.hasOwn(periods,periodicidade))throw Error('Indica a periodicidade de manutenção do equipamento.');
@@ -44,3 +48,4 @@
  document.addEventListener('change',e=>{const el=e.target.closest('[data-equipment-report]');if(!el)return;const eq=(dados.equipamentos||[]).find(x=>x.id===el.dataset.equipmentReport&&x.adminId===(usuarioLogado?.adminId||usuarioLogado?.id));if(!eq||!['admin','subadmin'].includes(usuarioLogado?.role))return;try{eq.fichaTecnica={...eq.fichaTecnica,relatorioEspecialidade:validate(el.value)};}catch(err){alert(err.message);}});
  window.TGEquipmentReports={avacWork,avacTypes,types,options,validate,periods,maintenanceValidate,maintenanceValue,maintenanceFields,snapshot,requirements,matches,pending,resolve,equipmentField};
 })();
+

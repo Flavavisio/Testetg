@@ -3,6 +3,12 @@ const {IDBFactory}=require('fake-indexeddb'),{JSDOM}=require('jsdom');
 global.indexedDB=new IDBFactory();const api=require('../tg-report-autosave');
 const scope={tenant:'t',user:'u',os:'os',type:'REX'};
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
+test('AVAC autosave isolates each intervention while preserving legacy checkpoint keys',async()=>{
+ const install={...scope,type:'RAVAC',model:'Instalação AVAC'},gas={...scope,type:'RAVAC',model:'Recarga de gás'};
+ for(const s of [install,gas])await api.write(s,{scope:s,record:{work:s.model}});
+ assert.equal((await api.read(install)).record.work,'Instalação AVAC');assert.equal((await api.read(gas)).record.work,'Recarga de gás');
+ await api.remove(install);assert.equal(await api.read(install),undefined);assert.equal((await api.read(gas)).record.work,'Recarga de gás');await api.remove(gas);
+});
 test('checkpoints survive reopening, isolate company/user/equipment and are removed only explicitly',async()=>{
  const value={scope,record:{campos:{text:'Sem rede',signature:'data:image/png;base64,YQ=='}},savedAt:1};await api.write(scope,value);
  assert.deepEqual(await api.read(scope),value);assert.equal(await api.read({...scope,user:'other'}),undefined);assert.equal(await api.read({...scope,tenant:'other'}),undefined);assert.equal(await api.read({...scope,equipment:'other'}),undefined);
@@ -56,6 +62,7 @@ test('both launch pages load same-origin offline dependencies and every local st
  for(const file of ['index.html','login.html']){
   const doc=new JSDOM(fs.readFileSync(file,'utf8')).window.document;
   for(const el of doc.querySelectorAll('script[src],link[rel=stylesheet][href]')){const path=el.getAttribute('src')||el.getAttribute('href');if(/^(https?:|data:|\/\/)/.test(path))continue;assert(assets.includes('./'+path),file+': '+path);}
-  assert(doc.querySelector('script[src="vendor/supabase-2.118.0.js"]'));assert(doc.querySelector('script[src="tg-report-autosave.js?v=1.0.0"]'));
+  assert(doc.querySelector('script[src="vendor/supabase-2.118.0.js"]'));assert(doc.querySelector('script[src="tg-report-autosave.js?v=1.1.0-avac"]'));
  }
 });
+

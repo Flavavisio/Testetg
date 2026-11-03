@@ -9,7 +9,7 @@
    r.onsuccess=()=>resolve(r.result);r.onerror=()=>{dbPromise=null;reject(r.error);};
   });return dbPromise;
  }
- function key(scope){if(!scope.tenant||!scope.user||!scope.os||!scope.type)throw Error('Sessão e relatório obrigatórios');return JSON.stringify([scope.tenant,scope.user,scope.os,scope.type,scope.equipment||null]);}
+ function key(scope){if(!scope.tenant||!scope.user||!scope.os||!scope.type)throw Error('Sessão e relatório obrigatórios');return JSON.stringify([scope.tenant,scope.user,scope.os,scope.type,scope.equipment||null,...(scope.model?[scope.model]:[])]);}
  async function access(mode,fn){const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('reports',mode);let req;try{req=fn(tx.objectStore('reports'));}catch(e){reject(e);return;}tx.oncomplete=()=>resolve(req?.result);tx.onerror=tx.onabort=()=>reject(tx.error||Error('Não foi possível guardar no dispositivo'));});}
  const read=scope=>access('readonly',s=>s.get(key(scope)));
  const write=(scope,value)=>access('readwrite',s=>s.put(value,key(scope)));
@@ -45,3 +45,4 @@
  }
  return {read,write,remove,list,stable,prepare,attach};
 });
+

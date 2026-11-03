@@ -16,14 +16,56 @@ function sheet(html){const messages=[];const dom=new JSDOM(html,{runScripts:'dan
 function init(w){w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data:{type:'init',numero:'RAVAC-42-001',data:'2026-10-30',cliente:'Cliente QA',nCliente:'42',morada:'Rua da Loja',instalacaoNome:'Loja QA',osNumero:'OS-1',tecnicoNome:'Técnico QA',empresaNome:'Empresa QA',empresaFiscal:'Empresa Fiscal QA',podeAssinar:true,equipamento:{marca:'Marca QA',numeroSerie:'S-123',fichaTecnica:{modelo:'Modelo QA'}}}}));}
 function complete(w){w.document.querySelectorAll('[data-native-required]').forEach(el=>el.value='Registado em teste');w.document.querySelectorAll('.seg').forEach(seg=>seg.querySelector('input').checked=true);w.document.getElementById('native-work').value='Trabalhos registados pelo técnico';w.document.getElementById('native-result').selectedIndex=1;w.document.getElementById('native-client-status').value='Cliente ausente';w.document.getElementById('native-sign-tecnico').value=png;}
 const plain=x=>JSON.parse(JSON.stringify(x));
+function installEntry(host){
+ const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
+ host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.alert=()=>{};host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.renderizarTudo=()=>{};
+ host.eval(main.slice(main.indexOf('        function _tgAssinaturasRascunhoRuntime'),main.indexOf('        // O nome fiscal faz parte do branding:'))+(main.includes('// Checkpoints remain local')?main.slice(main.indexOf('        // Checkpoints remain local'),main.indexOf('        let _relEspecOnMessageAtual')):'')+'var _relEspecOnMessageAtual=null;'+fn);
+}
+test('all five AVAC works in the same OS have independent drafts, signatures, numbers and completion',async()=>{
+ const host=setup();try{
+  const works=host.TGSpecialtyCatalog.list[0].work,os=host.dados.servicos[0];os.tiposTrabalho=works.map(w=>w[1]);let next=0;host.gerarId=()=> 'isolated-'+(++next);
+  assert.equal(host.TGEquipmentReports.requirements(os).length,5);
+  for(const [code] of works){const {w}=sheet(host.TGNativeReportModels.templateFor(os,'RAVAC',code));try{
+   init(w);w.document.getElementById('native-work').value='Trabalho de '+code;w.document.getElementById('native-sign-cliente').value=png;w.document.getElementById('sign_cliente_nome').value='Cliente '+code;
+   await host.TGNativeReportModels.persist('os','RAVAC',null,{type:'relatorioEspecialidadeRascunho',...w.TGNativeSheet.serialize(false)},code);
+  }finally{w.close()}}
+  assert.equal(host.dados.relatoriosEspecialidade.length,5);assert.equal(host.TGEquipmentReports.pending(os).length,5);
+  const ids=host.dados.relatoriosEspecialidade.map(r=>r.id);assert.equal(new Set(ids).size,5);
+  for(const [code] of works){const draft=host.TGNativeReportModels.draftFor(os,'RAVAC',null,code);assert.equal(draft.assinaturaClienteNome,'Cliente '+code);assert.deepEqual(plain(draft.campos.estadoNativo.modelKeys),[code]);}
+  const {w}=sheet(host.TGNativeReportModels.templateFor(os,'RAVAC','Instalação AVAC'));try{
+   init(w);complete(w);const final={type:'relatorioEspecialidadeConcluido',...w.TGNativeSheet.serialize(true)};
+   await assert.rejects(()=>host.TGNativeReportModels.persist('os','RAVAC',null,final,'Recarga de gás'),/trabalhos da OS mudaram/);
+   await host.TGNativeReportModels.persist('os','RAVAC',null,final,'Instalação AVAC');assert.equal(host.dados.relatoriosEspecialidade.length,5);assert.equal(host.TGEquipmentReports.pending(os).length,4);assert.equal(host.numberCalls,1);
+   assert.equal(host.dados.relatoriosEspecialidade.filter(r=>r.rascunho).length,4);assert.equal(host.dados.relatoriosEspecialidade.find(r=>!r.rascunho).id,ids[1]);
+   assert(final.html.includes('Instalação'));assert(!final.html.includes('Registo de refrigerante'));assert(!final.html.includes('Limpeza e substituições'));
+   os.tiposTrabalho=['Manutenção AC'];await assert.rejects(()=>host.TGNativeReportModels.persist('os','RAVAC',null,final,'Instalação AVAC'),/trabalhos da OS mudaram/);
+  }finally{w.close()}
+ }finally{host.close()}
+});
+test('AVAC native entry opens the requested subtype and generic entry offers a choice for a multi-work OS',async()=>{
+ const host=setup();try{
+  installEntry(host);const os=host.dados.servicos[0];os.tiposTrabalho=['Instalação AVAC','Recarga de gás'];host.HTMLDialogElement.prototype.showModal=function(){this.open=true};
+  await host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>{});assert.equal(host.document.querySelectorAll('#native-work-picker [data-native-work]').length,2);assert(!host.document.getElementById('re_iframe'));host.document.getElementById('native-work-picker').remove();
+  for(const code of os.tiposTrabalho){const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>{},null,code);const frame=host.document.getElementById('re_iframe');await ready(frame);assert(frame.srcdoc.includes(code==='Recarga de gás'?'Registo de refrigerante':'Ensaios e colocação em serviço'));assert(!frame.srcdoc.includes(code==='Recarga de gás'?'Ensaios e colocação em serviço':'Registo de refrigerante'));frame.dispatchEvent(new host.Event('load'));await opening;}
+ }finally{host.close()}
+});
+test('multi-work historical reports remain intact and cannot overwrite isolated drafts',async()=>{
+ const host=setup();try{
+  const os=host.dados.servicos[0];os.tiposTrabalho=['Instalação AVAC','Recarga de gás'];
+  const legacy={id:'combined',adminId:'a',servicoId:'os',tipo:'RAVAC',rascunho:true,campos:{estadoNativo:{modelKeys:os.tiposTrabalho}}};host.dados.relatoriosEspecialidade=[legacy];
+  assert.equal(host.TGNativeReportModels.draftFor(os,'RAVAC',null,'Instalação AVAC'),undefined);assert.equal(host.TGEquipmentReports.pending(os).length,2);
+  legacy.rascunho=false;assert.equal(host.TGEquipmentReports.pending(os).length,0);assert.equal(host.dados.relatoriosEspecialidade[0],legacy);
+  const otherTenant={...legacy,adminId:'other'};assert(!host.TGEquipmentReports.matches(otherTenant,os,host.TGEquipmentReports.requirements(os)[0]));
+ }finally{host.close()}
+});
 test('fourteen ready-made native models contain authored sections, fields and unanswered checklists',()=>{
  const host=setup();try{const models=host.TGNativeReportModels.models;assert.equal(Object.values(models).reduce((n,v)=>n+Object.keys(v).length,0),14);
  for(const [type,variants]of Object.entries(models))for(const [code,html]of Object.entries(variants)){const {w}=sheet(html);try{assert(w.document.querySelector('body[data-native-model="'+type+'"]'));assert(w.document.querySelectorAll('.section-head').length>=4,code);assert(w.document.querySelectorAll('.seg').length>=8,code);assert.equal(w.document.querySelectorAll('input[type=radio]:checked').length,0);assert(w.document.getElementById('_relBtnRascunho'));assert(w.document.getElementById('_relBtnConcluir'));assert(w.document.getElementById('sign_tecnico'));assert(!html.includes('Crie o seu relatório'));}finally{w.close()}}
  }finally{host.close()}
 });
-test('each work type opens its exact native model; multiple selected works combine authored sheets',()=>{
+test('each work type opens its exact native model; AVAC works stay separate in a multi-work OS',()=>{
  const host=setup();try{const api=host.TGNativeReportModels;for(const c of host.TGSpecialtyCatalog.list)for(const [code,label]of c.work){assert.deepEqual(plain(api.selection({tiposTrabalho:[code]},c.type)),[code]);assert.deepEqual(plain(api.selection({tiposTrabalho:[label]},c.type)),[code]);}
- const html=api.templateFor({tiposTrabalho:['Recarga de gás','Limpeza de filtros']},'RAVAC');assert(html.includes('Registo de refrigerante'));assert(html.includes('Limpeza e substituições'));assert(!api.templateFor({tiposTrabalho:['Limpeza regular']},'RLIM').includes('Registo de refrigerante'));
+ const os={tiposTrabalho:['Recarga de gás','Limpeza de filtros']};assert.equal(api.templateFor(os,'RAVAC'),null);const html=api.templateFor(os,'RAVAC','Recarga de gás');assert(html.includes('Registo de refrigerante'));assert(!html.includes('Limpeza e substituições'));assert(!api.templateFor({tiposTrabalho:['Limpeza regular']},'RLIM').includes('Registo de refrigerante'));
  }finally{host.close()}
 });
 test('known company, customer, installation, OS, technician and equipment are prefilled; observations and measurements remain for the visit',()=>{
@@ -48,8 +90,8 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.0.3'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.0.3'));
- const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=2.1.0-avac'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=2.1.0-avac'));
+ const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo,modeloCodigo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
  const host=setup();let doc;try{

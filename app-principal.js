@@ -340,8 +340,8 @@ function _assistEstado(value) {
             },
             folhasObra: {
                 tabela: 'folhas_obra',
-                from: r => ({ id: r.id, servicoId: r.servico_id, contratoId: r.contrato_id, clienteId: r.cliente_id || null, localId: r.local_id || null, obraDescricao: r.obra_descricao, descricao: r.descricao, materiais: r.materiais, horasTrabalhadas: Number(r.horas_trabalhadas) || 0, data: r.data || '', funcionarioId: r.funcionario_id, adminId: r.admin_id, obraId: r.obra_id, assinatura: r.assinatura, assinaturaPath: r.assinatura_path || null, assinaturaNome: r.assinatura_nome, dataAtualizacao: isoToMs(r.data_atualizacao), folhaFinal: r.folha_final === true, origem: r.origem || null, validada: r.validada === true, validadaPor: r.validada_por || null, validadaEm: r.validada_em || null }),
-                to:   o => ({ id: o.id, servico_id: o.servicoId || null, cliente_id: o.clienteId || null, contrato_id: o.contratoId || null, local_id: o.localId || null, obra_descricao: o.obraDescricao || 'Sem descrição', descricao: o.descricao || null, materiais: o.materiais || null, horas_trabalhadas: o.horasTrabalhadas || 0, data: nn(o.data), funcionario_id: o.funcionarioId || null, admin_id: o.adminId, obra_id: o.obraId || null, assinatura: o.assinatura || null, assinatura_path: o.assinaturaPath || null, assinatura_nome: o.assinaturaNome || null, data_atualizacao: msToISO(o.dataAtualizacao), folha_final: o.folhaFinal === true, origem: o.origem || null })
+                from: r => ({ id: r.id, servicoId: r.servico_id, contratoId: r.contrato_id, clienteId: r.cliente_id || null, localId: r.local_id || null, obraDescricao: r.obra_descricao, descricao: r.descricao, materiais: r.materiais, horasTrabalhadas: Number(r.horas_trabalhadas) || 0, data: r.data || '', funcionarioId: r.funcionario_id, adminId: r.admin_id, obraId: r.obra_id, assinatura: r.assinatura, assinaturaPath: r.assinatura_path || null, assinaturaNome: r.assinatura_nome, dataAtualizacao: isoToMs(r.data_atualizacao), folhaFinal: r.folha_final === true, origem: r.origem || null, picagensVinculadas: Array.isArray(r.picagens_vinculadas) ? r.picagens_vinculadas : null, validada: r.validada === true, validadaPor: r.validada_por || null, validadaEm: r.validada_em || null }),
+                to:   o => ({ id: o.id, servico_id: o.servicoId || null, cliente_id: o.clienteId || null, contrato_id: o.contratoId || null, local_id: o.localId || null, obra_descricao: o.obraDescricao || 'Sem descrição', descricao: o.descricao || null, materiais: o.materiais || null, horas_trabalhadas: o.horasTrabalhadas || 0, data: nn(o.data), funcionario_id: o.funcionarioId || null, admin_id: o.adminId, obra_id: o.obraId || null, assinatura: o.assinatura || null, assinatura_path: o.assinaturaPath || null, assinatura_nome: o.assinaturaNome || null, data_atualizacao: msToISO(o.dataAtualizacao), folha_final: o.folhaFinal === true, origem: o.origem || null, picagens_vinculadas: Array.isArray(o.picagensVinculadas) ? o.picagensVinculadas : null })
             },
             kmViagens: {
                 tabela: 'km_viagens',
@@ -3392,7 +3392,7 @@ function _assistEstado(value) {
             const adminId = _tenantQuiosque();
             const hoje = getDataHoje();
             const aberto = _quiosqueAgendaAberto(p.id);
-            const registosDia = (s.tipo === 'servico' ? (dados.ponto || []).filter(r => r.servicoId === s.id) : (dados.obraPontoLonga || []).filter(r => r.obraId === s.id)).filter(r => r.adminId === adminId && r.funcionarioId === p.id && r.data === hoje);
+            const registosDia = _picagensParaFolha(s.tipo === 'servico' ? 'os' : 'obra', s.id, p.id, hoje);
             const horas = _somarIntervalosPicagem(registosDia, hoje, new Date().toTimeString().slice(0, 5)).horas;
             const item = s.tipo === 'servico' ? dados.servicos?.find(x => x.id === s.id) : dados.obras?.find(x => x.id === s.id);
             const obraDescricao = s.tipo === 'servico' ? ('OS — ' + (obterNomeCliente(item?.clienteId) || 'Cliente')) : (item?.nome || 'Obra');
@@ -3416,7 +3416,7 @@ function _assistEstado(value) {
                     });
                 });
             }
-            if (aberto) aberto.usadoEmFolha = true; // evita que esta mesma hora volte a ser somada por outra folha/auto mais tarde
+            _vincularPicagensFolha(dados.folhasObra.find(f => f.id === folhaId), s.tipo === 'servico' ? 'os' : 'obra', s.id, registosDia);
             guardarDados(dados);
             const locFolha = await _quiosqueObterLocalizacaoAgora();
             _quiosqueAgendaFecharSaida(p, new Date().toTimeString().slice(0, 5), acaoPendente === 'terminar_servico', locFolha);
@@ -3674,6 +3674,7 @@ function _assistEstado(value) {
                         horasTrabalhadas: +horas.toFixed(2), data: hoje, funcionarioId: p.id, adminId,
                         dataAtualizacao: Date.now(), origem: 'quiosque_saida'
                     });
+                    _vincularPicagensFolha(dados.folhasObra[dados.folhasObra.length - 1], 'obra', obraId, [aberto]);
                 }
                 // Importante: dar saída da obra NÃO fecha o Ponto Geral — a pessoa pode acabar
                 // esta obra mais cedo e ainda continuar a trabalhar noutro sítio no mesmo dia. O
@@ -7807,12 +7808,7 @@ function _assistEstado(value) {
                 if (cli.freguesia) moradaLinhas.push(cli.freguesia);
             }
             // Custo/hora — só calculado e só mostrado na versão interna da empresa.
-            const custoHora = (() => {
-                if (tipo !== 'empresa') return null;
-                const fu = dados.funcionarios?.find(x => x.id === f.funcionarioId);
-                if (!fu || !fu.ordenadoBruto || !fu.horasSemanais) return null;
-                return Number(fu.ordenadoBruto) / (Number(fu.horasSemanais) * 4.33);
-            })();
+            const custoHora = tipo === 'empresa' ? _custoHoraPessoa(f.funcionarioId, f.adminId) : null;
             const custoTotal = (custoHora != null && f.horasTrabalhadas) ? custoHora * Number(f.horasTrabalhadas) : null;
 
             const corpo = (startY) => {
@@ -14392,7 +14388,7 @@ function _assistEstado(value) {
             };
             const intervalos = [];
             for (const p of registos) {
-                if (p.pausaAlmoco) continue;
+                // pausaAlmoco marks the exit reason; entry to exit is worked time.
                 const inicio = minutos(p.entrada);
                 // Entradas antigas em aberto não contam até à hora atual de outro dia.
                 const fim = minutos(p.saida || (p.data === hoje ? horaAgora : null));
@@ -14424,22 +14420,29 @@ function _assistEstado(value) {
             const grupos = new Map(), mapa = {};
             const grupo = (id, data) => {
                 const chave = JSON.stringify([id, data || '']);
-                if (!grupos.has(chave)) grupos.set(chave, { id, data, folhas: 0, picagens: [] });
+                if (!grupos.has(chave)) grupos.set(chave, { id, data, folhas: 0, manuais: 0, picagens: [], ignorar: new Set() });
                 return grupos.get(chave);
             };
             folhas.forEach(f => {
                 const horas = Number(f.horasTrabalhadas);
-                grupo(f.funcionarioId || '__sem_pessoa__', f.data).folhas += Number.isFinite(horas) ? Math.max(0, horas) : 0;
+                const g = grupo(f.funcionarioId || '__sem_pessoa__', f.data);
+                const h = Number.isFinite(horas) ? Math.max(0, horas) : 0;
+                const refs = f.picagensVinculadas;
+                if (Array.isArray(refs) && (!refs.length || refs.some(r => r.manual))) {
+                    g.manuais += h;
+                    refs.forEach(r => g.ignorar.add(r.tipo + ':' + r.id));
+                } else g.folhas += h;
             });
             const picagens = [
-                ...(dados.obraPontoLonga || []).filter(p => p.obraId === obraId),
-                ...(dados.ponto || []).filter(p => p.servicoId && osIds.has(p.servicoId))
+                ...(dados.obraPontoLonga || []).filter(p => p.obraId === obraId).map(p => ({...p, _tipoPicagem: 'obra'})),
+                ...(dados.ponto || []).filter(p => p.servicoId && osIds.has(p.servicoId)).map(p => ({...p, _tipoPicagem: 'os'}))
             ];
-            picagens.filter(p => own(p) && p.funcionarioId && dentro(p.data || '') && p.entrada && !p.pausaAlmoco).forEach(p => {
+            picagens.filter(p => own(p) && p.funcionarioId && dentro(p.data || '') && p.entrada).forEach(p => {
                 // Dados antigos sem data não permitem associar uma picagem a uma folha.
                 // Preserva as folhas existentes em vez de inventar uma segunda sessão.
                 if (!p.data && folhas.some(f => f.funcionarioId === p.funcionarioId)) return;
-                grupo(p.funcionarioId, p.data).picagens.push(p);
+                const g = grupo(p.funcionarioId, p.data);
+                if (!g.ignorar.has(p._tipoPicagem + ':' + p.id)) g.picagens.push(p);
             });
             const agora = new Date();
             const hoje = typeof getDataHoje === 'function' ? getDataHoje() : agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
@@ -14448,7 +14451,7 @@ function _assistEstado(value) {
                 if (divergencias && ponto.temPicagens && g.folhas > 0 && Math.abs(ponto.horas - g.folhas) > 0.02) {
                     divergencias.push({ id: g.id, data: g.data, folhas: g.folhas, picagens: ponto.horas });
                 }
-                mapa[g.id] = (mapa[g.id] || 0) + (ponto.temPicagens ? ponto.horas : g.folhas);
+                mapa[g.id] = (mapa[g.id] || 0) + g.manuais + (ponto.temPicagens ? ponto.horas : g.folhas);
             }
             return mapa;
         }
@@ -27451,9 +27454,11 @@ async function salvarAdmin(e) {
                 const _fo_servicoIdCampo = document.getElementById('fo_servico_id')?.value || '';
                 const _fo_obraIdCampo = document.getElementById('fo_obra')?.value || '';
                 let horas = parseFloat(document.getElementById('fo_horas').value) || 0;
-                if (!_foHorasCorrigidasManualmente) {
-                    if (_fo_servicoIdCampo) horas = _horasPicadasOS(_fo_servicoIdCampo);
-                    else if (_fo_obraIdCampo) horas = _horasPicadasObra(_fo_obraIdCampo);
+                const _foAnterior = isEdit ? dados.folhasObra?.find(f => f.id === idRegistoEmEdicao) : null;
+                const _foMesmaSessao = _foAnterior && (_foAnterior.servicoId || '') === _fo_servicoIdCampo && (_foAnterior.obraId || '') === _fo_obraIdCampo && _foAnterior.funcionarioId === (document.getElementById('fo_funcionario')?.value || usuarioLogado.id) && _foAnterior.data === document.getElementById('fo_data')?.value;
+                if (!_foHorasCorrigidasManualmente && !_foMesmaSessao) {
+                    if (_fo_servicoIdCampo) horas = _horasPicadasOS(_fo_servicoIdCampo, document.getElementById('fo_funcionario')?.value || usuarioLogado.id, document.getElementById('fo_data')?.value, idRegistoEmEdicao);
+                    else if (_fo_obraIdCampo) horas = _horasPicadasObra(_fo_obraIdCampo, document.getElementById('fo_funcionario')?.value || usuarioLogado.id, document.getElementById('fo_data')?.value, idRegistoEmEdicao);
                 }
                 if (horas < 0) {
                     alert('Horas não podem ser negativas.');
@@ -27512,7 +27517,10 @@ async function salvarAdmin(e) {
                     dataAtualizacao: Date.now(),
                     adminId: _foAdminId
                 };
-                if (!isEdit) obj.id = _foFolhaId;
+                obj.id = _foFolhaId;
+                if (_foMesmaSessao) obj.picagensVinculadas = Array.isArray(_foAnterior.picagensVinculadas) ? _foAnterior.picagensVinculadas.map(r => ({...r, ...(_foHorasCorrigidasManualmente ? {manual: true} : {})})) : null;
+                else if (obj.servicoId || obj.obraId) _vincularPicagensFolha(obj, obj.servicoId ? 'os' : 'obra', obj.servicoId || obj.obraId, null, _foHorasCorrigidasManualmente);
+                else obj.picagensVinculadas = [];
                 if (!obj.obraDescricao) { alert('A descrição da obra é obrigatória.'); return; }
                 if (document.getElementById('fo_mat_sim') && !document.getElementById('fo_mat_sim').classList.contains('ativo') && !document.getElementById('fo_mat_nao').classList.contains('ativo')) {
                     alert('Indica se usaste materiais desta obra (Sim/Não).'); return;
@@ -27793,20 +27801,6 @@ async function salvarAdmin(e) {
                 const folhaId = isEdit ? idRegistoEmEdicao : obj.id;
                 _aplicarConsumoFolha(folhaId, obj.obraId || null, _folhaConsumoPendente);
                 _folhaConsumoPendente = [];
-                if (!isEdit && obj.servicoId) {
-                    // Marca as picagens desta OS que já foram contabilizadas nesta folha —
-                    // assim, se a pessoa voltar a picar entrada/saída no mesmo dia, a próxima
-                    // folha não volta a somar estas horas já fechadas.
-                    (dados.ponto || []).forEach(p => {
-                        if (p.servicoId === obj.servicoId && p.entrada && p.saida && !p.pausaAlmoco && !p.usadoEmFolha) p.usadoEmFolha = true;
-                    });
-                }
-                if (!isEdit && obj.obraId && _folhaObraPendente && _folhaObraPendente.obraId === obj.obraId) {
-                    // Mesma marcação, agora para as picagens da obra (obraPontoLonga).
-                    (dados.obraPontoLonga || []).forEach(p => {
-                        if (p.obraId === obj.obraId && p.entrada && p.saida && !p.pausaAlmoco && !p.usadoEmFolha) p.usadoEmFolha = true;
-                    });
-                }
                 if (_folhaOSPendente && _folhaOSPendente.osId === obj.servicoId) {
                     const { osId, terminou } = _folhaOSPendente;
                     _folhaOSPendente = null;
@@ -30969,16 +30963,32 @@ window._relPrefill = function(msg){
             _foHorasCorrigidasManualmente = true;
             try { registarAuditoria('corrigir_horas', 'folha', prefixo, (usuarioLogado?.nome || 'utilizador') + ' corrigiu manualmente as horas de uma folha de obra (correção por bug)'); } catch (e) {}
         }
-        function _horasPicadasOS(osId) {
-            // Um registo com pausaAlmoco=true representa tempo trabalhado a sério (da entrada até
-            // à hora de ir almoçar) — só marca que a saída foi para almoço, não anula as horas.
-            // Antes estava a ser excluído daqui, o que fazia a folha de obra "esquecer" o primeiro
-            // segmento de trabalho do dia sempre que havia uma pausa de almoço pelo meio.
-            const regs = (dados.ponto || []).filter(p => p.servicoId === osId && p.entrada && p.saida && !p.usadoEmFolha);
-            if (!regs.length) return 0;
-            let total = 0;
-            regs.forEach(p => { total += calcularHoras(p.entrada, p.saida); });
-            return Math.round(total * 100) / 100; // precisão ao minuto (2 casas decimais), sem arredondar a 0.5h
+        function _picagensParaFolha(tipo, id, pessoaId, data, excluirFolhaId = null) {
+            const alvo = (tipo === 'os' ? dados.servicos : dados.obras)?.find(x => x.id === id);
+            if (!alvo || !pessoaId || !data) return [];
+            const folhas = (dados.folhasObra || []).filter(f => f.id !== excluirFolhaId && f.adminId === alvo.adminId && f.funcionarioId === pessoaId && f.data === data && (tipo === 'os' ? f.servicoId === id : f.obraId === id && !f.servicoId));
+            const usados = new Set(folhas.flatMap(f => (f.picagensVinculadas || []).filter(r => r.tipo === tipo).map(r => r.id)));
+            return (tipo === 'os' ? dados.ponto || [] : dados.obraPontoLonga || []).filter(p => {
+                if (p.adminId !== alvo.adminId || p.funcionarioId !== pessoaId || p.data !== data || !p.entrada || (tipo === 'os' ? p.servicoId !== id : p.obraId !== id) || usados.has(p.id)) return false;
+                // Legacy flags are trusted only alongside a sheet for this person/day.
+                const antigas = folhas.filter(f => !Array.isArray(f.picagensVinculadas));
+                if (antigas.length && p.saida && (p.usadoEmFolha || antigas.some(f => f.dataAtualizacao && new Date(p.data + 'T' + p.saida).getTime() <= Number(f.dataAtualizacao)))) return false;
+                return true;
+            });
+        }
+        function _vincularPicagensFolha(folha, tipo, id, registos = null, manual = false) {
+            const regs = registos || _picagensParaFolha(tipo, id, folha.funcionarioId, folha.data, folha.id);
+            folha.picagensVinculadas = regs.filter(p => p.id && p.adminId === folha.adminId && p.funcionarioId === folha.funcionarioId && p.data === folha.data && (tipo === 'os' ? p.servicoId === id : p.obraId === id)).map(p => ({tipo, id: p.id, ...(manual ? {manual: true} : {})}));
+        }
+        function _horasPicadasPessoa(tipo, id, pessoaId = null, data = null, excluirFolhaId = null) {
+            const el = typeof document !== 'undefined' ? document.getElementById('fo_funcionario') : null;
+            const dia = typeof document !== 'undefined' ? document.getElementById('fo_data') : null;
+            const pessoa = pessoaId || el?.value || (typeof usuarioLogado !== 'undefined' ? usuarioLogado?.id : null);
+            const regs = _picagensParaFolha(tipo, id, pessoa, data || dia?.value || getDataHoje(), excluirFolhaId).filter(p => p.saida);
+            return +_somarIntervalosPicagem(regs, getDataHoje(), new Date().toTimeString().slice(0, 5)).horas.toFixed(2);
+        }
+        function _horasPicadasOS(osId, pessoaId = null, data = null, excluirFolhaId = null) {
+            return _horasPicadasPessoa('os', osId, pessoaId, data, excluirFolhaId);
         }
         function _especialidadesEfetuadasTexto(osId) {
             const os = dados.servicos?.find(s => s.id === osId);
@@ -31013,14 +31023,8 @@ window._relPrefill = function(msg){
                 </div>
             </div>`;
         }
-        function _horasPicadasObra(obraId) {
-            // Mesma lógica das OS: um registo com pausaAlmoco=true continua a ser trabalho a
-            // sério (entrada até à hora de ir almoçar) — não se exclui daqui.
-            const regs = (dados.obraPontoLonga || []).filter(p => p.obraId === obraId && p.entrada && p.saida && !p.usadoEmFolha);
-            if (!regs.length) return 0;
-            let total = 0;
-            regs.forEach(p => { total += calcularHoras(p.entrada, p.saida); });
-            return Math.round(total * 100) / 100;
+        function _horasPicadasObra(obraId, pessoaId = null, data = null, excluirFolhaId = null) {
+            return _horasPicadasPessoa('obra', obraId, pessoaId, data, excluirFolhaId);
         }
         let _folhaObraPendente = null;
         function criarFolhaDaObra(obraId, terminou) {
@@ -32214,18 +32218,14 @@ window._relPrefill = function(msg){
             _folhaObrigAtualizarBotoesTerm();
         }
         function _folhaObrigCalcularHoras(obraId) {
-            if (_folhaObrigHorasFixas != null) return _folhaObrigHorasFixas;
-            const aberto = _obraLongaPontoAberto(obraId);
-            if (!aberto || !aberto.entrada) return 0;
-            const [h1, m1] = aberto.entrada.split(':').map(Number);
-            const agora = new Date();
-            const mins = (agora.getHours() * 60 + agora.getMinutes()) - (h1 * 60 + m1);
-            return mins > 0 ? +(mins / 60).toFixed(2) : 0;
+            const regs = _picagensParaFolha('obra', obraId, usuarioLogado.id, getDataHoje());
+            const total = _somarIntervalosPicagem(regs, getDataHoje(), new Date().toTimeString().slice(0, 5));
+            return total.temPicagens ? +total.horas.toFixed(2) : (_folhaObrigHorasFixas || 0);
         }
         function salvarFolhaObrigatoria(ev) {
             ev.preventDefault();
             const desc = document.getElementById('folhaObrigDescricao').value.trim();
-            const horas = (_folhaObrigModo === 'os' && !_foHorasCorrigidasManualmente) ? _horasPicadasOS(_folhaObrigOsId)
+            const horas = (_folhaObrigModo === 'os' && !_foHorasCorrigidasManualmente) ? _horasPicadasOS(_folhaObrigOsId, usuarioLogado.id, getDataHoje())
                 : _folhaObrigModo === 'os' ? (parseFloat(document.getElementById('folhaObrig_horas').value) || 0)
                 : _folhaObrigCalcularHoras(_folhaObrigObraId);
             if (!desc || desc.length < 3) { alert('Descreve o trabalho realizado (pelo menos 3 caracteres).'); return; }
@@ -32257,6 +32257,7 @@ window._relPrefill = function(msg){
                     adminId: usuarioLogado.adminId || usuarioLogado.id, obraId: os.obraId || null,
                     assinatura: null, assinaturaNome: null, dataAtualizacao: Date.now(), origem: 'folha_obrig_os'
                 });
+                _vincularPicagensFolha(dados.folhasObra[dados.folhasObra.length - 1], 'os', os.id, null, _foHorasCorrigidasManualmente);
                 if (consumos.length) _aplicarConsumoFolha(folhaId, os.obraId || null, consumos);
                 document.getElementById('modalFolhaObrigOverlay').classList.remove('open');
                 _folhaObrigModo = 'obra'; _folhaObrigOsId = null; _folhaObrigOsRec = null;
@@ -32329,6 +32330,7 @@ window._relPrefill = function(msg){
                 assinatura: null, assinaturaNome: null, dataAtualizacao: Date.now(),
                 folhaFinal: _terminouObra, origem: 'folha_obrig_obra'
             });
+            _vincularPicagensFolha(dados.folhasObra[dados.folhasObra.length - 1], 'obra', _folhaObrigObraId);
             if (consumos.length) _aplicarConsumoFolha(folhaId, _folhaObrigObraId, consumos);
             if (obra) { obra.estado = _terminouObra ? 'concluida' : 'suspensa'; if (_terminouObra) obra.dataConclusao = getDataHoje(); }
             guardarDados(dados);

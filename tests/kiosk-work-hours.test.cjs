@@ -14,7 +14,7 @@ function setup(extra={}){
  const doc={lastAutoTable:{finalY:20},setFontSize(){},setTextColor(){},text(t){texts.push(t)},addPage(){},autoTable(o){tables.push(o);this.lastAutoTable={finalY:(o.startY||20)+20}}};
  const context={dados,Date:Now,getDataHoje:()=> '2026-11-03',_folhasSuspeitasUltimoCalculo:[],usuarioLogado:{id:'a',role:'admin'},document:{getElementById:()=>screen},_obraMatRows:()=>[],_finEur:n=>Number(n).toFixed(2)+' €',escapeHtmlSimples:s=>String(s).replace(/</g,'&lt;'),_novoPdf:()=>doc,_pdfArmHeader:()=>20,_hexParaRgb:()=>[0,0,100],_tenantArmazem:()=> 'a',_moradaCompletaObra:()=> 'Morada',obterNomeFuncionario:id=>id,obterNomeCliente:()=> 'Cliente',_estadoBadgeObra:()=>{},_kmPercorridosObra:()=>0,_tgGuardarPdf:()=>{},_hoje10:()=> '2026-11-03'};
  const ctx=vm.createContext(context);
- vm.runInContext(['_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
+ vm.runInContext(['_picagensParaFolha','_vincularPicagensFolha','_horasPicadasPessoa','_horasPicadasOS','_horasPicadasObra','_folhaObrigCalcularHoras','_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
  return {ctx,dados,tables,texts,screen};
 }
 test('kiosk morning and afternoon count for responsible and colleague, without adding the afternoon sheet again',()=>{
@@ -49,8 +49,8 @@ test('period boundaries match the work ledger; historic OS-only sheets remain in
  assert.deepEqual(plain(ctx._horasObraPorFuncionarioNoPeriodo('w','2026-10-30','2026-11-02')),{r:4});
  assert.deepEqual(plain(ctx._horasObraPorFuncionarioNoPeriodo('w',null,'2026-10-30')),{r:8});
 });
-test('general attendance, lunch intervals, invalid clocks and another tenant cannot add hours',()=>{
- const {ctx}=setup({ponto:[clock('general','r','2026-11-02','07:00','19:00'),clock('good','r','2026-11-02','08:00','12:00',{servicoId:'os'}),clock('lunch','r','2026-11-02','12:00','13:00',{servicoId:'os',pausaAlmoco:true}),clock('bad','r','2026-11-02','17:00','08:00',{servicoId:'os'}),clock('foreign','r','2026-11-02','00:00','23:00',{servicoId:'os',adminId:'other'})],folhasObra:[sheet('foreign','r','2026-11-01',99,{adminId:'other'})]});
+test('general attendance, inverted clocks and another tenant cannot add hours',()=>{
+ const {ctx}=setup({ponto:[clock('general','r','2026-11-02','07:00','19:00'),clock('good','r','2026-11-02','08:00','12:00',{servicoId:'os'}),clock('bad','r','2026-11-02','17:00','08:00',{servicoId:'os'}),clock('foreign','r','2026-11-02','00:00','23:00',{servicoId:'os',adminId:'other'})],folhasObra:[sheet('foreign','r','2026-11-01',99,{adminId:'other'})]});
  assert.equal(ctx.totalHorasObra('w'),4);
 });
 test('Financeiro, PDF summary and both per-person PDF tables consume the same recalculation and costs',()=>{
@@ -89,4 +89,41 @@ test('anonymized historic bastidor example: overlaps, inflated sheets and missin
  dados.funcionarios[0].ordenadoBruto=null;dados.funcionarios[1].ordenadoBruto=1100;dados.funcionarios.push(own({id:'b',nome:'Técnico',ordenadoBruto:1000,horasSemanais:40}));
  const before=JSON.stringify(dados),cost=ctx._custosContabilizadosObra('w');assert.equal(cost.horas,22.55);assert.equal(cost.subtotalPessoal,94.16);assert.equal(cost.total,null);assert.equal(cost.semCusto.length,1);
  assert(cost.avisos.some(x=>x.includes('12.90h')));assert(cost.avisos.some(x=>x.includes('Responsável')));assert.equal(JSON.stringify(dados),before);
+});
+test('real app lunch-exit flags retain the morning in OS and direct work costs',()=>{
+ for(const tipo of ['os','obra']){
+  const regs=[clock('am','r','2026-11-02','08:00','12:00',{[tipo==='os'?'servicoId':'obraId']:tipo==='os'?'os':'w',pausaAlmoco:true}),clock('pm','r','2026-11-02','13:00','17:00',{[tipo==='os'?'servicoId':'obraId']:tipo==='os'?'os':'w'})];
+  const {ctx}=setup(tipo==='os'?{ponto:regs}:{obraPontoLonga:regs});const c=ctx._custosContabilizadosObra('w');assert.equal(c.horas,8);assert.equal(c.total,80);
+ }
+});
+test('normal app sheets calculate only the selected person and date, merging duplicate intervals',()=>{
+ const {ctx}=setup({ponto:[clock('am','r','2026-11-02','08:00','12:00',{servicoId:'os',pausaAlmoco:true}),clock('pm','r','2026-11-02','13:00','17:00',{servicoId:'os'}),clock('dup','r','2026-11-02','13:00','17:00',{servicoId:'os'}),clock('other','f','2026-11-02','08:00','17:00',{servicoId:'os'}),clock('yesterday','r','2026-11-01','08:00','12:00',{servicoId:'os'})]});
+ assert.equal(ctx._horasPicadasOS('os','r','2026-11-02'),8);assert.equal(ctx._horasPicadasOS('os','r','2026-11-01'),4);assert.equal(ctx._horasPicadasOS('os','f','2026-11-02'),9);
+});
+test('explicit sheet links survive serialization and do not consume a colleague or a later session',()=>{
+ const {ctx,dados}=setup({ponto:['r','f'].flatMap(id=>[clock(id+'am',id,'2026-11-02','08:00','12:00',{servicoId:'os',pausaAlmoco:true}),clock(id+'pm',id,'2026-11-02','13:00','17:00',{servicoId:'os'})])});
+ const f=sheet('new','r','2026-11-02',8,{servicoId:'os'});dados.folhasObra.push(f);ctx._vincularPicagensFolha(f,'os','os');assert.equal(f.picagensVinculadas.length,2);assert(dados.ponto.every(p=>!p.usadoEmFolha));
+ dados.folhasObra=plain(dados.folhasObra);dados.ponto=plain(dados.ponto);assert.equal(ctx._horasPicadasOS('os','r','2026-11-02'),0);assert.equal(ctx._horasPicadasOS('os','f','2026-11-02'),8);
+ dados.ponto.push(clock('later','r','2026-11-02','18:00','19:00',{servicoId:'os'}));assert.equal(ctx._horasPicadasOS('os','r','2026-11-02'),1);assert.equal(ctx.totalHorasObra('w'),17);
+ assert.equal(ctx._horasPicadasOS('os','r','2026-11-02','new'),9,'editing excludes the current sheet from used links');
+});
+test('direct work links survive the real sheet storage mapper after reload',()=>{
+ const {ctx,dados}=setup({obraPontoLonga:[clock('am','r','2026-11-02','08:00','12:00',{obraId:'w',pausaAlmoco:true})]});const f=sheet('new','r','2026-11-02',4);dados.folhasObra.push(f);ctx._vincularPicagensFolha(f,'obra','w');
+ const start=source.indexOf("            folhasObra: {\n                tabela:");const block=source.slice(start,source.indexOf('            kmViagens:',start));Object.assign(ctx,{nn:x=>x,msToISO:x=>x,isoToMs:x=>x});vm.runInContext('var mapping={'+block+'};',ctx);
+ const stored=ctx.mapping.folhasObra.to(f);assert.equal(stored.picagens_vinculadas.length,1);dados.folhasObra=[ctx.mapping.folhasObra.from(stored)];assert.equal(ctx._horasPicadasObra('w','r','2026-11-02'),0);assert.equal(ctx.totalHorasObra('w'),4);
+});
+test('a newly entered independent manual sheet coexists with another session on the same day',()=>{
+ const {ctx}=setup({folhasObra:[sheet('manual','r','2026-11-02',4,{picagensVinculadas:[]})],ponto:[clock('afternoon','r','2026-11-02','14:00','17:00',{servicoId:'os'})]});assert.equal(ctx.totalHorasObra('w'),7);assert.equal(ctx._custosContabilizadosObra('w').total,70);
+});
+test('an explicit manual correction replaces only its linked session, preserving other sessions',()=>{
+ const {ctx,dados}=setup({folhasObra:[sheet('corrected','r','2026-11-02',3,{servicoId:'os',picagensVinculadas:[{tipo:'os',id:'am',manual:true}]})],ponto:[clock('am','r','2026-11-02','08:00','12:00',{servicoId:'os'}),clock('pm','r','2026-11-02','13:00','17:00',{servicoId:'os'})]});const before=JSON.stringify(dados);assert.equal(ctx.totalHorasObra('w'),7);assert.equal(JSON.stringify(dados),before);
+});
+test('normal mandatory work exit includes the morning instead of a fixed afternoon-only value',()=>{
+ const {ctx}=setup({obraPontoLonga:[clock('am','r','2026-11-03','08:00','12:00',{obraId:'w',pausaAlmoco:true}),clock('pm','r','2026-11-03','13:00',null,{obraId:'w'})]});Object.assign(ctx,{usuarioLogado:{id:'r'},_folhaObrigHorasFixas:4});assert.equal(ctx._folhaObrigCalcularHoras('w'),8);
+});
+test('legacy flags cannot hide a colleagues clocks unless that colleague has a matching sheet',()=>{
+ const {ctx}=setup({ponto:[clock('f','f','2026-11-02','08:00','12:00',{servicoId:'os',usadoEmFolha:true})],folhasObra:[sheet('responsible','r','2026-11-02',4,{servicoId:'os'})]});assert.equal(ctx._horasPicadasOS('os','f','2026-11-02'),4);
+});
+test('individual internal PDF resolves supervisor salary through the same cost function as Financeiro',()=>{
+ const {ctx,dados}=setup();dados.encarregados.push(own({id:'supervisor',ordenadoBruto:1732,horasSemanais:40}));const pdf=source.slice(source.indexOf('        async function gerarPDFFolha('));const start=pdf.indexOf('            const custoHora =');const end=pdf.indexOf('            const custoTotal =',start);Object.assign(ctx,{tipo:'empresa',f:{funcionarioId:'supervisor',adminId:'a'}});vm.runInContext(pdf.slice(start,end)+'\nvar taxaPdf=custoHora;',ctx);assert.equal(ctx.taxaPdf,10);
 });

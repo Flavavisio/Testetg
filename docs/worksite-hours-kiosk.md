@@ -6,7 +6,7 @@ Correção de 03/11/2026.
 
 - Agrupar por empresa, obra, pessoa e dia. Incluir as OS da obra.
 - Usar os intervalos de picagem válidos desse dia, incluindo manhã/tarde e colegas sem folha.
-- Unir intervalos duplicados/sobrepostos antes de somar; o ponto geral e os intervalos assinalados como pausa não contam para uma obra.
+- Unir intervalos duplicados/sobrepostos antes de somar; o ponto geral não conta para uma obra. `pausaAlmoco` assinala a saída para almoço: o intervalo entrada→saída continua a ser trabalho. A pausa é o espaço entre essa saída e o regresso.
 - A folha não volta a somar horas já cobertas pelas picagens. Nos dias sem picagens válidas, as folhas com descrição continuam a fornecer as horas.
 - Entradas em aberto contam apenas no próprio dia; uma entrada antiga não cresce com a hora de hoje. Intervalos invertidos ou inválidos não criam horas.
 - Registos antigos sem data não permitem conciliação por sessão: quando existem folhas da pessoa, estas mantêm-se como fonte em vez de somar picagens sem data.
@@ -35,3 +35,17 @@ Nos dias com picagens, estas prevalecem sobre horas introduzidas manualmente em 
 Exemplo histórico anonimizado: 42,53h no cálculo anterior → 22,55h após conciliação dos intervalos; subtotal de pessoal 94,16 €, com uma pessoa sem ordenado definido. Os dados originais não são modificados.
 
 Também são executados os testes existentes de custos de obra, quiosque, registo de tempo e resumo de obra. A revisão base já apresenta falhas nos testes `service-time`, `ponto-day-boundary` e num caso de `presence-status`, por funções ausentes/dependências de extração; essas falhas são independentes desta alteração.
+
+## Complemento: app normal e associação persistente
+
+A revisão seguinte cobre também os fluxos normais de OS e obras. As folhas novas guardam `picagens_vinculadas` (array de tipo/id por sessão). A associação é filtrada por empresa, pessoa, data e OS/obra. Não são alteradas picagens para marcar o tempo como consumido. Editar uma folha da mesma pessoa/data/intervenção mantém os vínculos originais e não captura sessões posteriores.
+
+- `null`: folha antiga sem associação verificável; mantém a compatibilidade histórica e os avisos de divergência. Não há associação retroativa automática.
+- `[]`: folha manual independente, somada mesmo quando existem outras picagens nesse dia.
+- Array de referências: sessões usadas pela folha; referências com `manual: true` substituem apenas o intervalo correspondente por horas corrigidas explicitamente.
+
+O cálculo inicial da folha passa a considerar só a pessoa/data selecionadas, junta intervalos sobrepostos e inclui a manhã antes do almoço. Uma nova folha só considera sessões ainda não vinculadas. O legado com `usadoEmFolha` só é aceite quando existe uma folha da própria pessoa/data, evitando consumir horas de colegas.
+
+O PDF interno individual usa `_custoHoraPessoa` também para encarregados e administradores. A folha individual continua a representar o documento original; o relatório agregado da obra recalcula as picagens sem reescrever folhas assinadas.
+
+A coluna JSON é aditiva e anulável, sem alteração de RLS ou permissões. Novos testes reproduzem almoço real da app, dois técnicos, recarga com o mapeamento real, folha manual e sessão independente, correção manual de uma única sessão, edição sem consumo de períodos posteriores e custo de encarregado no PDF.

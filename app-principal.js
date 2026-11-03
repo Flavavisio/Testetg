@@ -3392,7 +3392,8 @@ function _assistEstado(value) {
             const adminId = _tenantQuiosque();
             const hoje = getDataHoje();
             const aberto = _quiosqueAgendaAberto(p.id);
-            const horas = aberto ? calcularHoras(aberto.entrada, new Date().toTimeString().slice(0, 5)) : 0;
+            const registosDia = (s.tipo === 'servico' ? (dados.ponto || []).filter(r => r.servicoId === s.id) : (dados.obraPontoLonga || []).filter(r => r.obraId === s.id)).filter(r => r.adminId === adminId && r.funcionarioId === p.id && r.data === hoje);
+            const horas = _somarIntervalosPicagem(registosDia, hoje, new Date().toTimeString().slice(0, 5)).horas;
             const item = s.tipo === 'servico' ? dados.servicos?.find(x => x.id === s.id) : dados.obras?.find(x => x.id === s.id);
             const obraDescricao = s.tipo === 'servico' ? ('OS — ' + (obterNomeCliente(item?.clienteId) || 'Cliente')) : (item?.nome || 'Obra');
             const folhaId = gerarId();
@@ -14382,52 +14383,73 @@ function _assistEstado(value) {
             alert('📄 PDF descarregado ("' + nomeFicheiro + '"). Vais agora abrir o teu programa de email — não te esqueças de anexar esse ficheiro antes de enviar.');
             window.location.href = 'mailto:' + fornecedor.email + '?subject=' + assunto + '&body=' + corpo;
         }
-        function _horasObraPorFuncionario(obraId) {
-            // Junta as duas fontes possíveis de picagem real de uma obra:
-            // 1) picagem direta na obra (botão "Picar entrada" do cartão de obra de longa duração)
-            // 2) picagem numa Ordem de Serviço associada a esta obra (ponto normal com servicoId)
-            // Devolve { funcionarioId: horas }. A chave existe mesmo com 0h se a pessoa tiver
-            // uma entrada em aberto, para não desaparecer da lista.
-            const mapa = {};
-            const obra = (dados.obras || []).find(o => o.id === obraId);
-            const own = x => !obra?.adminId || x.adminId === obra.adminId;
-            const marcar = fid => { if (!(fid in mapa)) mapa[fid] = 0; };
-            // Tal como em _horasObraPorFuncionarioNoPeriodo: uma sessão de obraPontoLonga só
-            // conta aqui enquanto ainda estiver ABERTA — assim que fecha, o fluxo pede logo para
-            // preencher a folha de obra correspondente, que passa a ser a fonte oficial dessas
-            // horas. Contar as duas juntas duplicava qualquer sessão já fechada (bug real que
-            // também estava a inflacionar o "Custo de mão de obra" no Relatório de Obra).
-            (dados.obraPontoLonga || []).filter(p => own(p) && p.obraId === obraId && p.entrada && !p.saida && !p.pausaAlmoco).forEach(p => {
-                marcar(p.funcionarioId);
-                mapa[p.funcionarioId] += calcularHoras(p.entrada, new Date().toTimeString().slice(0, 5));
-            });
-            const osIdsObra = new Set((dados.servicos || []).filter(s => own(s) && s.obraId === obraId).map(s => s.id));
-            if (osIdsObra.size) {
-                (dados.ponto || []).filter(p => own(p) && p.servicoId && osIdsObra.has(p.servicoId)).forEach(p => {
-                    marcar(p.funcionarioId);
-                    if (p.entrada && p.saida && !p.pausaAlmoco) mapa[p.funcionarioId] += calcularHoras(p.entrada, p.saida);
-                });
+        function _somarIntervalosPicagem(registos, hoje, horaAgora) {
+            // A pessoa só pode trabalhar uma vez em cada minuto. Duplicados e intervalos
+            // sobrepostos (incluindo OS e obra) não multiplicam as horas nem o custo.
+            const minutos = valor => {
+                const m = /^(\d{2}):(\d{2})(?::\d{2})?$/.exec(String(valor || ''));
+                return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null;
+            };
+            const intervalos = [];
+            for (const p of registos) {
+                if (p.pausaAlmoco) continue;
+                const inicio = minutos(p.entrada);
+                // Entradas antigas em aberto não contam até à hora atual de outro dia.
+                const fim = minutos(p.saida || (p.data === hoje ? horaAgora : null));
+                if (inicio == null || fim == null || fim < inicio) continue;
+                intervalos.push([inicio, fim]);
             }
-            return mapa;
+            intervalos.sort((a, b) => a[0] - b[0]);
+            let total = 0, inicio = null, fim = null;
+            for (const intervalo of intervalos) {
+                if (inicio == null) [inicio, fim] = intervalo;
+                else if (intervalo[0] <= fim) fim = Math.max(fim, intervalo[1]);
+                else { total += fim - inicio; [inicio, fim] = intervalo; }
+            }
+            if (inicio != null) total += fim - inicio;
+            return { horas: total / 60, temPicagens: intervalos.length > 0 };
         }
-        function _horasContabilizadasObraPorPessoa(obraId) {
-            // The same ledger is used by the work total, both PDF tables and costs.
-            // Historic sheets linked only to an OS belong to the work too.
+        function _horasObraPorFuncionario(obraId) {
+            return _horasContabilizadasObraPorPessoa(obraId);
+        }
+        function _horasContabilizadasObraPorPessoa(obraId, dataInicio = null, dataFim = null, divergencias = null) {
+            // Uma única fonte para resumo, Financeiro, PDF e novos Autos de Medição.
+            // Por pessoa/dia: picagens reais têm prioridade; folhas são a alternativa
+            // apenas quando não há intervalos válidos nesse dia. Não altera o histórico.
             const obra = (dados.obras || []).find(o => o.id === obraId);
             const own = x => !obra?.adminId || x.adminId === obra.adminId;
+            const dentro = data => (!dataInicio || data > dataInicio) && (!dataFim || (data && data <= dataFim));
             const osIds = new Set((dados.servicos || []).filter(x => x.obraId === obraId && own(x)).map(x => x.id));
-            const folhas = (dados.folhasObra || []).filter(f => own(f) && f.descricao && (f.obraId === obraId || osIds.has(f.servicoId)));
-            const mapa = {};
+            const folhas = (dados.folhasObra || []).filter(f => own(f) && f.descricao && dentro(f.data || '') && (f.obraId === obraId || osIds.has(f.servicoId)));
+            const grupos = new Map(), mapa = {};
+            const grupo = (id, data) => {
+                const chave = JSON.stringify([id, data || '']);
+                if (!grupos.has(chave)) grupos.set(chave, { id, data, folhas: 0, picagens: [] });
+                return grupos.get(chave);
+            };
             folhas.forEach(f => {
-                const id = f.funcionarioId || '__sem_pessoa__';
-                mapa[id] = (mapa[id] || 0) + Math.max(0, Number(f.horasTrabalhadas) || 0);
+                const horas = Number(f.horasTrabalhadas);
+                grupo(f.funcionarioId || '__sem_pessoa__', f.data).folhas += Number.isFinite(horas) ? Math.max(0, horas) : 0;
             });
-            const ponto = _horasObraPorFuncionario(obraId);
-            Object.keys(ponto).forEach(id => {
-                // Sheets are authoritative for a person: never sum the corresponding
-                // clock records again. Preserve the established total for old works.
-                if (!(id in mapa)) mapa[id] = Math.max(0, Number(ponto[id]) || 0);
+            const picagens = [
+                ...(dados.obraPontoLonga || []).filter(p => p.obraId === obraId),
+                ...(dados.ponto || []).filter(p => p.servicoId && osIds.has(p.servicoId))
+            ];
+            picagens.filter(p => own(p) && p.funcionarioId && dentro(p.data || '') && p.entrada && !p.pausaAlmoco).forEach(p => {
+                // Dados antigos sem data não permitem associar uma picagem a uma folha.
+                // Preserva as folhas existentes em vez de inventar uma segunda sessão.
+                if (!p.data && folhas.some(f => f.funcionarioId === p.funcionarioId)) return;
+                grupo(p.funcionarioId, p.data).picagens.push(p);
             });
+            const agora = new Date();
+            const hoje = typeof getDataHoje === 'function' ? getDataHoje() : agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0');
+            for (const g of grupos.values()) {
+                const ponto = _somarIntervalosPicagem(g.picagens, hoje, agora.toTimeString().slice(0, 5));
+                if (divergencias && ponto.temPicagens && g.folhas > 0 && Math.abs(ponto.horas - g.folhas) > 0.02) {
+                    divergencias.push({ id: g.id, data: g.data, folhas: g.folhas, picagens: ponto.horas });
+                }
+                mapa[g.id] = (mapa[g.id] || 0) + (ponto.temPicagens ? ponto.horas : g.folhas);
+            }
             return mapa;
         }
         function totalHorasObra(obraId) {
@@ -14438,7 +14460,8 @@ function _assistEstado(value) {
             if (!obra) return null;
             const dinheiro = n => Math.round((n + Number.EPSILON) * 100) / 100;
             const valido = n => n !== null && n !== undefined && n !== '' && Number.isFinite(Number(n)) && Number(n) >= 0;
-            const mapa = _horasContabilizadasObraPorPessoa(obraId);
+            const divergencias = [];
+            const mapa = _horasContabilizadasObraPorPessoa(obraId, null, null, divergencias);
             const ids = [...new Set([...Object.keys(mapa), obra.responsavelId, ...(obra.responsaveisIds || [])].filter(Boolean))];
             const pessoas = [...(dados.funcionarios || []), ...(dados.encarregados || []), ...(dados.administradores || [])];
             const linhas = ids.map(id => {
@@ -14456,7 +14479,10 @@ function _assistEstado(value) {
             const semPreco = rows.filter(x => Number(x.cons) > 0 && !valido(x.precoUnit));
             const subtotalMateriais = dinheiro(rows.reduce((n, x) => n + (valido(x.precoUnit) && Number(x.cons) > 0 ? Number(x.valorConsumido) || 0 : 0), 0));
             const completo = !semCusto.length && !semPreco.length;
-            const avisos = [];
+            const avisos = divergencias.map(d => {
+                const pessoa = linhas.find(x => x.id === d.id);
+                return 'Horas de ' + (pessoa?.nome || 'Pessoa não identificada') + ' em ' + d.data + ': usadas ' + d.picagens.toFixed(2) + 'h de picagens; folhas registam ' + d.folhas.toFixed(2) + 'h. As folhas originais foram preservadas.';
+            });
             if (semCusto.length) avisos.push('Custo/hora por definir: ' + semCusto.map(x => x.nome).join(', ') + '.');
             if (semPreco.length) avisos.push('Material sem preço: ' + semPreco.map(x => x.artigo).join(', ') + '.');
             return { linhas, horas: Object.values(mapa).reduce((n, h) => n + h, 0), semCusto, semPreco,
@@ -14570,7 +14596,7 @@ function _assistEstado(value) {
                     ['Data de início (1ª atividade)', dataInicio ? dataInicio.split('-').reverse().join('/') : '—'],
                     [_concluidaTitulo ? 'Data de finalização' : 'Data do relatório', dataFim.split('-').reverse().join('/')],
                     ['Duração da obra', duracaoDias ? (duracaoDias + ' dia(s)') : '—'],
-                    ['Total de horas trabalhadas', horas.toFixed(1) + 'h'],
+                    ['Total de horas trabalhadas', horas.toFixed(2) + 'h'],
                     ['Nº de folhas de obra registadas', String(folhas.length)],
                     ['Nº de funcionários envolvidos', String(totalEnvolvidos)]
                 ],
@@ -14593,7 +14619,7 @@ function _assistEstado(value) {
                     ['Km percorridos (equipa)', _kmPercorridosObra(obraId).toLocaleString('pt-PT') + ' km'],
                     ['Custo total da obra (mão de obra + materiais)', custoTotal != null ? _finEur(custoTotal) : 'Total incompleto — faltam custos']
                 ];
-                custos.avisos.forEach(aviso => linhasFin.push(['Custo em falta', aviso]));
+                custos.avisos.forEach(aviso => linhasFin.push(['Aviso de apuramento', aviso]));
                 linhasFin.push(['Valores de referência', 'Custos/hora e preços atualmente definidos nas fichas.']);
                 if (custoTotal != null) {
                     const margem = valorFaturado - custoTotal;
@@ -14612,10 +14638,10 @@ function _assistEstado(value) {
                 if (custos.linhas.length) {
                     if (y > 240) { doc.addPage(); y = 20; }
                     doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas e custo por pessoa (uso interno)', 14, y); y += 4;
-                    const porFuncCusto = custos.linhas.map(x => [x.nome, x.horas.toFixed(1) + 'h',
+                    const porFuncCusto = custos.linhas.map(x => [x.nome, x.horas.toFixed(2) + 'h',
                         x.taxa != null ? _finEur(x.taxa) + '/h' : 'Por definir', x.origem,
                         x.custo != null ? _finEur(x.custo) : 'Custo em falta']);
-                    porFuncCusto.push([custos.semCusto.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL', horas.toFixed(1) + 'h', '', '', _finEur(custos.subtotalPessoal)]);
+                    porFuncCusto.push([custos.semCusto.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL', horas.toFixed(2) + 'h', '', '', _finEur(custos.subtotalPessoal)]);
                     doc.autoTable({
                         startY: y, head: [['Pessoa', 'Horas contabilizadas', 'Custo/hora', 'Origem do custo', 'Custo']], body: porFuncCusto,
                         styles: { fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: _corRel },
@@ -14668,8 +14694,8 @@ function _assistEstado(value) {
             if (custos.linhas.length) {
                 if (y > 250) { doc.addPage(); y = 20; }
                 doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Horas por pessoa', 14, y); y += 4;
-                const porFunc = custos.linhas.map(x => [x.nome, x.horas.toFixed(1) + 'h']);
-                porFunc.push(['TOTAL', horas.toFixed(1) + 'h']);
+                const porFunc = custos.linhas.map(x => [x.nome, x.horas.toFixed(2) + 'h']);
+                porFunc.push(['TOTAL', horas.toFixed(2) + 'h']);
                 doc.autoTable({startY: y, head: [['Pessoa', 'Horas']], body: porFunc,
                     styles: {fontSize:9, cellPadding:2}, headStyles: {fillColor:_corRel},
                     didParseCell: function(d) {if (d.section === 'body' && d.row.index === porFunc.length - 1) d.cell.styles.fontStyle = 'bold';}});
@@ -14941,7 +14967,7 @@ function _assistEstado(value) {
                     <td><strong>${o.nome}</strong>${(obrasAvancadoAtivo(dados.administradores?.find(a => a.id === o.adminId)) && o.dataFimPrevista && o.estado !== 'concluida' && o.dataFimPrevista < getDataHoje()) ? ' <span title="Obra em atraso — fim previsto era ' + o.dataFimPrevista.split('-').reverse().join('/') + '" style="color:#dc2626;"><i class="fas fa-triangle-exclamation"></i></span>' : ''}</td><td>${o.clienteId ? obterNomeCliente(o.clienteId) : '—'}</td>
                     <td>${_nomesAtribuidosObraColorido(o)}</td>
                     <td>${_estadoSelectObra(o)}</td>
-                    <td>${horas.toFixed(1)}h</td><td>${nFolhas}</td>
+                    <td>${horas.toFixed(2)}h</td><td>${nFolhas}</td>
                     <td>${acoes}</td>
                 </tr>`;
             }).join('');
@@ -15674,7 +15700,7 @@ function _assistEstado(value) {
                     <div><strong>Atribuídos:</strong> ${_nomesAtribuidosObraColorido(obra)}</div>
                     <div><strong>Morada:</strong> ${_moradaCompletaObra(obra)}</div>
                     <div><strong>Estado:</strong> ${estLabel(obra.estado)}</div>
-                    <div><strong>Total de horas:</strong> ${horas.toFixed(1)}h</div>
+                    <div><strong>Total de horas:</strong> ${horas.toFixed(2)}h</div>
                     ${(_obrasAv && (obra.dataInicioPrevista || obra.dataFimPrevista)) ? `<div><strong>Previsto:</strong> ${obra.dataInicioPrevista ? obra.dataInicioPrevista.split('-').reverse().join('/') : '—'} a ${obra.dataFimPrevista ? obra.dataFimPrevista.split('-').reverse().join('/') : '—'}</div>` : ''}
                 </div>
                 ${(_obrasAv && obra.marcos && obra.marcos.length) ? (() => {
@@ -15712,37 +15738,8 @@ function _assistEstado(value) {
         // avisar quem está a ver o Auto de Medição, sem teres de andar a adivinhar por trás.
         let _folhasSuspeitasUltimoCalculo = [];
         function _horasObraPorFuncionarioNoPeriodo(obraId, dataInicio, dataFim) {
-            const mapa = {};
-            const marcar = fid => { if (!(fid in mapa)) mapa[fid] = 0; };
-            const dentro = data => (!dataInicio || data > dataInicio) && (!dataFim || data <= dataFim);
-            // IMPORTANTE: uma sessão de ponto-obra (obraPontoLonga) só entra aqui enquanto ainda
-            // estiver ABERTA (sem saída). Assim que a saída é registada, o próprio fluxo pede
-            // logo para preencher a folha de obra correspondente (dados.folhasObra) — que passa
-            // a ser a fonte "oficial" dessas horas. Se contássemos as duas coisas em conjunto,
-            // qualquer sessão já fechada era contada a dobrar (uma vez no ponto, outra na folha).
-            (dados.obraPontoLonga || []).filter(p => p.obraId === obraId && dentro(p.data || '') && p.entrada && !p.saida && !p.pausaAlmoco).forEach(p => {
-                marcar(p.funcionarioId);
-                mapa[p.funcionarioId] += calcularHoras(p.entrada, new Date().toTimeString().slice(0, 5));
-            });
-            // NOTA: o registo de ponto normal (dados.ponto) ligado a uma OS desta obra NÃO entra
-            // aqui — essas horas já ficam contabilizadas na folha de obra correspondente (fonte
-            // "oficial"). Contar as duas coisas em conjunto duplicava sempre o total (bug
-            // corrigido em 12/08/2026 — um caso real chegou a mostrar 12.2h quando o real era 6.1h,
-            // exatamente o dobro).
-            // Toda a folha de obra válida (criada pelos caminhos normais do código) tem sempre
-            // uma descrição preenchida — o formulário exige-a antes de gravar. Uma folha sem
-            // descrição é, por definição, um registo que não passou por nenhuma validação normal
-            // (dados antigos, ou algo fora do que o código consegue criar hoje) — por isso fica
-            // de fora dos cálculos de faturação, em vez de inflacionar o Auto de Medição sem
-            // ninguém perceber porquê.
-            _folhasSuspeitasUltimoCalculo = [];
-            const folhas = (dados.folhasObra || []).filter(f => f.obraId === obraId && dentro(f.data || ''));
-            folhas.forEach(f => {
-                if (!f.descricao) { _folhasSuspeitasUltimoCalculo.push(f); return; }
-                marcar(f.funcionarioId);
-                mapa[f.funcionarioId] += Number(f.horasTrabalhadas) || 0;
-            });
-            return mapa;
+            _folhasSuspeitasUltimoCalculo = (dados.folhasObra || []).filter(f => f.obraId === obraId && !f.descricao && (!dataInicio || f.data > dataInicio) && (!dataFim || f.data <= dataFim));
+            return _horasContabilizadasObraPorPessoa(obraId, dataInicio, dataFim);
         }
         function _materiaisObraNoPeriodo(obraId, dataInicio, dataFim) {
             const dentro = data => (!dataInicio || data > dataInicio) && (!dataFim || data <= dataFim);
@@ -16304,12 +16301,20 @@ function _assistEstado(value) {
                 ${obra.valor == null ? `<div class="help-text" style="color:#b3492f;"><i class="fas fa-triangle-exclamation"></i> Esta obra não tem um valor de orçamento/faturação definido — está a ser usada a soma das OS ligadas a esta obra como valor faturado.</div>` : ''}
                 <table style="width:100%;font-size:.86rem;margin-top:8px;">
                     <tbody>
-                        <tr><td style="padding:4px 0;color:#64748b;">Total de horas trabalhadas</td><td style="padding:4px 0;text-align:right;font-weight:600;">${horas.toFixed(1)}h</td></tr>
+                        <tr><td style="padding:4px 0;color:#64748b;">Total de horas trabalhadas</td><td style="padding:4px 0;text-align:right;font-weight:600;">${horas.toFixed(2)}h</td></tr>
                         <tr><td style="padding:4px 0;color:#64748b;">Custo/hora da obra (alternativa)</td><td style="padding:4px 0;text-align:right;font-weight:600;">${obra.custoHora != null ? _finEur(obra.custoHora) + '/h' : '—'}</td></tr>
                         <tr><td style="padding:4px 0;color:#64748b;">Km percorridos (equipa)</td><td style="padding:4px 0;text-align:right;font-weight:600;color:#0ea5e9;">${_kmPercorridosObra(obraId).toLocaleString('pt-PT')} km</td></tr>
                         <tr><td style="padding:4px 0;color:#64748b;">Custo total da obra</td><td style="padding:4px 0;text-align:right;font-weight:600;">${custoTotal != null ? _finEur(custoTotal) : 'Total incompleto — faltam custos'}</td></tr>
                     </tbody>
                 </table>
+                <div style="overflow-x:auto;margin-top:14px;">
+                    <table style="width:100%;font-size:.86rem;" class="table">
+                        <thead><tr><th>Pessoa</th><th>Horas contabilizadas</th><th>Custo/hora</th><th>Origem do custo</th><th>Custo</th></tr></thead>
+                        <tbody>${custos.linhas.map(x => `<tr><td>${escapeHtmlSimples(x.nome)}</td><td>${x.horas.toFixed(2)}h</td><td>${x.taxa != null ? _finEur(x.taxa) + '/h' : 'Por definir'}</td><td>${escapeHtmlSimples(x.origem)}</td><td>${x.custo != null ? _finEur(x.custo) : 'Custo em falta'}</td></tr>`).join('')}
+                        <tr style="font-weight:700;"><td>${custos.semCusto.length ? 'SUBTOTAL — INCOMPLETO' : 'TOTAL'}</td><td>${horas.toFixed(2)}h</td><td></td><td></td><td>${_finEur(custos.subtotalPessoal)}</td></tr></tbody>
+                    </table>
+                </div>
+                <p class="help-text">Horas apuradas pelas picagens de cada pessoa e dia, sem sobreposições. Nos dias sem picagens válidas, são usadas as folhas de obra.</p>
                 <button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="_fecharModalGenerico();abrirModalObraLonga('${obraId}')"><i class="fas fa-pen"></i> Editar orçamento / custo-hora desta obra</button>
             `;
         }
@@ -16429,7 +16434,7 @@ function _assistEstado(value) {
             doc.text('Horas por funcionário', 14, y); y += 4;
             doc.autoTable({
                 startY: y, head: [['Funcionário', 'Horas']],
-                body: a.horasPorFuncionario.length ? a.horasPorFuncionario.map(h => [h.nome, h.horas.toFixed(1) + 'h']) : [['Sem horas registadas', '']],
+                body: a.horasPorFuncionario.length ? a.horasPorFuncionario.map(h => [h.nome, h.horas.toFixed(2) + 'h']) : [['Sem horas registadas', '']],
                 foot: [['TOTAL', a.totalHoras.toFixed(1) + 'h']],
                 styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [21, 42, 82] }, footStyles: { fillColor: [240, 243, 250], textColor: [21, 42, 82], fontStyle: 'bold' }
             });
@@ -16458,7 +16463,7 @@ function _assistEstado(value) {
         function verDetalheAutoMedicao(autoId) {
             const a = (dados.autosMedicao || []).find(x => x.id === autoId); if (!a) return;
             const obra = dados.obras?.find(o => o.id === a.obraId);
-            const linhasHoras = a.horasPorFuncionario.length ? a.horasPorFuncionario.map(h => `<tr><td>${escapeHtmlSimples(h.nome)}</td><td>${h.horas.toFixed(1)}h</td></tr>`).join('') : '<tr><td colspan="2" style="color:#94a3b8;">Sem horas.</td></tr>';
+            const linhasHoras = a.horasPorFuncionario.length ? a.horasPorFuncionario.map(h => `<tr><td>${escapeHtmlSimples(h.nome)}</td><td>${h.horas.toFixed(2)}h</td></tr>`).join('') : '<tr><td colspan="2" style="color:#94a3b8;">Sem horas.</td></tr>';
             const linhasMat = a.materiais.length ? a.materiais.map(m => `<tr><td>${escapeHtmlSimples(m.nome)}</td><td>${m.qty}</td><td>${_finEur(m.precoVenda)}</td><td>${_finEur(m.qty * m.precoVenda)}</td></tr>`).join('') : '<tr><td colspan="4" style="color:#94a3b8;">Sem materiais.</td></tr>';
             document.getElementById('modalGenericoTitulo').innerHTML = `<i class="fas fa-file-invoice-dollar"></i> Auto de Medição #${a.numero} — ${obra ? obra.nome : ''}`;
             document.getElementById('modalGenericoCampos').innerHTML = `
@@ -27134,6 +27139,7 @@ async function salvarAdmin(e) {
                         codigoPostal: document.getElementById('f_cp').value.trim(),
                         dataNascimento: document.getElementById('f_nasc').value,
                         horasSemanais: parseInt(document.getElementById('f_horas').value) || 40,
+                        ordenadoBruto: document.getElementById('f_ordenado')?.value ?? null,
                         adminId: _adminIdNovo,
                         funcionariosIds: Array.from(document.querySelectorAll('.f-equipa-check:checked')).map(cb => cb.value),
                         mudarSenha: true,

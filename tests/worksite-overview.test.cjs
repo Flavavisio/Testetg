@@ -11,7 +11,7 @@ function setup(role='admin'){
  {id:'c',adminId:'a',nome:'Terminada',estado:'concluida',dataCriacao:'invalid'},
  {id:'old',adminId:'a',nome:'Antiga',estado:null},
  {id:'foreign',adminId:'other',nome:'Outra empresa',estado:'ativa'}]};w.state={};
- Object.assign(w,{_tenantArmazem:()=>w.usuarioLogado.adminId,_getTableState:()=>w.state,totalHorasObra:()=>0,obterNomeCliente:()=> 'Cliente',obterNomeFuncionario:()=> 'Técnico',_nomesAtribuidosObraColorido:()=> 'Técnico',_estadoSelectObra:o=>o.estado||'',obrasAvancadoAtivo:()=>false,_toolbarHtml:()=>''});
+ Object.assign(w,{_tenantArmazem:()=>w.usuarioLogado.adminId,_getTableState:()=>w.state,totalHorasObra:()=>0,_formatarTempoTrabalhado:()=>'0 s',obterNomeCliente:()=> 'Cliente',obterNomeFuncionario:()=> 'Técnico',_nomesAtribuidosObraColorido:()=> 'Técnico',_estadoSelectObra:o=>o.estado||'',obrasAvancadoAtivo:()=>false,_toolbarHtml:()=>''});
  w.eval("let _obrasLongaEstadoFiltro='todas',_obrasLongaConta='';"+['_aplicarFiltroOrdenacao','_obrasLongaGrupoEstado','_obrasLongaDataCriacao','obrasLongaFiltrarEstado','_obrasLongaContadores','renderizarObrasLongaDuracao'].map(fn).join('\n'));
  w.renderizarObrasLongaDuracao();return w;
 }

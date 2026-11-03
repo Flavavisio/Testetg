@@ -14,7 +14,7 @@ function setup(extra={}){
  const doc={lastAutoTable:{finalY:20},setFontSize(){},setTextColor(){},text(t){texts.push(t)},addPage(){},autoTable(o){tables.push(o);this.lastAutoTable={finalY:(o.startY||20)+20}}};
  const context={dados,Date:Now,getDataHoje:()=> '2026-11-03',_folhasSuspeitasUltimoCalculo:[],usuarioLogado:{id:'a',role:'admin'},document:{getElementById:()=>screen},_obraMatRows:()=>[],_finEur:n=>Number(n).toFixed(2)+' €',escapeHtmlSimples:s=>String(s).replace(/</g,'&lt;'),_novoPdf:()=>doc,_pdfArmHeader:()=>20,_hexParaRgb:()=>[0,0,100],_tenantArmazem:()=> 'a',_moradaCompletaObra:()=> 'Morada',obterNomeFuncionario:id=>id,obterNomeCliente:()=> 'Cliente',_estadoBadgeObra:()=>{},_kmPercorridosObra:()=>0,_tgGuardarPdf:()=>{},_hoje10:()=> '2026-11-03'};
  const ctx=vm.createContext(context);
- vm.runInContext(['_picagensParaFolha','_vincularPicagensFolha','_horasPicadasPessoa','_horasPicadasOS','_horasPicadasObra','_folhaObrigCalcularHoras','_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
+ vm.runInContext(['_formatarTempoTrabalhado','_horasContabilizadasOSPorPessoa','_custosPessoasHoras','_resumoTempoFolha','_totalTempoFolhasEquipa','_gerarPDFRelatorioOS','_picagensParaFolha','_vincularPicagensFolha','_horasPicadasPessoa','_horasPicadasOS','_horasPicadasObra','_folhaObrigCalcularHoras','_somarIntervalosPicagem','_horasObraPorFuncionario','_horasContabilizadasObraPorPessoa','_horasObraPorFuncionarioNoPeriodo','totalHorasObra','_custoHoraPessoa','_custosContabilizadosObra','gerarReportFinalObra','_renderizarFinanceiroObra'].map(fn).join('\n'),ctx);
  return {ctx,dados,tables,texts,screen};
 }
 test('kiosk morning and afternoon count for responsible and colleague, without adding the afternoon sheet again',()=>{
@@ -55,11 +55,11 @@ test('general attendance, inverted clocks and another tenant cannot add hours',(
 });
 test('Financeiro, PDF summary and both per-person PDF tables consume the same recalculation and costs',()=>{
  const {ctx,tables,screen}=setup({ponto:[clock('1','r','2026-11-02','08:00','12:00',{servicoId:'os'}),clock('2','f','2026-11-02','08:00','12:00',{servicoId:'os'})],folhasObra:[sheet('wrong','r','2026-11-02',15)]});
- ctx._renderizarFinanceiroObra('w');assert.match(screen.innerHTML,/8\.00h/);assert.match(screen.innerHTML,/88\.00 €/);assert.match(screen.innerHTML,/Responsável/);assert.match(screen.innerHTML,/Colega/);
+ ctx._renderizarFinanceiroObra('w');assert.match(screen.innerHTML,/8 h/);assert.match(screen.innerHTML,/88\.00 €/);assert.match(screen.innerHTML,/Responsável/);assert.match(screen.innerHTML,/Colega/);
  ctx.gerarReportFinalObra('w',false);
- assert.equal(tables.find(t=>t.body?.some(r=>r[0]==='Total de horas trabalhadas')).body.find(r=>r[0]==='Total de horas trabalhadas')[1],'8.00h');
- const cost=tables.find(t=>t.head?.[0].includes('Horas contabilizadas')).body;assert.equal(cost.at(-1)[1],'8.00h');assert.equal(cost.at(-1)[4],'88.00 €');
- assert.equal(tables.at(-1).body.at(-1)[1],'8.00h');
+ assert.equal(tables.find(t=>t.body?.some(r=>r[0]==='Total de horas trabalhadas')).body.find(r=>r[0]==='Total de horas trabalhadas')[1],'8 h');
+ const cost=tables.find(t=>t.head?.[0].includes('Horas contabilizadas')).body;assert.equal(cost.at(-1)[1],'8 h');assert.equal(cost.at(-1)[4],'88.00 €');
+ assert.equal(tables.at(-1).body.at(-1)[1],'8 h');
 });
 test('missing salary is explicit, weekly-hours errors cannot silently produce a zero total, and current salary edits recalculate',()=>{
  const {ctx,dados}=setup({ponto:[clock('1','r','2026-11-02','08:00','12:00',{servicoId:'os'})]});
@@ -126,4 +126,48 @@ test('legacy flags cannot hide a colleagues clocks unless that colleague has a m
 });
 test('individual internal PDF resolves supervisor salary through the same cost function as Financeiro',()=>{
  const {ctx,dados}=setup();dados.encarregados.push(own({id:'supervisor',ordenadoBruto:1732,horasSemanais:40}));const pdf=source.slice(source.indexOf('        async function gerarPDFFolha('));const start=pdf.indexOf('            const custoHora =');const end=pdf.indexOf('            const custoTotal =',start);Object.assign(ctx,{tipo:'empresa',f:{funcionarioId:'supervisor',adminId:'a'}});vm.runInContext(pdf.slice(start,end)+'\nvar taxaPdf=custoHora;',ctx);assert.equal(ctx.taxaPdf,10);
+});
+function standaloneTeamExample(){
+ const t=setup({obras:[],servicos:[own({id:'os',numeroRegisto:'OS-BL1103-2',obraId:null,valor:80,status:'concluído'})],ponto:[clock('ant','f','2026-11-03','08:34:49','09:04:26',{servicoId:'os'}),clock('ped','r','2026-11-03','08:34:58','09:04:00',{servicoId:'os'})],folhasObra:[sheet('signed','r','2026-11-03',0.5,{obraId:null,servicoId:'os',assinatura:'original-signature'})]});
+ t.dados.funcionarios[0].nome='Pedro';t.dados.funcionarios[0].ordenadoBruto=1100;t.dados.funcionarios[1].nome='António';t.dados.funcionarios[1].ordenadoBruto=1000;
+ Object.assign(t.ctx,{_kmPercorridosOS:()=>0,obterNomeFuncionario:id=>t.dados.funcionarios.find(f=>f.id===id)?.nome,_colegasEnvolvidosNaFolha:()=>['f']});return t;
+}
+test('standalone OS with two precise clock records and one signed sheet totals 58 min 39 s, never 30 or 88 minutes',()=>{
+ const {ctx,dados}=standaloneTeamExample(),before=JSON.stringify(dados);const mapa=ctx._horasContabilizadasOSPorPessoa('os');assert.equal(Math.round(mapa.f*3600),1777);assert.equal(Math.round(mapa.r*3600),1742);
+ const resumo=ctx._resumoTempoFolha(dados.folhasObra[0]);assert.equal(ctx._formatarTempoTrabalhado(resumo.horas),'58 min 39 s');assert.equal(resumo.total,5.92);assert.equal(JSON.stringify(dados),before);
+});
+test('OS PDF header, generated-sheet row and per-technician table agree; margin includes both salaries',()=>{
+ const {ctx,tables}=standaloneTeamExample();ctx._gerarPDFRelatorioOS('os',false);
+ const summary=tables.find(t=>t.body?.some(r=>r[0]==='Tempo total de mão de obra')).body;assert.equal(summary.find(r=>r[0]==='Tempo total de mão de obra')[1],'58 min 39 s');assert.equal(summary.find(r=>r[0]==='Nº de funcionários envolvidos')[1],'2');
+ const sheets=tables.find(t=>t.head?.[0].includes('Tempo da equipa (dia)'));assert.equal(sheets.body[0][3],'58 min 39 s');
+ const people=tables.find(t=>t.head?.[0].includes('Custo/hora'));assert.deepEqual(plain(people.body.map(r=>r[1])),['29 min 2 s','29 min 37 s']);assert.deepEqual(plain(people.body.map(r=>r[3])),['3.07 €','2.85 €']);
+ const fin=tables.find(t=>t.body?.some(r=>r[0]==='Valor a faturar')).body;assert.equal(fin.find(r=>r[0]==='Custo de mão de obra')[1],'5.92 €');assert.equal(fin.find(r=>String(r[0]).startsWith('Margem'))[1],'74.08 €');
+});
+test('client OS report retains combined exact time but excludes rates, costs, margins and missing-cost messages',()=>{
+ const {ctx,tables,texts}=standaloneTeamExample();ctx._gerarPDFRelatorioOS('os',true);const output=JSON.stringify({tables,texts});assert.match(output,/58 min 39 s/);assert(!/Custo\/hora|Margem|5\.92|74\.08|Custo em falta/.test(output));
+});
+test('several sheets for the same team/day cannot multiply the time displayed in list totals',()=>{
+ const {ctx,dados}=standaloneTeamExample();const extra={...dados.folhasObra[0],id:'second',funcionarioId:'f',horasTrabalhadas:0.5};dados.folhasObra.push(extra);
+ assert.equal(ctx._formatarTempoTrabalhado(ctx._totalTempoFolhasEquipa(dados.folhasObra)),'58 min 39 s');assert.equal(ctx._formatarTempoTrabalhado(ctx._resumoTempoFolha(extra).horas),'58 min 39 s');
+});
+test('duration formatter handles exact seconds, hour boundaries, zero and invalid values',()=>{
+ const {ctx}=setup();for(const [n,text] of [[0,'0 s'],[1/3600,'1 s'],[3599/3600,'59 min 59 s'],[1,'1 h'],[3661/3600,'1 h 1 min 1 s'],[-1,'0 s'],[NaN,'0 s']])assert.equal(ctx._formatarTempoTrabalhado(n),text);
+});
+test('only attendees count; early departure, lunch and three different people retain their own durations',()=>{
+ const {ctx,dados}=setup({ponto:[clock('r','r','2026-11-03','08:00:01','12:00:01',{servicoId:'os',pausaAlmoco:true}),clock('r2','r','2026-11-03','13:00:01','17:00:01',{servicoId:'os'}),clock('f','f','2026-11-03','08:00:01','12:00:01',{servicoId:'os',pausaAlmoco:true})]});dados.servicos[0].funcionariosIds=['r','f','absent'];assert.equal(ctx._formatarTempoTrabalhado(Object.values(ctx._horasContabilizadasOSPorPessoa('os')).reduce((n,h)=>n+h,0)),'12 h');assert.equal(ctx._horasContabilizadasOSPorPessoa('os').absent,undefined);
+});
+test('the generated signed sheet PDF itself shows the combined team time and keeps internal costs private',async()=>{
+ for(const tipo of ['empresa','cliente']){
+  const {ctx,dados}=standaloneTeamExample(),output=[];const before=JSON.stringify(dados);
+  const target={lastAutoTable:{finalY:30},text:t=>output.push(String(t)),splitTextToSize:t=>[String(t)],getTextWidth:t=>String(t).length*2,autoTable:o=>{output.push(JSON.stringify(o.body));target.lastAutoTable={finalY:30}}};
+  const doc=new Proxy(target,{get:(o,k)=>k in o?o[k]:()=>{}});
+  Object.assign(ctx,{window:{jspdf:{jsPDF:class{constructor(){return doc}}}},obterDescricaoOS:()=> 'OS-BL1103-2',obterLogoEmpresa:()=>({nome:'BM',logo:null}),obterClienteDaFolha:()=>null});
+  vm.runInContext(fn('gerarPDFFolha'),ctx);await ctx.gerarPDFFolha('signed',tipo);
+  const text=output.join(' ');assert.match(text,/58 min 39 s/);assert.match(text,/29 min 37 s/);assert.match(text,/29 min 2 s/);assert.match(text,/Responsável pela folha/i);
+  if(tipo==='empresa')assert.match(text,/5\.92 €/);else assert.doesNotMatch(text,/5\.92|3\.07|2\.85|USO INTERNO/);
+  assert.equal(JSON.stringify(dados),before);
+ }
+});
+test('work and linked OS sheets in the same day cannot duplicate a group total',()=>{
+ const {ctx,dados}=setup({ponto:[clock('os','r','2026-11-03','08:00','12:00',{servicoId:'os'})],obraPontoLonga:[clock('direct','r','2026-11-03','13:00','17:00',{obraId:'w'})],folhasObra:[sheet('direct','r','2026-11-03',4),sheet('os','r','2026-11-03',4,{servicoId:'os'})]});assert.equal(ctx._totalTempoFolhasEquipa(dados.folhasObra),8);
 });

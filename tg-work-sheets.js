@@ -1,6 +1,8 @@
 /* Folhas de obra: contexto, filtros e validação administrativa persistente. */
 (function () {
     'use strict';
+    const horasEquipaFolha = f => typeof _resumoTempoFolha === 'function' ? _resumoTempoFolha(f).horas : Number(f.horasTrabalhadas) || 0;
+    const formatarTempo = h => typeof _formatarTempoTrabalhado === 'function' ? _formatarTempoTrabalhado(h) : h.toLocaleString('pt-PT') + ' h';
     const pendentes = new Set();
     let contaFiltros = '';
     const filtros = ['cliente', 'instalacao', 'obra', 'tecnico', 'validacao'];
@@ -217,7 +219,7 @@
                     ${ctx.instalacao.chave !== 'sem' ? campo('Instalação', ctx.instalacao.nome, 'folha-larga') : ''}
                     ${campo('Trabalho realizado', f.descricao || '—', 'folha-larga')}
                     ${f.materiais ? campo('Materiais', f.materiais, 'folha-larga') : ''}
-                    ${campo('Horas de trabalho', (Number(f.horasTrabalhadas) || 0).toLocaleString('pt-PT') + ' h')}
+                    ${campo('Horas de trabalho', formatarTempo(horasEquipaFolha(f)))}
                     <td class="folha-acoes"><button type="button" class="btn btn-primary" onclick="${acao('abrirFolhaDetalhe')}"><i class="fas fa-eye" aria-hidden="true"></i> Abrir folha</button><span class="badge">Por verificar</span></td>
                 </tr>`;
             }
@@ -233,7 +235,7 @@
             return `<tr data-folha-id="${idAttr}">
                 ${['cliente', 'instalacao', 'obra', 'tecnico'].map(k => `<td>${escapeHtmlSimples(ctx[k].nome)}${k === 'obra' ? `<small class="folhas-ligacao">${escapeHtmlSimples(nota || origem)}</small>` : ''}</td>`).join('')}
                 <td>${escapeHtmlSimples(f.descricao || '—')}</td><td>${escapeHtmlSimples(f.materiais || '—')}</td>
-                <td>${Number(f.horasTrabalhadas) || 0}</td><td>${escapeHtmlSimples(f.data || '—')}</td>
+                <td>${formatarTempo(horasEquipaFolha(f))}</td><td>${escapeHtmlSimples(f.data || '—')}</td>
                 <td><div class="acoes" style="flex-wrap:wrap;">
                     <button type="button" class="btn btn-sm" style="background:#0ea5e9;color:#fff;" onclick="${acao('abrirFolhaDetalhe')}" title="Abrir e gerar PDF" aria-label="Abrir folha"><i class="fas fa-eye"></i></button>
                     ${podeValidar() ? `<span class="folhas-validacao"><button type="button" class="btn btn-sm ${validada ? 'btn-success' : 'btn-outline'}" data-folha-validacao="${idAttr}" aria-pressed="${validada}" ${pendentes.has(f.id) || bloqueio ? 'disabled' : ''} onclick="${acao('tgFolhasValidar')}" title="${escapeHtmlSimples(tituloValidacao)}"><i class="fas ${validada ? 'fa-circle-check' : 'fa-circle'}"></i> ${pendentes.has(f.id) ? 'A guardar…' : estado}</button>${bloqueio ? `<small class="folhas-ligacao">${escapeHtmlSimples(bloqueio)}</small>` : ''}</span>` : `<span class="badge">${estado}</span>`}
@@ -252,9 +254,9 @@
             const info = document.getElementById('folhasGrupoInfo_' + nome);
             if (info) {
                 const nFat = lista.filter(l => estadoFolha(l.f).faturada).length;
-                const h = lista.reduce((s,l) => s + (Number(l.f.horasTrabalhadas) || 0), 0).toLocaleString('pt-PT', { maximumFractionDigits: 2 });
+                const h = formatarTempo(typeof _totalTempoFolhasEquipa === 'function' ? _totalTempoFolhasEquipa(lista.map(l => l.f)) : lista.reduce((s,l) => s + (Number(l.f.horasTrabalhadas) || 0), 0));
                 const n = new Set(lista.map(l => nome === 'os' ? l.f.servicoId : l.sit.obra?.id).filter(Boolean)).size;
-                info.textContent = nome === 'concluidas' ? (faturacaoPronta ? `${lista.length - nFat} por faturar · ${nFat} faturadas` : 'Faturação por confirmar') : `${n} ${nome === 'os' ? 'OS' : 'obras'} · ${h} h registadas`;
+                info.textContent = nome === 'concluidas' ? (faturacaoPronta ? `${lista.length - nFat} por faturar · ${nFat} faturadas` : 'Faturação por confirmar') : `${n} ${nome === 'os' ? 'OS' : 'obras'} · ${h} registados`;
             }
             const b = document.getElementById('folhasGrupo_' + nome);
             if (b) b.setAttribute('aria-pressed', String(nome === grupo));

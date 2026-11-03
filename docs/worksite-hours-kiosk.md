@@ -49,3 +49,13 @@ O cálculo inicial da folha passa a considerar só a pessoa/data selecionadas, j
 O PDF interno individual usa `_custoHoraPessoa` também para encarregados e administradores. A folha individual continua a representar o documento original; o relatório agregado da obra recalcula as picagens sem reescrever folhas assinadas.
 
 A coluna JSON é aditiva e anulável, sem alteração de RLS ou permissões. Novos testes reproduzem almoço real da app, dois técnicos, recarga com o mapeamento real, folha manual e sessão independente, correção manual de uma única sessão, edição sem consumo de períodos posteriores e custo de encarregado no PDF.
+
+## Tempo exato e folha com a equipa
+
+O relatório individual de OS passa a usar o mesmo registo de horas de todos os intervenientes, mesmo sem obra associada. A folha gerada e o seu PDF apresentam o tempo combinado da equipa no dia, com detalhe por técnico e identificação separada do responsável. As horas pessoais guardadas na folha e a assinatura original não são reescritas nem multiplicadas. A apresentação conjunta não é uma nova parcela para o cálculo de totais.
+
+O cálculo de intervalos usa segundos inteiros; a apresentação usa horas, minutos e segundos, sem casas decimais de horas nos totais. Exemplo: 08:34:49–09:04:26 + 08:34:58–09:04:00 = 58 min 39 s de mão de obra, com uma folha assinada. O relatório interno da OS discrimina custos por técnico e inclui mão de obra e materiais na margem. O relatório do cliente não contém salários, taxas ou custos internos.
+
+Nos agrupamentos da lista, várias folhas da mesma OS/obra/dia não repetem o tempo da equipa. O total da OS é calculado pelas sessões de cada pessoa; não resulta da soma dos totais de equipa apresentados em cada documento.
+
+Testes adicionais: OS sem obra e dois técnicos com uma assinatura; soma exata de segundos; saída ao almoço; faltas; folha/PDF e total iguais; custos com ordenados diferentes; proteção do PDF do cliente; várias folhas no mesmo dia; folhas de obra e OS associadas sem duplicações.

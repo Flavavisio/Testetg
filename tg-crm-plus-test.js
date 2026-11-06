@@ -71,24 +71,7 @@ function follow(id){
  Promise.resolve(guardarDados(source(),['atividadesComerciais'])).then(()=>{render();alert('Seguimento guardado no CRM.');}).catch(()=>{source().atividadesComerciais=source().atividadesComerciais.filter(x=>x.id!==a.id);alert('O seguimento não foi guardado. Tenta novamente.');});
 }
 function renderClient(d){
- const box=mount('secao-clientes-crm','crmPlusClient');if(!box)return;
- let select=box.querySelector('#crmPlusClientSelect'),selected=select?.value||'';
- const ids=new Set([...d.leads.map(l=>l.clienteId),...d.opps.map(o=>o.clienteId),...d.proposals.map(p=>p.clienteId)]);
- const allowed=d.clients.filter(c=>manager()||ids.has(c.id));
- if(!allowed.some(c=>String(c.id)===selected))selected=allowed[0]?.id||'';
- const client=allowed.find(c=>String(c.id)===String(selected));
- const proposals=d.proposals.filter(p=>p.clienteId===selected);
- const opps=d.opps.filter(o=>o.clienteId===selected);
- const leads=d.leads.filter(l=>l.clienteId===selected);
- const orders=d.orders.filter(e=>e.clienteId===selected);
- const works=d.works.filter(w=>w.clienteId===selected);
- const os=d.os.filter(s=>s.clienteId===selected);
- const linked=d.activities.filter(a=>leads.some(l=>l.id===a.leadId)||opps.some(o=>o.id===a.oportunidadeId)).sort((a,b)=>(b.dataCriacao||0)-(a.dataCriacao||0)).slice(0,8);
- box.innerHTML=`<h3><i class="fas fa-address-card"></i> Ficha comercial 360.º</h3>
- <div class="crm-plus-controls"><label for="crmPlusClientSelect">Cliente</label><select id="crmPlusClientSelect"><option value="">Escolher cliente</option>${allowed.map(c=>`<option value="${esc(c.id)}" ${String(selected)===String(c.id)?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>
- ${client?`<div class="crm-plus-grid">${kpi('Propostas',String(proposals.length),euros(proposals.reduce((s,p)=>s+Number(p.valor||0),0)))}${kpi('Oportunidades',String(opps.length))}${kpi('Encomendas',String(orders.length))}${kpi('Obras / OS',works.length+' / '+os.length)}</div>
- <div class="crm-plus-list">${[...proposals.map(p=>({at:p.dataModificacao||p.dataCriacao,title:'Proposta '+(p.numero||''),detail:euros(p.valor)+' · '+p.estado})),...opps.map(o=>({at:o.dataCriacao,title:'Oportunidade: '+o.nome,detail:euros(o.valor)+' · '+o.estado})),...leads.map(l=>({at:l.dataCriacao,title:'Lead: '+(l.empresa||l.nomeContato||'Contacto'),detail:l.estado||''})),...linked.map(a=>({at:a.dataCriacao,title:'Contacto comercial',detail:a.resultado||a.tipo||''})),...works.map(w=>({at:w.dataCriacao,title:'Obra: '+(w.nome||''),detail:w.estado||''})),...os.map(s=>({at:s.dataCriacao,title:'OS: '+(s.descricao||s.nome||''),detail:s.status||''}))].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,15).map(x=>`<div class="crm-plus-line"><div><b>${esc(x.title)}</b><small>${esc(x.detail)}</small></div><small>${date(x.at)}</small></div>`).join('')||'<small>Sem histórico comercial.</small>'}</div>`:'<p class="crm-plus-note">Seleciona um cliente para consultar propostas, oportunidades e histórico.</p>'}
- <p class="crm-plus-note">Os dados são apresentados a partir dos módulos existentes, respeitando os registos comerciais visíveis à sessão.</p>`;
+ window.TGCRMClientSummary?.render(d);
 }
 const templates=[
  ['CCTV','Instalação de videovigilância','Âmbito: levantamento, fornecimento de equipamentos, instalação, configuração, testes e entrega. Confirmar quantidades e características técnicas.'],
@@ -171,7 +154,7 @@ function saveGoal(){
  if(goalsSave(goals))render();
 }
 function render(){const d=all();if(!d||!$('crmApp')||getComputedStyle($('crmApp')).display==='none')return;renderClient(d);renderFollowup(d);renderTemplates();renderForecast(d);renderTeam(d);}
-document.addEventListener('change',e=>{if(e.target.id==='crmPlusClientSelect')render();if(e.target.id==='crmPlusGoalMonth'){goalMonth=e.target.value||goalMonthDefault();render();}});
+document.addEventListener('change',e=>{if(e.target.id==='crmPlusGoalMonth'){goalMonth=e.target.value||goalMonthDefault();render();}});
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-crmplus-goal-save]')){e.preventDefault();return saveGoal();}
  const follow=e.target.closest('[data-crmplus-follow]');if(follow){follow.preventDefault();return window.TGCRMPlus.follow(follow.dataset.crmplusFollow);}

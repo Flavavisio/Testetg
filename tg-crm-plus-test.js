@@ -25,6 +25,9 @@ function all(){
 }
 const style=document.createElement('style');
 style.textContent=`
+/* Keep pre-redesign CRM layout, but hide the opportunities pipeline. */
+.crm-nav-item[data-tab="oportunidades"],#secao-oportunidades{display:none!important;}
+
 .crm-plus{margin:18px 0 22px;padding:18px;border:1px solid var(--border,#e6e8f2);border-radius:15px;background:var(--surface,#fff);box-shadow:var(--shadow)}
 .crm-plus h3{margin:0 0 8px;font-size:1.02rem;color:var(--text)}.crm-plus small,.crm-plus .muted{color:var(--text-muted)}
 .crm-plus-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:12px 0}
@@ -177,7 +180,6 @@ document.addEventListener('click',e=>{
 
 const menus=[
  ['clientes-crm','Ficha do Cliente','fa-address-card','leads'],
- ['oportunidades','Oportunidades','fa-bullseye','clientes-crm'],
  ['acompanhamento','Seguimento','fa-phone-volume','propostas'],
  ['modelos','Modelos rápidos','fa-layer-group','propostas'],
  ['equipa-comercial','Equipa e objetivos','fa-bullseye','comissoes']
@@ -200,7 +202,8 @@ function installRouter(){
  if(typeof mudarTabCRM!=='function')return;
  const original=mudarTabCRM;
  window.mudarTabCRM=function(name){
-  if(name==='oportunidades'||!menus.some(item=>item[0]===name))return original(name);
+  if(name==='oportunidades')return original('leads');
+  if(!menus.some(item=>item[0]===name))return original(name);
   if(typeof _crmFecharMenu==='function')_crmFecharMenu();
   document.querySelectorAll('.secao-crm').forEach(el=>el.classList.remove('ativa'));
   document.querySelectorAll('.crm-nav-item').forEach(el=>el.classList.remove('ativo'));

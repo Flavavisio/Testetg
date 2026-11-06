@@ -46,7 +46,7 @@ function mount(section,id){
 }
 function kpi(label,value,note){return `<div class="crm-plus-kpi"><small>${esc(label)}</small><strong>${esc(value)}</strong>${note?`<small>${esc(note)}</small>`:''}</div>`;}
 function renderFollowup(d){
- const box=mount('secao-propostas','crmPlusFollowups');if(!box)return;
+ const box=mount('secao-acompanhamento','crmPlusFollowups');if(!box)return;
  const open=d.proposals.filter(proposalOpen);
  // The existing activity table provides persistence; no new table or permission bypass.
  const lastFor=p=>d.activities.filter(a=>(p.oportunidadeId&&a.oportunidadeId===p.oportunidadeId)||(p.leadId&&a.leadId===p.leadId)).sort((a,b)=>(b.dataCriacao||0)-(a.dataCriacao||0))[0];
@@ -67,7 +67,7 @@ function follow(id){
  Promise.resolve(guardarDados(source(),['atividadesComerciais'])).then(()=>{render();alert('Seguimento guardado no CRM.');}).catch(()=>{source().atividadesComerciais=source().atividadesComerciais.filter(x=>x.id!==a.id);alert('O seguimento não foi guardado. Tenta novamente.');});
 }
 function renderClient(d){
- const box=mount('secao-leads','crmPlusClient');if(!box)return;
+ const box=mount('secao-clientes-crm','crmPlusClient');if(!box)return;
  let select=box.querySelector('#crmPlusClientSelect'),selected=select?.value||'';
  const ids=new Set([...d.leads.map(l=>l.clienteId),...d.opps.map(o=>o.clienteId),...d.proposals.map(p=>p.clienteId)]);
  const allowed=d.clients.filter(c=>manager()||ids.has(c.id));
@@ -94,17 +94,17 @@ const templates=[
  ['Manutenção','Contrato de manutenção','Âmbito: equipamentos abrangidos, periodicidade, visitas, exclusões, assistência e condições do serviço.']
 ];
 function renderTemplates(){
- const box=mount('secao-propostas','crmPlusTemplates');if(!box)return;
+ const box=mount('secao-modelos','crmPlusTemplates');if(!box)return;
  box.innerHTML='<h3><i class="fas fa-wand-magic-sparkles"></i> Modelos rápidos de propostas</h3><div class="crm-plus-controls">'+templates.map((t,i)=>`<button type="button" class="btn btn-outline btn-sm" data-crmplus-template="${i}">${esc(t[0])}</button>`).join('')+'</div><p class="crm-plus-note">Abrem o editor já existente com uma estrutura base editável. Não adicionam preços nem artigos fictícios.</p>';
 }
 function startTemplate(index){
  const t=templates[index];if(!t||typeof abrirEditorProposta!=='function')return;
  abrirEditorProposta(null,null,null,'normal');
- if(typeof _orcAtual==='undefined'||!_orcAtual)return;
+ if(typeof _orcAtual==='undefined'||!_orcAtual){alert('Não foi possível abrir o editor.');return;}
  _orcAtual.nome=t[1];_orcAtual.descricao=t[2];
  // Existing editor may have rendered its fields already: update only the safe matching controls.
  for(const [id,value] of [['orc_nome',t[1]],['orc_descricao',t[2]]]){const input=$(id);if(input)input.value=value;}
- alert('Modelo '+t[0]+' carregado. Revê os dados e adiciona artigos antes de guardar.');
+ if(typeof _orcAtualizarDataValidade==='function')_orcAtualizarDataValidade();
 }
 function renderForecast(d){
  const box=mount('secao-dashboard-comercial','crmPlusForecast');if(!box)return;
@@ -115,20 +115,103 @@ function renderForecast(d){
  const max=Math.max(...byMonth.map(x=>x.value),1);
  box.innerHTML='<h3><i class="fas fa-chart-line"></i> Previsões e evolução comercial</h3><div class="crm-plus-grid">'+kpi('Vendas aceites',euros(totalWon))+kpi('Propostas em aberto',euros(pendingValue))+kpi('Taxa de conversão',pwin+'%',won.length+' aceites / '+lost.length+' recusadas')+kpi('Previsão ponderada',euros(d.opps.filter(o=>!['ganho','perdido'].includes(o.estado)).reduce((s,o)=>s+Number(o.valor||0)*(typeof _oportProbabilidade==='function'?_oportProbabilidade(o.estado):25)/100,0)))+'</div><div class="crm-plus-controls" style="align-items:end">'+byMonth.map(x=>`<div style="flex:1;min-width:42px;text-align:center" title="${esc(x.label)}: ${euros(x.value)}"><div style="height:68px;display:flex;align-items:end;justify-content:center"><div style="width:75%;height:${Math.max(2,Math.round(x.value/max*68))}px;border-radius:5px 5px 0 0;background:#2456d8"></div></div><small>${esc(x.label)}</small></div>`).join('')+'</div><p class="crm-plus-note">Previsão ponderada baseada nas probabilidades do pipeline existente; não representa faturação confirmada.</p>';
 }
+
+const goalMonthDefault=()=>new Date().toISOString().slice(0,7);
+let goalMonth=goalMonthDefault();
+function goalKey(){return 'testetg_crm_objectives_v1_'+String(tid()||'none');}
+function goalsLoad(){
+ try {const value=JSON.parse(localStorage.getItem(goalKey())||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}
+ catch {return {};}
+}
+function goalsSave(value){
+ try {localStorage.setItem(goalKey(),JSON.stringify(value));return true;}
+ catch {alert('Não foi possível guardar o objetivo neste navegador.');return false;}
+}
+function monthValue(p){const raw=p.dataModificacao||p.dataCriacao;if(!raw)return '';const d=new Date(raw);return Number.isNaN(d.getTime())?'':d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function renderTeam(d){
- const box=mount('secao-comissoes','crmPlusTeam');if(!box)return;
- if(!manager()){box.innerHTML='<h3>O meu desempenho</h3><div class="crm-plus-grid">'+kpi('Propostas',String(d.proposals.length))+kpi('Aceites',String(d.proposals.filter(p=>p.estado==='aceite').length))+kpi('Vendas',euros(d.proposals.filter(p=>p.estado==='aceite').reduce((s,p)=>s+Number(p.valor||0),0)))+'</div>';return;}
- const people=[...new Set(d.proposals.map(p=>p.responsavelComercial).filter(Boolean))];
- const rows=people.map(id=>{const allp=d.proposals.filter(p=>p.responsavelComercial===id),won=allp.filter(p=>p.estado==='aceite'),lost=allp.filter(p=>p.estado==='recusada');return{id,name:staffName(id),count:allp.length,accepted:won.length,rate:won.length+lost.length?Math.round(100*won.length/(won.length+lost.length)):0,sales:won.reduce((s,p)=>s+Number(p.valor||0),0),planned:won.filter(p=>!p.comissaoPaga).reduce((s,p)=>s+Number(p.valor||0)*Number(p.comissaoPercentagem||0)/100,0),paid:won.filter(p=>p.comissaoPaga).reduce((s,p)=>s+Number(p.valor||0)*Number(p.comissaoPercentagem||0)/100,0)}}).sort((a,b)=>b.sales-a.sales);
- box.innerHTML='<h3><i class="fas fa-users"></i> Desempenho por comercial</h3><div class="table-wrapper scroll"><table><thead><tr><th>Comercial</th><th>Propostas</th><th>Aceites</th><th>Conversão</th><th>Vendas</th><th>Comissão prevista</th><th>Comissão paga</th></tr></thead><tbody>'+rows.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.count}</td><td>${p.accepted}</td><td>${p.rate}%</td><td>${euros(p.sales)}</td><td>${euros(p.planned)}</td><td>${euros(p.paid)}</td></tr>`).join('')+'</tbody></table></div><p class="crm-plus-note">Apenas propostas visíveis ao gestor e comissões já registadas no sistema. Não altera percentagens, pagamentos nem margens.</p>';
+ const box=mount('secao-equipa-comercial','crmPlusTeam');if(!box)return;
+ const sellers=manager()?(typeof _pessoasParaAtribuir==='function'?_pessoasParaAtribuir(tid()):[]):[{id:uid().id,nome:uid().nome||'Eu'}];
+ const stored=goalsLoad();
+ const proposals=d.proposals.filter(p=>monthValue(p)===goalMonth);
+ const people=sellers.filter(p=>p.id).map(person=>{
+  const items=proposals.filter(p=>p.responsavelComercial===person.id),won=items.filter(p=>p.estado==='aceite'),lost=items.filter(p=>p.estado==='recusada');
+  const sales=won.reduce((sum,p)=>sum+Number(p.valor||0),0);
+  const target=Number(stored[goalMonth+':'+person.id]||0);
+  return {...person,count:items.length,accepted:won.length,sales,target,progress:target>0?Math.round(sales/target*100):null,
+   conversion:won.length+lost.length?Math.round(won.length/(won.length+lost.length)*100):0,
+   planned:won.filter(p=>!p.comissaoPaga).reduce((sum,p)=>sum+Number(p.valor||0)*Number(p.comissaoPercentagem||0)/100,0),
+   paid:won.filter(p=>p.comissaoPaga).reduce((sum,p)=>sum+Number(p.valor||0)*Number(p.comissaoPercentagem||0)/100,0)};
+ }).sort((a,b)=>b.sales-a.sales);
+ const available=people.filter(p=>p.id===uid().id||manager());
+ box.innerHTML='<h3><i class="fas fa-bullseye"></i> Objetivos e desempenho comercial</h3>'+
+ '<p class="crm-plus-note">Objetivo mensal de vendas aceites, sem IVA. Comparação com propostas aceites no mês selecionado. Os cálculos de comissões existentes não são alterados.</p>'+
+ '<div class="crm-plus-controls"><label for="crmPlusGoalMonth">Mês</label><input id="crmPlusGoalMonth" type="month" value="'+esc(goalMonth)+'"></div>'+
+ (manager()?'<div class="crm-plus-controls"><label for="crmPlusGoalSeller">Comercial</label><select id="crmPlusGoalSeller">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>').join('')+'</select><label for="crmPlusGoalAmount">Objetivo (€)</label><input id="crmPlusGoalAmount" type="number" min="0" step="0.01" value="0" style="width:140px"><button type="button" class="btn btn-primary btn-sm" data-crmplus-goal-save>Guardar objetivo</button></div>':'')+
+ '<div class="table-wrapper scroll" style="margin-top:16px"><table><thead><tr><th>Comercial</th><th>Objetivo</th><th>Vendas aceites</th><th>Concretização</th><th>Propostas</th><th>Conversão</th><th>Comissão prevista</th><th>Comissão paga</th></tr></thead><tbody>'+
+ available.map(p=>'<tr><td>'+esc(p.nome)+'</td><td>'+ (p.target>0?euros(p.target):'Por definir')+'</td><td>'+euros(p.sales)+'</td><td>'+ (p.progress===null?'—':p.progress+'%')+
+ (p.progress===null?'':'<div style="height:5px;width:100%;max-width:125px;border-radius:5px;background:var(--border);overflow:hidden"><div style="height:100%;width:'+Math.min(p.progress,100)+'%;background:'+(p.progress>=100?'#178a4c':'#2456d8')+'"></div></div>')+
+ '</td><td>'+p.count+'</td><td>'+p.conversion+'%</td><td>'+euros(p.planned)+'</td><td>'+euros(p.paid)+'</td></tr>').join('')+'</tbody></table></div>'+
+ '<p class="crm-plus-note"><strong>Modo de teste:</strong> os objetivos ficam guardados apenas neste navegador, separados por empresa e mês. Não são enviados à base de dados nem sincronizados entre dispositivos. Será necessária uma tabela de testes isolada antes de os disponibilizar à equipa em vários dispositivos.</p>';
+ const sel=$('crmPlusGoalSeller');if(sel){sel.addEventListener('change',syncGoalInput);syncGoalInput();}
+}
+function syncGoalInput(){
+ const sel=$('crmPlusGoalSeller'),amount=$('crmPlusGoalAmount');if(sel&&amount)amount.value=goalsLoad()[goalMonth+':'+sel.value]??0;
+}
+function saveGoal(){
+ if(!manager())return;
+ const person=$('crmPlusGoalSeller')?.value,raw=$('crmPlusGoalAmount')?.value;
+ if(!person||raw===''||!Number.isFinite(Number(raw))||Number(raw)<0){alert('Seleciona um comercial e indica um objetivo válido.');return;}
+ const available=(typeof _pessoasParaAtribuir==='function'?_pessoasParaAtribuir(tid()):[]);
+ if(!available.some(p=>String(p.id)===String(person))){alert('Sem permissão para atribuir objetivo a esse comercial.');return;}
+ const goals=goalsLoad();if(Number(raw)===0)delete goals[goalMonth+':'+person];else goals[goalMonth+':'+person]=Number(raw);
+ if(goalsSave(goals))render();
 }
 function render(){const d=all();if(!d||!$('crmApp')||getComputedStyle($('crmApp')).display==='none')return;renderClient(d);renderFollowup(d);renderTemplates();renderForecast(d);renderTeam(d);}
-document.addEventListener('change',e=>{if(e.target.id==='crmPlusClientSelect')render();});
+document.addEventListener('change',e=>{if(e.target.id==='crmPlusClientSelect')render();if(e.target.id==='crmPlusGoalMonth'){goalMonth=e.target.value||goalMonthDefault();render();}});
 document.addEventListener('click',e=>{
+ if(e.target.closest('[data-crmplus-goal-save]')){e.preventDefault();return saveGoal();}
  const follow=e.target.closest('[data-crmplus-follow]');if(follow){follow.preventDefault();return window.TGCRMPlus.follow(follow.dataset.crmplusFollow);}
  const button=e.target.closest('[data-crmplus-template]');if(button){button.preventDefault();return window.TGCRMPlus.template(Number(button.dataset.crmplusTemplate));}
 });
-function boot(){document.head.append(style);if(typeof renderizarTudo==='function'){const orig=renderizarTudo;renderizarTudo=function(...args){const result=orig.apply(this,args);render();return result;};}render();}
+
+const menus=[
+ ['clientes-crm','Ficha do Cliente','fa-address-card','leads'],
+ ['acompanhamento','Seguimento','fa-phone-volume','propostas'],
+ ['modelos','Modelos rápidos','fa-layer-group','propostas'],
+ ['equipa-comercial','Equipa e objetivos','fa-bullseye','comissoes']
+];
+function installSections(){
+ const menu=document.querySelector('.crm-nav'),body=document.querySelector('#crmApp .crm-body');
+ if(!menu||!body)return;
+ for(const [key,label,icon,after] of menus){
+  if(!$('secao-'+key)){const panel=document.createElement('div');panel.className='secao-crm';panel.id='secao-'+key;body.appendChild(panel);}
+  if(!menu.querySelector('[data-tab="'+key+'"]')){
+   const node=document.createElement('div');node.className='crm-nav-item';node.dataset.tab=key;
+   node.innerHTML='<i class="fas '+icon+'"></i><span>'+label+'</span>';
+   node.addEventListener('click',()=>mudarTabCRM(key));
+   const anchor=menu.querySelector('[data-tab="'+after+'"]');
+   if(anchor)anchor.after(node);else menu.append(node);
+  }
+ }
+}
+function installRouter(){
+ if(typeof mudarTabCRM!=='function')return;
+ const original=mudarTabCRM;
+ window.mudarTabCRM=function(name){
+  if(!menus.some(item=>item[0]===name))return original(name);
+  if(typeof _crmFecharMenu==='function')_crmFecharMenu();
+  document.querySelectorAll('.secao-crm').forEach(el=>el.classList.remove('ativa'));
+  document.querySelectorAll('.crm-nav-item').forEach(el=>el.classList.remove('ativo'));
+  $('secao-'+name)?.classList.add('ativa');
+  document.querySelector('.crm-nav-item[data-tab="'+name+'"]')?.classList.add('ativo');
+  const def=menus.find(item=>item[0]===name);
+  if($('crmTopTitulo'))$('crmTopTitulo').textContent=def[1];
+  if($('crmTopIcon'))$('crmTopIcon').innerHTML='<i class="fas '+def[2]+'"></i>';
+  if($('crmTopAcoes'))$('crmTopAcoes').innerHTML='<a href="index.html" class="btn btn-sm btn-voltar-tg"><i class="fas fa-arrow-left"></i> <span>Voltar ao Total Gest</span></a>';
+  render();
+ };
+}
+function boot(){document.head.append(style);installSections();installRouter();if(typeof renderizarTudo==='function'){const orig=renderizarTudo;renderizarTudo=function(...args){const result=orig.apply(this,args);render();return result;};}render();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.TGCRMPlus={render,follow,template:startTemplate};
 })();

@@ -8,8 +8,9 @@ function setup({role = 'admin', request} = {}) {
  const w = new JSDOM('<div id="secao-clientes-crm"></div>', {url:'https://example.test/',runScripts:'outside-only'}).window;
  w.usuarioLogado = role === 'admin' ? {id:'tenant',role} : {id:'seller',adminId:'tenant',role};
  const clients = [{id:'a',adminId:'tenant',nome:'Águia & Filhos',numeroCliente:'100',nif:'123456789'},{id:'b',adminId:'tenant',nome:'Beta',numeroCliente:'200'},{id:'x',adminId:'other',nome:'Outro tenant'}];
- const d = {clients,leads:[],opps:[],proposals:[]};
+ const d = {clients,leads:[],opps:[],proposals:[],people:[]};
  const fixtures = {
+  leads:[], oportunidades:[], visitas:[{id:'v',admin_id:'tenant',cliente_id:'a',nome:'Visita comercial',data:'2026-11-04',estado:'concluida'}],
   propostas:[{id:'p',admin_id:'tenant',cliente_id:'a',numero:'PROP-1',nome:'CCTV <teste>',estado:'aceite',valor:150,data_criacao:'2026-11-01'}],
   locais:[{id:'l',admin_id:'tenant',cliente_id:'a',nome:'Loja',morada:'Rua A'}],
   contratos:[{id:'c',admin_id:'tenant',cliente_id:'a',numero:'CT-1',tipo:'Manutenção',periodicidade:'anual'}],
@@ -19,7 +20,7 @@ function setup({role = 'admin', request} = {}) {
  const calls = [];
  w.supa = {from(table) {
   const call = {table,filters:{},range:[]}; calls.push(call);
-  const query = {select(fields){call.fields=fields;return query;},eq(k,v){call.filters[k]=v;return query;},order(){return query;},range(from,to){call.range=[from,to];return query;},then(resolve,reject){return Promise.resolve().then(()=>request ? request(call,fixtures) : {data:(fixtures[table]||[]).filter(r=>Object.entries(call.filters).every(([key,value])=>r[key]===value)).slice(call.range[0],call.range[1]+1),error:null}).then(resolve,reject);}};
+  const query = {select(fields){call.fields=fields;return query;},eq(k,v){call.filters[k]=v;return query;},in(k,v){call.filters[k]=v;return query;},order(){return query;},range(from,to){call.range=[from,to];return query;},then(resolve,reject){return Promise.resolve().then(()=>request ? request(call,fixtures) : {data:(fixtures[table]||[]).filter(r=>Object.entries(call.filters).every(([key,value])=>(Array.isArray(value)?value.includes(r[key]):r[key]===value))).slice(call.range[0],call.range[1]+1),error:null}).then(resolve,reject);}};
   return query;
  }};
  w._tgModuleAssertAccess = () => {};
@@ -32,20 +33,20 @@ function count(w,kind) {return w.document.querySelector('[data-crmclient-kind="'
 test('requires explicit selection, with no default customer, counters or read requests',()=>{
  const {w,calls}=setup();try{assert.equal(w.document.getElementById('crmPlusClientSelect').value,'');assert.equal(w.document.querySelectorAll('[data-crmclient-kind]').length,0);assert.match(w.document.body.textContent,/Começa por selecionar/);assert.equal(calls.length,0);assert(!w.document.body.textContent.includes('Outro tenant'));}finally{w.close();}
 });
-test('selection loads five exact separate counts, changes history by category and clears cleanly',async()=>{
+test('selection loads six exact separate counts, changes history by category and clears cleanly',async()=>{
  const {w,d,calls,select}=setup();try{
  const before=JSON.stringify(d);await select('a');
- for(const kind of ['propostas','instalacoes','contratos','os','assistencias']) assert.equal(count(w,kind),'1');
- assert.equal(w.document.querySelectorAll('[role=tab]').length,5);
+ for(const kind of ['propostas','visitas','instalacoes','contratos','os','assistencias']) assert.equal(count(w,kind),'1');
+ assert.equal(w.document.querySelectorAll('[role=tab]').length,6);
  assert.match(w.document.getElementById('crmClientHistory').textContent,/PROP-1/);
  assert(!w.document.getElementById('crmClientHistory').textContent.includes('OS-1'));
  assert(!w.document.querySelector('#crmClientHistory teste'));
  w.document.querySelector('[data-crmclient-kind=os]').click();
  assert.match(w.document.getElementById('crmClientHistory').textContent,/OS-1/);
  assert(!w.document.getElementById('crmClientHistory').textContent.includes('PROP-1'));
- assert(calls.every(c=>c.filters.admin_id==='tenant'&&c.filters.cliente_id==='a'));
+ assert(calls.every(c=>c.filters.admin_id==='tenant'&&(c.filters.cliente_id==='a'||c.filters.cliente_convertido_id==='a')));
  assert.equal(JSON.stringify(d),before);
- await select('b');for(const kind of ['propostas','instalacoes','contratos','os','assistencias'])assert.equal(count(w,kind),'0');
+ await select('b');for(const kind of ['propostas','visitas','instalacoes','contratos','os','assistencias'])assert.equal(count(w,kind),'0');
  await select('');assert.equal(w.document.querySelectorAll('[role=tab]').length,0);
  }finally{w.close();}
 });
@@ -72,20 +73,20 @@ test('late responses cannot mix clients or survive an account change',async()=>{
 });
 test('seller sees associated clients and own proposals only, without reading operational tables',async()=>{
  const {w,d,calls,fixtures,select}=setup({role:'vendedor'});
- try{d.leads=[{clienteConvertidoId:'a',responsavelComercial:'seller'}];w.TGCRMClientSummary.render(d);assert.equal(w.document.querySelectorAll('#crmPlusClientSelect option').length,2);fixtures.propostas[0].responsavel_comercial='seller';await select('a');assert.equal(count(w,'propostas'),'1');assert.equal(count(w,'os'),'—');assert(calls.every(c=>c.table==='propostas'&&c.filters.responsavel_comercial==='seller'));w.document.querySelector('[data-crmclient-kind=os]').click();assert.match(w.document.getElementById('crmClientHistory').textContent,/não permite/);}finally{w.close();}
+ try{d.leads=[{clienteConvertidoId:'a',responsavelComercial:'seller'}];w.TGCRMClientSummary.render(d);assert.equal(w.document.querySelectorAll('#crmPlusClientSelect option').length,2);fixtures.propostas[0].responsavel_comercial='seller';await select('a');assert.equal(count(w,'propostas'),'1');assert.equal(count(w,'os'),'—');assert(calls.every(c=>['propostas','visitas','leads','oportunidades'].includes(c.table)));assert(calls.every(c=>c.filters[{propostas:'responsavel_comercial',visitas:'responsavel_id',leads:'responsavel_comercial',oportunidades:'responsavel'}[c.table]]==='seller'));w.document.querySelector('[data-crmclient-kind=os]').click();assert.match(w.document.getElementById('crmClientHistory').textContent,/não permite/);}finally{w.close();}
 });
 test('search finds clients by number and accent-free name, filters records, and keyboard switches category',async()=>{
  const {w,select}=setup();try{
  const search=w.document.getElementById('crmClientSearch');search.value='aguia';search.dispatchEvent(new w.Event('input',{bubbles:true}));assert.equal(w.document.querySelectorAll('#crmPlusClientSelect option').length,2);await select('a');
  const filter=w.document.getElementById('crmClientRecordSearch');filter.value='nothing';filter.dispatchEvent(new w.Event('input',{bubbles:true}));assert.match(w.document.getElementById('crmClientHistory').textContent,/Sem resultados/);assert.equal(count(w,'propostas'),'1');
- w.document.getElementById('crmClientTab-propostas').dispatchEvent(new w.KeyboardEvent('keydown',{bubbles:true,key:'ArrowRight'}));assert.equal(w.document.querySelector('[role=tab][aria-selected=true]').dataset.crmclientKind,'instalacoes');assert.match(w.document.getElementById('crmClientHistory').textContent,/Loja/);
+ w.document.getElementById('crmClientTab-propostas').dispatchEvent(new w.KeyboardEvent('keydown',{bubbles:true,key:'ArrowRight'}));assert.equal(w.document.querySelector('[role=tab][aria-selected=true]').dataset.crmclientKind,'visitas');assert.match(w.document.getElementById('crmClientHistory').textContent,/Visita comercial/);
  }finally{w.close();}
 });
 test('entry pages load the same summary before CRM Plus and cache all versioned assets',()=>{
  const sw=fs.readFileSync('sw.js','utf8');
  for(const file of ['TOTALGEST_CRM.html','TOTALGEST CRM.html']){
  const html=fs.readFileSync(file,'utf8');assert(html.indexOf('tg-crm-client-summary-test.js')<html.indexOf('tg-crm-plus-test.js'));
- for(const asset of ['tg-crm-client-summary-test.js?v=1.0.0','tg-crm-client-summary-test.css?v=1.0.0','tg-crm-plus-test.js?v=3.1.0-client-summary']){assert(html.includes(asset));assert(sw.includes(asset));}
+ for(const asset of ['tg-crm-client-summary-test.js?v=1.1.0-visits-seller','tg-crm-client-summary-test.css?v=1.1.0-visits-seller','tg-crm-plus-test.js?v=3.2.0-visits-seller']){assert(html.includes(asset));assert(sw.includes(asset));}
  }
 });
 test('both real CRM pages mount the customer screen through the existing menu without a preselected customer',()=>{
@@ -107,4 +108,60 @@ test('both real CRM pages mount the customer screen through the existing menu wi
    assert.equal(w.document.getElementById('crmTopTitulo').textContent,'Ficha do Cliente');
   } finally {w.close();}
  }
+});
+test('visits and proposals linked through converted leads or opportunities are included once; other customers are excluded',async()=>{
+ const {w,d,fixtures,select,calls}=setup();try{
+ d.people=[{id:'seller1',adminId:'tenant',nome:'José Comercial'}];
+ fixtures.leads=[{id:'lead1',admin_id:'tenant',cliente_convertido_id:'a',responsavel_comercial:'seller1'}];
+ fixtures.oportunidades=[{id:'opp1',admin_id:'tenant',cliente_id:'a',responsavel:'seller1'}];
+ fixtures.propostas=[
+ {id:'p1',admin_id:'tenant',cliente_id:'a',lead_id:'lead1',oportunidade_id:'opp1',numero:'PROP-DIRECT'},
+ {id:'p2',admin_id:'tenant',cliente_id:null,lead_id:'lead1',numero:'PROP-LEAD'},
+ {id:'p3',admin_id:'tenant',cliente_id:null,oportunidade_id:'opp1',numero:'PROP-OPP'},
+ {id:'p-other',admin_id:'tenant',cliente_id:'b',lead_id:'lead1',numero:'NOT-THIS-CUSTOMER'},
+ {id:'foreign',admin_id:'other',cliente_id:'a',lead_id:'lead1',numero:'FOREIGN-TENANT'}];
+ fixtures.visitas=[
+ {id:'v1',admin_id:'tenant',cliente_id:'a',lead_id:'lead1',nome:'Visita direta',data:'2026-11-06',estado:'concluida'},
+ {id:'v2',admin_id:'tenant',cliente_id:null,lead_id:'lead1',nome:'Visita da lead',data:'2026-11-10',estado:'planeada'},
+ {id:'other-v',admin_id:'tenant',cliente_id:'b',lead_id:'lead1',nome:'Outro cliente'},
+ {id:'foreign-v',admin_id:'other',cliente_id:'a',lead_id:'lead1',nome:'Outro tenant'}];
+ await select('a');await tick();await tick();
+ assert.equal(count(w,'propostas'),'3');assert.equal(count(w,'visitas'),'2');
+ assert.equal(w.document.querySelector('[data-crmclient-seller]').textContent.trim(),'Vendedor atribuído: José Comercial');
+ assert(!w.document.getElementById('crmClientHistory').textContent.includes('NOT-THIS-CUSTOMER'));
+ w.document.getElementById('crmClientTab-visitas').click();const text=w.document.getElementById('crmClientHistory').textContent;
+ assert(text.includes('Visita direta'));assert(text.includes('Visita da lead'));assert(text.includes('concluida'));assert(text.includes('planeada'));assert(!text.includes('Outro cliente'));
+ assert(calls.some(c=>c.filters.lead_id?.includes('lead1')));assert(calls.some(c=>c.filters.oportunidade_id?.includes('opp1')));
+ }finally{w.close();}
+});
+test('seller assignment lists all linked assignees safely, does not invent an owner, and distinguishes proposal-only sellers',async()=>{
+ const {w,d,fixtures,select}=setup();try{
+ d.people=[{id:'s1',adminId:'tenant',nome:'Ana <Comercial>'},{id:'s2',adminId:'tenant',nome:'Bruno'},{id:'other',adminId:'other',nome:'Externo'}];
+ await select('a');assert.match(w.document.querySelector('[data-crmclient-seller]').textContent,/Sem vendedor atribuído/);
+ fixtures.propostas[0].responsavel_comercial='s2';await select('a');assert.match(w.document.querySelector('[data-crmclient-seller]').textContent,/Vendedor da proposta: Bruno/);
+ fixtures.leads=[{id:'lead',admin_id:'tenant',cliente_convertido_id:'a',responsavel_comercial:'s1'}];
+ fixtures.oportunidades=[{id:'opp',admin_id:'tenant',cliente_id:'a',responsavel:'s2'},{id:'foreign-opp',admin_id:'other',cliente_id:'a',responsavel:'other'}];
+ await select('a');await tick();assert.match(w.document.querySelector('[data-crmclient-seller]').textContent,/Vendedores atribuídos: Ana <Comercial> · Bruno/);
+ assert.equal(w.document.querySelector('[data-crmclient-seller] Comercial'),null);assert(!w.document.querySelector('[data-crmclient-seller]').textContent.includes('Externo'));
+ }finally{w.close();}
+});
+test('seller visits and linked records preserve responsibility filters, and failed associations are unavailable rather than a false zero',async()=>{
+ const {w,d,fixtures,calls,select}=setup({role:'vendedor'});try{
+ d.leads=[{id:'lead',clienteConvertidoId:'a',responsavelComercial:'seller'}];
+ fixtures.leads=[{id:'lead',admin_id:'tenant',cliente_convertido_id:'a',responsavel_comercial:'seller'}];
+ fixtures.visitas=[{id:'mine',admin_id:'tenant',cliente_id:null,lead_id:'lead',responsavel_id:'seller',nome:'Minha visita'},{id:'not-mine',admin_id:'tenant',cliente_id:'a',responsavel_id:'other',nome:'Outra visita'}];
+ w.TGCRMClientSummary.render(d);await select('a');await tick();assert.equal(count(w,'visitas'),'1');w.document.getElementById('crmClientTab-visitas').click();assert.match(w.document.getElementById('crmClientHistory').textContent,/Minha visita/);assert(!w.document.getElementById('crmClientHistory').textContent.includes('Outra visita'));
+ assert(calls.filter(c=>c.table==='visitas').every(c=>c.filters.responsavel_id==='seller'));
+ }finally{w.close();}
+ const broken=setup({request:call=>({data:[],error:call.table==='leads'?{message:'offline'}:null})});
+ try{await broken.select('a');assert.equal(count(broken.w,'propostas'),'!');assert.equal(count(broken.w,'visitas'),'!');assert.match(broken.w.document.querySelector('[data-crmclient-seller]').textContent,/indisponível/);}finally{broken.w.close();}
+});
+test('visits attached to the originating lead of a customer opportunity are included even before conversion',async()=>{
+ const {w,d,fixtures,select}=setup();try{
+ d.people=[{id:'s1',adminId:'tenant',nome:'Ana'}];
+ fixtures.leads=[{id:'origin',admin_id:'tenant',cliente_convertido_id:null,responsavel_comercial:'s1'}];
+ fixtures.oportunidades=[{id:'opp',admin_id:'tenant',cliente_id:'a',lead_id:'origin',responsavel:'s1'}];
+ fixtures.visitas=[{id:'v',admin_id:'tenant',cliente_id:null,lead_id:'origin',nome:'Primeira visita',estado:'concluida'}];
+ await select('a');await tick();await tick();assert.equal(count(w,'visitas'),'1');assert.match(w.document.querySelector('[data-crmclient-seller]').textContent,/Vendedor atribuído: Ana/);
+ }finally{w.close();}
 });

@@ -21,7 +21,7 @@ const staffName=id=>(source()?.funcionarios||[]).concat(source()?.encarregados||
 const proposalOpen=p=>!['aceite','recusada','expirada'].includes(p.estado);
 function all(){
  const d=source();if(!d||!uid()||!tid())return null;
- return {clients:own(d.clientes||[]),leads:visible(own(d.leads||[]),'responsavelComercial'),opps:visible(own(d.oportunidades||[]),'responsavel'),proposals:visible(own(d.propostas||[]),'responsavelComercial'),activities:visible(own(d.atividadesComerciais||[]),'responsavel'),orders:manager()?own(d.encomendas||[]):[],works:manager()?own(d.obras||[]):[],os:manager()?own(d.servicos||[]):[]};
+ return {people:[...own(d.funcionarios||[]),...own(d.encarregados||[]),...(d.administradores||[]).filter(a=>a.id===tid())],clients:own(d.clientes||[]),leads:visible(own(d.leads||[]),'responsavelComercial'),opps:visible(own(d.oportunidades||[]),'responsavel'),proposals:visible(own(d.propostas||[]),'responsavelComercial'),activities:visible(own(d.atividadesComerciais||[]),'responsavel'),orders:manager()?own(d.encomendas||[]):[],works:manager()?own(d.obras||[]):[],os:manager()?own(d.servicos||[]):[]};
 }
 const style=document.createElement('style');
 style.textContent=`

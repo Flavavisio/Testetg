@@ -200,7 +200,7 @@ function installRouter(){
  if(typeof mudarTabCRM!=='function')return;
  const original=mudarTabCRM;
  window.mudarTabCRM=function(name){
-  if(!menus.some(item=>item[0]===name))return original(name);
+  if(name==='oportunidades'||!menus.some(item=>item[0]===name))return original(name);
   if(typeof _crmFecharMenu==='function')_crmFecharMenu();
   document.querySelectorAll('.secao-crm').forEach(el=>el.classList.remove('ativa'));
   document.querySelectorAll('.crm-nav-item').forEach(el=>el.classList.remove('ativo'));

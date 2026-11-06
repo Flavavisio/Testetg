@@ -10,6 +10,7 @@ const now=()=>Date.now();
 const uid=()=>typeof usuarioLogado!=='undefined'?usuarioLogado:null;
 const tid=()=>uid()?.adminId||uid()?.id;
 const manager=()=>['admin','subadmin','superadmin'].includes(uid()?.role);
+const canSetGoal=()=>['admin','superadmin'].includes(uid()?.role);
 const source=()=>typeof dados==='undefined'?null:dados;
 const own=(rows)=>rows.filter(r=>r.adminId===tid());
 const visible=(rows,field)=>manager()?rows:rows.filter(r=>r[field]===uid()?.id);
@@ -20,7 +21,7 @@ const staffName=id=>(source()?.funcionarios||[]).concat(source()?.encarregados||
 const proposalOpen=p=>!['aceite','recusada','expirada'].includes(p.estado);
 function all(){
  const d=source();if(!d||!uid()||!tid())return null;
- return {clients:own(d.clientes||[]),leads:visible(own(d.leads||[]),'responsavelComercial'),opps:visible(own(d.oportunidades||[]),'responsavel'),proposals:visible(own(d.propostas||[]),'responsavelComercial'),activities:visible(own(d.atividadesComerciais||[]),'responsavel'),orders:own(d.encomendas||[]),works:own(d.obras||[]),os:own(d.servicos||[])};
+ return {clients:own(d.clientes||[]),leads:visible(own(d.leads||[]),'responsavelComercial'),opps:visible(own(d.oportunidades||[]),'responsavel'),proposals:visible(own(d.propostas||[]),'responsavelComercial'),activities:visible(own(d.atividadesComerciais||[]),'responsavel'),orders:manager()?own(d.encomendas||[]):[],works:manager()?own(d.obras||[]):[],os:manager()?own(d.servicos||[]):[]};
 }
 const style=document.createElement('style');
 style.textContent=`
@@ -146,7 +147,7 @@ function renderTeam(d){
  box.innerHTML='<h3><i class="fas fa-bullseye"></i> Objetivos e desempenho comercial</h3>'+
  '<p class="crm-plus-note">Objetivo mensal de vendas aceites, sem IVA. Comparação com propostas aceites no mês selecionado. Os cálculos de comissões existentes não são alterados.</p>'+
  '<div class="crm-plus-controls"><label for="crmPlusGoalMonth">Mês</label><input id="crmPlusGoalMonth" type="month" value="'+esc(goalMonth)+'"></div>'+
- (manager()?'<div class="crm-plus-controls"><label for="crmPlusGoalSeller">Comercial</label><select id="crmPlusGoalSeller">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>').join('')+'</select><label for="crmPlusGoalAmount">Objetivo (€)</label><input id="crmPlusGoalAmount" type="number" min="0" step="0.01" value="0" style="width:140px"><button type="button" class="btn btn-primary btn-sm" data-crmplus-goal-save>Guardar objetivo</button></div>':'')+
+ (canSetGoal()?'<div class="crm-plus-controls"><label for="crmPlusGoalSeller">Comercial</label><select id="crmPlusGoalSeller">'+people.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome)+'</option>').join('')+'</select><label for="crmPlusGoalAmount">Objetivo (€)</label><input id="crmPlusGoalAmount" type="number" min="0" step="0.01" value="0" style="width:140px"><button type="button" class="btn btn-primary btn-sm" data-crmplus-goal-save>Guardar objetivo</button></div>':'')+
  '<div class="table-wrapper scroll" style="margin-top:16px"><table><thead><tr><th>Comercial</th><th>Objetivo</th><th>Vendas aceites</th><th>Concretização</th><th>Propostas</th><th>Conversão</th><th>Comissão prevista</th><th>Comissão paga</th></tr></thead><tbody>'+
  available.map(p=>'<tr><td>'+esc(p.nome)+'</td><td>'+ (p.target>0?euros(p.target):'Por definir')+'</td><td>'+euros(p.sales)+'</td><td>'+ (p.progress===null?'—':p.progress+'%')+
  (p.progress===null?'':'<div style="height:5px;width:100%;max-width:125px;border-radius:5px;background:var(--border);overflow:hidden"><div style="height:100%;width:'+Math.min(p.progress,100)+'%;background:'+(p.progress>=100?'#178a4c':'#2456d8')+'"></div></div>')+
@@ -158,7 +159,7 @@ function syncGoalInput(){
  const sel=$('crmPlusGoalSeller'),amount=$('crmPlusGoalAmount');if(sel&&amount)amount.value=goalsLoad()[goalMonth+':'+sel.value]??0;
 }
 function saveGoal(){
- if(!manager())return;
+ if(!canSetGoal())return;
  const person=$('crmPlusGoalSeller')?.value,raw=$('crmPlusGoalAmount')?.value;
  if(!person||raw===''||!Number.isFinite(Number(raw))||Number(raw)<0){alert('Seleciona um comercial e indica um objetivo válido.');return;}
  const available=(typeof _pessoasParaAtribuir==='function'?_pessoasParaAtribuir(tid()):[]);
@@ -176,6 +177,7 @@ document.addEventListener('click',e=>{
 
 const menus=[
  ['clientes-crm','Ficha do Cliente','fa-address-card','leads'],
+ ['oportunidades','Oportunidades','fa-bullseye','clientes-crm'],
  ['acompanhamento','Seguimento','fa-phone-volume','propostas'],
  ['modelos','Modelos rápidos','fa-layer-group','propostas'],
  ['equipa-comercial','Equipa e objetivos','fa-bullseye','comissoes']

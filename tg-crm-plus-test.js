@@ -13,7 +13,7 @@ const manager=()=>['admin','subadmin','superadmin'].includes(uid()?.role);
 const source=()=>typeof dados==='undefined'?null:dados;
 const own=(rows)=>rows.filter(r=>r.adminId===tid());
 const visible=(rows,field)=>manager()?rows:rows.filter(r=>r[field]===uid()?.id);
-const days=v=>v?Math.floor((now()-Number(v))/(24*60*60*1000)):0;
+const days=v=>{if(!v)return 0;const stamp=typeof v==='number'?v:Date.parse(String(v));return Number.isFinite(stamp)?Math.max(0,Math.floor((now()-stamp)/(24*60*60*1000))):0;};
 const first=(...xs)=>xs.find(v=>v!==null&&v!==undefined&&String(v).trim())||'';
 const clientName=id=>own(source()?.clientes||[]).find(c=>c.id===id)?.nome||'Sem cliente associado';
 const staffName=id=>(source()?.funcionarios||[]).concat(source()?.encarregados||[],source()?.administradores||[]).find(u=>u.id===id)?.nome||'Sem responsável';

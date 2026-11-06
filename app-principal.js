@@ -15016,7 +15016,7 @@ function _assistEstado(value) {
             const totalGeralOL = lista.length;
             if (isAdminView && _obrasLongaEstadoFiltro !== 'todas') lista = lista.filter(o => _obrasLongaGrupoEstado(o) === _obrasLongaEstadoFiltro);
             lista = _aplicarFiltroOrdenacao('obraslonga', lista,
-                ['nome', o => obterNomeCliente(o.clienteId), o => o.responsavelId ? obterNomeFuncionario(o.responsavelId) : ''],
+                ['nome', o => obterNomeCliente(o.clienteId), o => _obraParticipantesIds(o).map(obterNomeFuncionario).join(' ')],
                 {
                     dataCriacao: (a, b) => (new Date(a.dataCriacao || 0).getTime() || 0) - (new Date(b.dataCriacao || 0).getTime() || 0),
                     nome: (a, b) => (a.nome || '').localeCompare(b.nome || ''),
@@ -15056,8 +15056,37 @@ function _assistEstado(value) {
             abrirModal('obra', id);
             if (!id) setTimeout(() => { const cb = document.getElementById('ob_longa_duracao'); if (cb) cb.checked = true; }, 60);
         }
+        function _obraIdsAtribuidos(obra) {
+            return [...new Set([...(obra?.responsaveisIds || []), obra?.responsavelId].filter(Boolean))];
+        }
+        function _obraAtribuidosHtml(obra) {
+            const adminId = _tenantArmazem();
+            const ids = _obraIdsAtribuidos(obra);
+            const pessoas = [
+                ...(dados.administradores || []).filter(a => a.id === adminId),
+                ...(dados.funcionarios || []).filter(p => p.adminId === adminId && p.role !== 'admin'),
+                ...(dados.encarregados || []).filter(p => p.adminId === adminId)
+            ].filter((p, i, lista) => lista.findIndex(x => x.id === p.id) === i && (!p.suspenso || ids.includes(p.id)));
+            // Mantém atribuições antigas ao editar, mesmo que a pessoa já não esteja na lista.
+            ids.filter(id => !pessoas.some(p => p.id === id)).forEach(id => pessoas.push({ id }));
+            return pessoas.map(p => `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;"><input type="checkbox" class="ob-func-check" value="${escapeHtmlSimples(p.id)}" onchange="_obAtualizarResponsavelFolha()" ${ids.includes(p.id) ? 'checked' : ''} style="width:auto;" /> ${obterNomeFuncionario(p.id)}</label>`).join('');
+        }
+        function _obraParticipantesIds(obra) {
+            // Apenas apresentação: não transforma participantes de OS/folhas em responsáveis
+            // nem altera as atribuições, as permissões ou os registos históricos da obra.
+            const ids = _obraIdsAtribuidos(obra);
+            const daEmpresa = r => r.adminId === obra.adminId;
+            const servicos = (dados.servicos || []).filter(s => s.obraId === obra.id && daEmpresa(s));
+            const osIds = new Set(servicos.map(s => s.id));
+            servicos.forEach(s => ids.push(...(s.funcionariosIds || []), s.funcionarioId));
+            (dados.folhasObra || []).filter(f => daEmpresa(f) && (f.obraId === obra.id || osIds.has(f.servicoId))).forEach(f => ids.push(f.funcionarioId));
+            (dados.obraPontoLonga || []).filter(p => daEmpresa(p) && p.obraId === obra.id && p.entrada).forEach(p => ids.push(p.funcionarioId));
+            (dados.ponto || []).filter(p => daEmpresa(p) && osIds.has(p.servicoId) && p.entrada).forEach(p => ids.push(p.funcionarioId));
+            return [...new Set(ids.filter(Boolean))];
+        }
         function _nomesAtribuidosObraColorido(o) {
-            const ids = (o.responsaveisIds && o.responsaveisIds.length) ? o.responsaveisIds : [o.responsavelId].filter(Boolean);
+            const ids = _obraParticipantesIds(o);
+            const atribuidos = _obraIdsAtribuidos(o);
             if (!ids.length) return 'Sem responsável';
             const hoje = getDataHoje();
             return ids.map(id => {
@@ -15066,7 +15095,7 @@ function _assistEstado(value) {
                 if (registos.some(p => p.entrada && !p.saida)) cor = '#0ea5e9';
                 else if (registos.length) cor = '#f97316';
                 const negrito = cor === '#0ea5e9' ? '800' : '600';
-                return `<span style="color:${cor};font-weight:${negrito};">${obterNomeFuncionario(id)}</span>`;
+                return `<span${atribuidos.includes(id) ? '' : ' title="Associado a uma OS ou registo desta obra"'} style="color:${cor};font-weight:${negrito};">${obterNomeFuncionario(id)}</span>`;
             }).join(', ');
         }
         // ============================================================
@@ -26238,15 +26267,12 @@ async function salvarAdmin(e) {
                                 <div class="help-text">Obras que podem demorar meses/anos. Ativa picagem de entrada/saída na obra, folha de obra obrigatória ao terminar o dia, e aparece em "Gestão de Obras".</div>
                             </div>
                             <div class="form-group ff-span2">
-                                <label>Funcionários atribuídos à obra</label>
+                                <label>Pessoas atribuídas à obra</label>
                                 <div style="max-height:150px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:8px;">
                                     <label style="display:flex;align-items:center;gap:8px;padding:4px 0 8px;border-bottom:1px solid #f1f5f9;margin-bottom:4px;cursor:pointer;font-weight:700;">
                                         <input type="checkbox" id="ob_todos" onchange="document.querySelectorAll('.ob-func-check').forEach(c=>c.checked=this.checked);_obAtualizarResponsavelFolha();" style="width:auto;" /> Selecionar todos
                                     </label>
-                                    ${[...(dados.funcionarios||[]).filter(f=>f.adminId===usuarioLogado.id && f.role!=='admin' && !f.suspenso), ...(dados.encarregados||[]).filter(e=>e.adminId===usuarioLogado.id && !e.suspenso)].map(p => {
-                                        const idsAtuais = (item?.responsaveisIds?.length ? item.responsaveisIds : (item?.responsavelId ? [item.responsavelId] : []));
-                                        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;"><input type="checkbox" class="ob-func-check" value="${p.id}" onchange="_obAtualizarResponsavelFolha()" ${idsAtuais.includes(p.id) ? 'checked' : ''} style="width:auto;" /> ${p.nome}</label>`;
-                                    }).join('')}
+                                    ${_obraAtribuidosHtml(item)}
                                 </div>
                                 <div class="help-text">Podes escolher mais que uma pessoa — cada uma pica a sua própria entrada/saída.</div>
                             </div>
@@ -28574,8 +28600,7 @@ async function salvarAdmin(e) {
             const idsAtribuidos = [...document.querySelectorAll('.ob-func-check:checked')].map(c => c.value);
             const chkTodos = document.getElementById('ob_todos');
             if (chkTodos) { const total = document.querySelectorAll('.ob-func-check').length; chkTodos.checked = total > 0 && idsAtribuidos.length === total; }
-            if (idsAtribuidos.length <= 1) { cont.style.display = 'none'; return; }
-            cont.style.display = 'block';
+            cont.style.display = idsAtribuidos.length > 1 ? 'block' : 'none';
             const valorAtual = sel.value || window._obRelatorioRespInicial || '';
             sel.innerHTML = idsAtribuidos.map(id => `<option value="${id}" ${valorAtual === id ? 'selected' : ''}>${obterNomeFuncionario(id)}</option>`).join('');
             window._obRelatorioRespInicial = '';

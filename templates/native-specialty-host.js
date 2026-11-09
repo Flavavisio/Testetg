@@ -81,7 +81,13 @@
   if(!manager&&os.relatorioResponsavelId&&os.relatorioResponsavelId!==user.id&&!team.includes(os.relatorioResponsavelId))return null;
   const customer=(data.clientes||[]).find(c=>c.id===os.clienteId&&c.adminId===tenant),local=os.localId?(data.locais||[]).find(l=>l.id===os.localId&&l.adminId===tenant&&l.clienteId===os.clienteId):null;
   if(!customer||(os.localId&&!local))return null;
-  return {tenant,admin,os,customer,local,canSign:manager||user.role==='encarregado'||person?.podeAssinarRelatorios!==false};
+  const designated=config.scie ? os.relatorioResponsavelId : null;
+  const signerName=designated&&designated!==user.id
+   ? [...(data.funcionarios||[]),...(data.encarregados||[]),admin]
+      .find(p=>p.id===designated&&(p.adminId===tenant||p.id===tenant))?.nome||''
+   : user.nome||'';
+  const canSign=(!designated||designated===user.id)&&(manager||user.role==='encarregado'||person?.podeAssinarRelatorios!==false);
+  return {tenant,admin,os,customer,local,canSign,signerName};
  }
  const guard=(osId,type)=>scope(dados,actor(),osId,type,typeof _licencaValidaTenant==='function'&&_licencaValidaTenant());
  function validate(type,state,final){

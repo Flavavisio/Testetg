@@ -30743,7 +30743,7 @@ window._relPrefill = function(msg){
                 if (scie) {
                     initMsg.podeAssinar = nativeContext.canSign;
                     initMsg.scieSigner = usuarioLogado.id;
-                    initMsg.tecnicoNome = usuarioLogado.nome || '';
+                    initMsg.tecnicoNome = nativeContext.signerName;
                     initMsg.instalacaoNome = nativeContext.local?.nome || nativeContext.customer.nome || '';
                     const morada = [site.morada || site.endereco, site.numeroPorta, site.codigoPostal, site.cidade || site.localidade, site.freguesia];
                     const moradaOS = [os.morada, os.numeroPorta, os.codigoPostal, os.cidade, os.freguesia];

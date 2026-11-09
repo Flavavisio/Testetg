@@ -227,6 +227,11 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
   host.TIPOS_TRABALHO_GRUPO_INCENDIO=['RSI','TRSI','TRSM'];
   installEntry(host);host.REPORT_TYPE_DEFS.RSI={nome:'Central de Incêndio (SADI)'};
   let serial=0;host.gerarId=()=> 'scie-'+(++serial);
+  os.relatorioResponsavelId='f';host.dados.funcionarios[0].nome='Técnica responsável';
+  const draftAccess=host.TGNativeReportModels.guard(os.id,'TRSI');
+  assert.equal(draftAccess.canSign,false);assert.equal(draftAccess.signerName,'Técnica responsável');
+  assert.equal(host.TGNativeReportModels.scope(host.dados,{id:'f',nome:'Técnica responsável',role:'funcionario',adminId:'a'},os.id,'TRSI').canSign,true);
+  delete os.relatorioResponsavelId;
   const entries=host.TGEquipmentReports.requirements(os);
   assert.deepEqual(plain(entries.filter(r=>!r.equipamentoId).map(r=>[r.tipo,r.modeloCodigo])),[['TRSI','TRSI'],['TRSM','TRSM']]);
   assert.equal(host.TGNativeReportModels.templateFor({tiposTrabalho:[]},'TRSI'),null);

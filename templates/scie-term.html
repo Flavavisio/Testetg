@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#eceff3;color:#151515;font:15px/1.65 "Arial Narrow",Arial,sans-serif}
+.paper{max-width:210mm;margin:16px auto;background:white;padding:10mm 23mm 11mm}
+.term{display:flex;flex-direction:column;min-height:276mm}
+.masthead,.page-label{text-align:right;font-size:11px}
+h1{text-align:center;text-decoration:underline;font-size:15px;margin:23mm 0 3px}
+.subtitle{text-align:center;font-weight:bold;line-height:1.5;margin:0 0 18mm}
+p{margin:0 0 7mm}
+.identification{margin-bottom:7mm}
+.identification label{display:block}
+input:not([type=checkbox]),textarea{font:inherit;color:inherit;border:0;border-bottom:1px solid #333;border-radius:0;background:#f5f7fa;padding:0 3px}
+input:not([type=checkbox]){max-width:100%;width:26ch}
+input.wide{width:47ch}
+input.short{width:12ch}
+textarea{width:100%;min-height:90px;resize:vertical}
+.signing{margin-top:10mm}
+.signature-line{display:inline-block;width:min(53mm,100%);vertical-align:bottom;border-bottom:1px solid #333}
+canvas{display:block;width:100%;height:56px;touch-action:none;background:#f5f7fa}
+.page-label{margin-top:auto;padding-top:10mm}
+.annex h2{font-size:16px;margin:0 0 12px}
+.annex label{display:block;margin:12px 0}
+.annex .native-print-value{display:block;white-space:pre-wrap;border:0}
+.native-print-value{border-bottom:1px solid;overflow-wrap:anywhere}
+.native-footer{position:sticky;bottom:0;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;background:white;padding:12px;border-top:1px solid #ddd}
+button{font:inherit;padding:5px 12px;cursor:pointer}
+.print-tools{text-align:center;background:white;padding:10px}
+#native-status{width:100%;text-align:center}
+#native-briefing{background:#f5f7fa;padding:8px}
+[hidden]{display:none!important}
+@media(max-width:700px){
+ .paper{margin:0;padding:18px 16px}
+ .term{min-height:0}
+ h1{margin-top:30px}
+ .subtitle{margin-bottom:26px}
+ input:not([type=checkbox]),textarea{font-size:16px;min-height:34px}
+ .identification input{display:block;width:100%;margin-bottom:8px}
+ .signature-line{width:min(53mm,100%)}
+}
+@page{size:A4;margin:0}
+@media print{
+ body{background:white;font-size:11pt}
+ .paper{margin:0;padding:10mm 23mm 11mm}
+ .term{min-height:297mm}
+ .annex{break-before:page}
+ .native-screen{display:none!important}
+ h1{margin-top:23mm}
+ .subtitle{margin-bottom:18mm}
+ .signature-line{width:53mm}
+}
+</style>
+</head>
+<body data-native-model="__TYPE__">
+<main class="paper term">
+ <header class="masthead">ANEPC | SEGURANÇA CONTRA INCÊNDIO EM EDIFÍCIOS – NOTA TÉCNICA N.º 02</header>
+ <h1>TERMO DE RESPONSABILIDADE</h1>
+ <p class="subtitle">__SUBTITLE__</p>
+ <div class="identification">
+  <label>Identificação do edifício/recinto: <input class="wide" id="native-instalacao" maxlength="160"></label>
+  <label>Morada do edifício/recinto: <input class="wide" id="native-morada" maxlength="240"></label>
+  <label>Identificação do Cliente: <input class="wide" id="native-cliente" maxlength="160"></label>
+ </div>
+ <p><input id="sign_tecnico_nome" aria-label="Nome do técnico responsável" readonly> <em>(nome do técnico responsável)</em>, NIF n.º <input class="short" id="scie-tech-nif" aria-label="NIF do técnico responsável" inputmode="numeric" maxlength="18">, com reconhecimento da capacidade técnica pela ANEPC, __DECLARATION__</p>
+ <p>__ENTITY_DECLARATION__ <input id="scie-company" aria-label="Nome fiscal da entidade" maxlength="180">, NIF/NIPC <input class="short" id="scie-company-nif" aria-label="NIF/NIPC da entidade" inputmode="numeric" maxlength="18">, registada na ANEPC sob o n.º <input class="short" id="scie-anepc" aria-label="Número de registo ANEPC da entidade" maxlength="32">, no âmbito da Portaria n.º 773/2009, de 21 de julho.</p>
+ <p>__ATTACHMENT_DECLARATION__</p>
+ <div class="signing">
+  <p><input type="date" id="native-data" aria-label="Data do termo"> (data)</p>
+  <p class="native-screen"><label><input type="checkbox" id="scie-confirm"> Confirmo que sou o técnico responsável, que disponho do reconhecimento aplicável e que a declaração acima corresponde à intervenção realizada.</label></p>
+  <div><span class="signature-line"><canvas id="sign_tecnico" width="600" height="150" aria-label="Assinatura do técnico responsável"></canvas></span> (assinatura do técnico responsável)</div>
+  <button class="native-screen" type="button" data-clear-sign="tecnico">Limpar assinatura</button>
+ </div>
+ <div class="page-label">PÁGINA __PAGE__/13</div>
+</main>
+<section class="paper annex">
+ <h2>Anexo · Lista de equipamentos e/ou sistemas</h2>
+ <p id="native-briefing" class="native-screen" hidden>Descrição da OS: <span id="native-os-description"></span></p>
+ <label>Equipamentos e sistemas abrangidos<textarea id="scie-equipment-list" maxlength="12000"></textarea></label>
+ __CERTIFICATES__
+</section>
+<div class="native-footer native-screen">
+ <button type="button" id="_relBtnRascunho" disabled>Guardar rascunho</button>
+ <button type="button" id="_relBtnConcluir" disabled>Concluir termo</button>
+ <span id="native-status" role="status"></span>
+</div>
+<input type="hidden" id="native-numero">
+<input type="hidden" id="native-sign-tecnico">
+<input type="hidden" id="scie-signer">
+<script>__RUNTIME__</script>
+</body>
+</html>

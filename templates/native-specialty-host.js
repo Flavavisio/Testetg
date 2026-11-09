@@ -5,7 +5,7 @@
  const separate=type=>['RAVAC','RLIM','RELE'].includes(canonical(type));
  const actor=()=>typeof usuarioLogado==='undefined'?null:usuarioLogado;
  const safeImage=v=>typeof v==='string'&&/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(v)&&v.length<1500000;
- function selection(os,type,modelKey){const c=configFor(type),keys=Object.keys(MODEL_DATA[canonical(type)]||{});const selected=keys.filter(code=>(os?.tiposTrabalho||[]).some(t=>c.codeFor(t)===code));const available=selected.length?selected:keys.slice(0,1);return modelKey?available.filter(k=>k===modelKey):available;}
+ function selection(os,type,modelKey){const c=configFor(type);if(c?.scie)return c.matches(os)&&(!modelKey||modelKey===c.type)?[c.type]:[];const keys=Object.keys(MODEL_DATA[canonical(type)]||{});const selected=keys.filter(code=>(os?.tiposTrabalho||[]).some(t=>c.codeFor(t)===code));const available=selected.length?selected:keys.slice(0,1);return modelKey?available.filter(k=>k===modelKey):available;}
  function draftFor(os,type,equipmentId,modelKey){return (dados.relatoriosEspecialidade||[]).find(r=>r.adminId===os.adminId&&r.servicoId===os.id&&canonical(r.tipo)===canonical(type)&&(r.campos?.equipamentoId||null)===(equipmentId||null)&&r.rascunho&&(!modelKey||JSON.stringify(r.campos?.estadoNativo?.modelKeys)===JSON.stringify([modelKey])));}
  function chooseWork(osId,type,onSaved,equipmentId){
   const ctx=guard(osId,type);if(!ctx)return;
@@ -34,8 +34,29 @@
   }
   return {html:sections.join(''),checkIds,requiredFields,count:number};
  }
+ function buildSCIE(config){
+  const installation=config.type===SCIE.installation;
+  const systems='<input id="scie-equipment" aria-label="Equipamentos e/ou sistemas" maxlength="160">';
+  const maintenance='<input id="scie-maintenance" aria-label="Serviços de manutenção prestados" maxlength="180">';
+  const replacements={
+   TITLE:esc(config.title),TYPE:config.type,PAGE:installation?'12':'13',
+   SUBTITLE:installation?'(Técnico responsável da entidade instaladora de equipamentos e sistemas de SCIE)':'(Técnico responsável da entidade prestadora de serviços de manutenção de equipamentos e sistemas de SCIE)',
+   DECLARATION:installation
+    ? 'no âmbito da Portaria n.º 773/2009, de 21 de julho, na sua redação atual, declara que instalou os seguintes equipamentos e/ou sistemas '+systems+', no edifício/recinto acima referido, o(s) qual (quais) se encontra(m) em conformidade com o projeto de segurança, as normas aplicáveis e em perfeita operacionalidade.'
+    : 'no âmbito da Portaria n.º 773/2009, de 21 de julho, declara que prestou os seguintes serviços de manutenção '+maintenance+', relativos ao seguintes equipamentos e/ou sistemas '+systems+', no edifício/recinto acima referido, o(s) qual (quais) se encontra(m) em perfeita operacionalidade.',
+   ENTITY_DECLARATION:installation
+    ? 'Mais se declara que o signatário instalou os equipamentos e/ou sistemas ao serviço da entidade'
+    : 'Mais se declara que o signatário prestou os serviços de manutenção aos equipamentos e/ou sistemas ao serviço da entidade',
+   ATTACHMENT_DECLARATION:installation
+    ? 'Deste termo de responsabilidade faz parte integrante a lista do(s) equipamento(s) e/ou sistema(s) instalado(s) e respetivos certificados.'
+    : 'Deste termo de responsabilidade faz parte integrante a lista do(s) equipamento(s) e/ou sistema(s) objeto das ações de manutenção referidas.',
+   CERTIFICATES:installation?'<label>Referências dos certificados<textarea id="scie-certificates" maxlength="12000"></textarea></label><p class="native-screen">Junta os certificados referenciados ao entregar o termo.</p>':'',
+   CONFIG_JSON:JSON.stringify({type:config.type,keys:[config.type],scie:true}),
+  };
+  return SCIE_SHELL.replace(/__(TITLE|TYPE|PAGE|SUBTITLE|DECLARATION|ENTITY_DECLARATION|ATTACHMENT_DECLARATION|CERTIFICATES|CONFIG_JSON)__/g,(_,key)=>replacements[key]);
+ }
  function build(type,keys){
-  type=canonical(type);const c=configFor(type);keys=keys||Object.keys(MODEL_DATA[type]).slice(0,1);const spec=blueprint(type,keys);
+  type=canonical(type);const c=configFor(type);if(c?.scie)return buildSCIE(c);keys=keys||Object.keys(MODEL_DATA[type]).slice(0,1);const spec=blueprint(type,keys);
   const labels=[['contrato','Ref.ª contrato'],['numero','Relatório n.º'],['data','Data'],['nCliente','N.º cliente'],['cliente','Cliente',true],['morada','Morada da instalação',true],['porta','Número de porta'],['localidade','Localidade'],['codigoPostal','Código postal'],['os','Ordem de serviço'],['instalacao','Instalação / local',true],['tecnico','Técnico responsável',true]];
   const meta=labels.map(([id,label,wide])=>'<label class="cell'+(wide?' wide':'')+'">'+esc(label)+'<input id="native-'+id+'" type="'+(id==='data'?'date':'text')+'"></label>').join('');
   const subtitle=keys.map(k=>c.work.find(([code])=>code===k)?.[1]||k).join(' · ');
@@ -49,8 +70,8 @@
   const config=configFor(type);if(!config||!user||!licensed||!['admin','subadmin','encarregado','funcionario'].includes(user.role))return null;
   const tenant=user.role==='admin'?user.id:user.adminId;
   const admin=(data.administradores||[]).find(a=>a.id===tenant&&a.ativo!==false);
-  if(!Array.isArray(admin?.areasNegocio)||!admin.areasNegocio.includes(config.area))return null;
-  const os=(data.servicos||[]).find(o=>o.id===osId&&o.adminId===tenant);if(!os)return null;
+  if(!window.TGSpecialtyCatalog.areaEnabled(config,admin))return null;
+  const os=(data.servicos||[]).find(o=>o.id===osId&&o.adminId===tenant);if(!os||(config.scie&&!config.matches(os)))return null;
   const manager=['admin','subadmin'].includes(user.role),ids=Array.isArray(os.funcionariosIds)&&os.funcionariosIds.length?os.funcionariosIds:[os.funcionarioId].filter(Boolean);
   const person=(user.role==='encarregado'?data.encarregados:data.funcionarios)?.find(p=>p.id===user.id&&p.adminId===tenant);
   if((user.permissoesNegadas||person?.permissoesNegadas||[]).some(x=>['servicos','relatorio-os'].includes(x)))return null;
@@ -60,13 +81,25 @@
   if(!manager&&os.relatorioResponsavelId&&os.relatorioResponsavelId!==user.id&&!team.includes(os.relatorioResponsavelId))return null;
   const customer=(data.clientes||[]).find(c=>c.id===os.clienteId&&c.adminId===tenant),local=os.localId?(data.locais||[]).find(l=>l.id===os.localId&&l.adminId===tenant&&l.clienteId===os.clienteId):null;
   if(!customer||(os.localId&&!local))return null;
-  return {tenant,admin,os,customer,local,canSign:manager||user.role==='encarregado'||person?.podeAssinarRelatorios!==false};
+  const designated=config.scie ? os.relatorioResponsavelId : null;
+  const signerName=designated&&designated!==user.id
+   ? [...(data.funcionarios||[]),...(data.encarregados||[]),admin]
+      .find(p=>p.id===designated&&(p.adminId===tenant||p.id===tenant))?.nome||''
+   : user.nome||'';
+  const canSign=(!designated||designated===user.id)&&(manager||user.role==='encarregado'||person?.podeAssinarRelatorios!==false);
+  return {tenant,admin,os,customer,local,canSign,signerName};
  }
  const guard=(osId,type)=>scope(dados,actor(),osId,type,typeof _licencaValidaTenant==='function'&&_licencaValidaTenant());
  function validate(type,state,final){
-  const errors=[];type=canonical(type);if(!state||state.type!==type||state.version!==2||!Array.isArray(state.modelKeys)||!state.modelKeys.length||state.modelKeys.some(k=>!MODEL_DATA[type]?.[k]))return ['O relatório não corresponde a um modelo de especialidade válido.'];
+  const errors=[];type=canonical(type);const scie=configFor(type)?.scie;
+  if(!state||state.type!==type||state.version!==2||!Array.isArray(state.modelKeys)||!state.modelKeys.length||(scie?(state.modelKeys.length!==1||state.modelKeys[0]!==type):state.modelKeys.some(k=>!MODEL_DATA[type]?.[k])))return ['O relatório não corresponde a um modelo de especialidade válido.'];
   if(!final)return errors;
-  const v=state.values||{},spec=blueprint(type,state.modelKeys);
+  const v=state.values||{};
+  if(scie){
+   if(!safeImage(state.techSignature))errors.push('Falta a assinatura do técnico responsável.');
+   return errors.concat(SCIE.errors(state));
+  }
+  const spec=blueprint(type,state.modelKeys);
   if(spec.requiredFields.some(f=>!String(v[f.id]||'').trim()))errors.push('Preenche os campos de identificação e registo técnico obrigatórios.');
   if(spec.checkIds.some(id=>!['OK','NOK','N/A'].includes(state.answers?.[id])))errors.push('Existem verificações por preencher.');
   if(!v['native-work']?.trim()||!v['native-result'])errors.push('Regista os trabalhos e o resultado.');
@@ -81,6 +114,7 @@
   type=canonical(type);const ctx=guard(osId,type),user=actor();if(!ctx)throw Error('O acesso à OS ou à especialidade mudou. Reabre o relatório.');
   const draft=msg.type==='relatorioEspecialidadeRascunho',state=msg.estadoNativo,errors=validate(type,state,!draft);
   if(!draft&&!ctx.canSign)errors.push('Não tens autorização para assinar este relatório.');
+  if(!draft&&configFor(type).scie&&(state?.values?.['scie-signer']!==user.id||state?.values?.sign_tecnico_nome!==user.nome))errors.push('O termo deve ser assinado pelo técnico responsável na sua própria sessão.');
   const expected=selection(ctx.os,type,modelKey);
   if((separate(type)&&expected.length!==1)||JSON.stringify(state?.modelKeys)!==JSON.stringify(expected))errors.push('Os trabalhos da OS mudaram. Reabre o relatório para carregar o modelo atual.');
   if(errors.length)throw Error(errors.join(' '));
@@ -103,7 +137,7 @@
   dados.relatoriosEspecialidade=(dados.relatoriosEspecialidade||[]).filter(r=>r.id!==id);dados.relatoriosEspecialidade.push(record);
   if(typeof _snap!=='undefined')_snap.relatoriosEspecialidade?.set(id,JSON.stringify(M.relatoriosEspecialidade.to(record)));
   if(typeof _guardarCacheLocal==='function')_guardarCacheLocal();
-  if(!draft)window.TGContractMaintenance?.registerMaintenance(ctx.os,(dados.folhasObra||[]).find(f=>f.servicoId===osId&&f.adminId===ctx.tenant));
+  if(!draft&&!configFor(type).scie)window.TGContractMaintenance?.registerMaintenance(ctx.os,(dados.folhasObra||[]).find(f=>f.servicoId===osId&&f.adminId===ctx.tenant));
   return true;
  }
  function open(osId,type,onSaved,equipmentId,modelKey){return _abrirModalRelatorioEspecialidade(osId,canonical(type),onSaved||(()=>{if(typeof renderizarTudo==='function')renderizarTudo();}),equipmentId,modelKey);}
@@ -116,11 +150,11 @@
   const host=document.getElementById('tgReportMenu');if(!host)return;host.querySelectorAll('[data-specialty-launcher]').forEach(el=>el.remove());
   if(!actor()||!['admin','subadmin','encarregado','funcionario'].includes(actor().role)||!_licencaValidaTenant())return;
   for(const c of window.TGSpecialtyCatalog.available()){
-   const b=document.createElement('button');b.type='button';b.className='tgr-option';b.dataset.specialtyLauncher=c.type;b.innerHTML='<i class="fas '+esc(c.icon)+'" aria-hidden="true"></i><span><strong>'+esc(c.title)+'</strong><small>Modelos completos · checklists · medições · assinaturas</small></span><span aria-hidden="true">›</span>';b.onclick=()=>choose(c.type);(host.querySelector('.tgr-menu')||host).append(b);
+   const b=document.createElement('button');b.type='button';b.className='tgr-option';b.dataset.specialtyLauncher=c.type;b.innerHTML='<i class="fas '+esc(c.icon)+'" aria-hidden="true"></i><span><strong>'+esc(c.title)+'</strong><small>'+(c.scie?'Modelo ANEPC · assinatura do técnico responsável':'Modelos completos · checklists · medições · assinaturas')+'</small></span><span aria-hidden="true">›</span>';b.onclick=()=>choose(c.type);(host.querySelector('.tgr-menu')||host).append(b);
   }
  }
- const models={};for(const type of Object.keys(MODEL_DATA)){models[type]={};for(const key of Object.keys(MODEL_DATA[type]))models[type][key]=build(type,[key]);if(typeof REPORT_TEMPLATES!=='undefined')REPORT_TEMPLATES[type]=build(type);}
- window.TGNativeReportModels={models,build,selection,templateFor:(os,type,modelKey)=>{const keys=selection(os,type,modelKey);return separate(type)&&keys.length!==1?null:build(type,keys);},draftFor,chooseWork,blueprint,guard,scope,validate,persist,open,refresh};
+ const models={};for(const type of window.TGSpecialtyCatalog.list.map(c=>c.type)){models[type]={};for(const key of Object.keys(MODEL_DATA[type]||{[type]:null}))models[type][key]=build(type,[key]);if(typeof REPORT_TEMPLATES!=='undefined')REPORT_TEMPLATES[type]=build(type);}
+ window.TGNativeReportModels={models,build,selection,templateFor:(os,type,modelKey)=>{const keys=selection(os,type,modelKey);return (separate(type)||configFor(type)?.scie)&&keys.length!==1?null:build(type,keys);},draftFor,chooseWork,blueprint,guard,scope,validate,persist,open,refresh};
  window.TGSpecialtyReports={open};window.TGAVACReport={openForOS:(id,cb)=>open(id,'RAVAC',cb),isAVAC:()=>window.TGSpecialtyCatalog.available().some(c=>c.type==='RAVAC')};
  if(typeof window.prepararRelatoriosGestao==='function'){const original=window.prepararRelatoriosGestao;window.prepararRelatoriosGestao=function(...args){const value=original.apply(this,args);refresh();return value;};}
  document.addEventListener('tg:interface-updated',refresh);

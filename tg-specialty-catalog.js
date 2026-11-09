@@ -25,7 +25,12 @@
    numeric:['voltage','earth','insulation','rcdCurrent','rcdTime'],required:['installation','qualification','tests'],
    note:'Referências: RTIEBT (Portaria 949-A/2006 e alterações), DL 96/2017 e Lei 14/2015. Relatório de exploração: modelo DGEG aprovado pelo Despacho 31/2026. Relatório técnico dos trabalhos e ensaios efetuados. O técnico habilitado avalia os requisitos aplicáveis às condições da instalação. Este documento não emite certificação nem substitui termos de responsabilidade, declarações ou inspeções oficiais.'}
  ];
- const areaEnabled=(config,admin)=>Array.isArray(admin?.areasNegocio)&&admin.areasNegocio.includes(config.area);
+ const scie=[
+  ['TRSI','Termo de Responsabilidade SCIE — Instalação'],
+  ['TRSM','Termo de Responsabilidade SCIE — Manutenção'],
+ ].map(([type,title])=>({type,title,area:'seguranca',scie:true,icon:'fa-fire-extinguisher',work:[[type,title]],operations:[title]}));
+ list.push(...scie);
+ const areaEnabled=(config,admin)=>!!admin&&(Array.isArray(admin.areasNegocio)?admin.areasNegocio.includes(config.area):!!config.scie&&!admin.areasNegocio);
  for(const config of list){
   config.codeFor=value=>config.work.find(([code,label])=>[code,label,...(config.aliases?.[code]||[])].some(v=>norm(v)===norm(value)))?.[0]||null;
   config.matches=os=>(os?.tiposTrabalho||[]).some(t=>t===config.type||(config.type==='RAVAC'&&t==='AVAC')||config.codeFor(t));
@@ -35,5 +40,5 @@
  function available(){return list.filter(c=>areaEnabled(c,currentAdmin()));}
  function workType(code){return list.find(c=>c.codeFor(code));}
  function nativeCustom(t){const config=workType(t.codigo);return !!config&&areaEnabled(config,currentAdmin())&&(t.criadoPorOnboarding===true||!(t.campos||[]).length);}
- window.TGSpecialtyCatalog={list,available,workType,nativeCustom,canonical:t=>t==='AVAC'?'RAVAC':t};
+ window.TGSpecialtyCatalog={list,areaEnabled,available,workType,nativeCustom,canonical:t=>t==='AVAC'?'RAVAC':t};
 })();

@@ -18,6 +18,7 @@ function complete(w){w.document.querySelectorAll('[data-native-required]').forEa
 const fillExploration=require('./fixtures/electrical-state.cjs');
 
 const plain=x=>JSON.parse(JSON.stringify(x));
+const checklistModels=host=>Object.entries(host.TGNativeReportModels.models).filter(([type])=>!host.TGSpecialtyCatalog.list.find(config=>config.type===type).scie);
 function installEntry(host){
  const main=fs.readFileSync('app-principal.js','utf8'),fn=main.match(/        async function _abrirModalRelatorioEspecialidade\([^]*?\n        \}/)[0];
  host._tenantId=()=> 'a';host._numeroSeqPreview=()=>1;host.prompt=()=>null;host.alert=()=>{};host.escapeHtmlSimples=v=>String(v??'');host.obterNomeFuncionario=()=> 'Técnico QA';host._tgPrepararNomeFiscalEspecialidade=html=>html;host.REPORT_TYPE_DEFS={RAVAC:{nome:'AVAC'}};host.renderizarTudo=()=>{};
@@ -61,8 +62,8 @@ test('multi-work historical reports remain intact and cannot overwrite isolated 
  }finally{host.close()}
 });
 test('fifteen ready-made native models contain authored sections, fields and unanswered checklists',()=>{
- const host=setup();try{const models=host.TGNativeReportModels.models;assert.equal(Object.values(models).reduce((n,v)=>n+Object.keys(v).length,0),15);
- for(const [type,variants]of Object.entries(models))for(const [code,html]of Object.entries(variants)){const {w}=sheet(html);try{assert(w.document.querySelector('body[data-native-model="'+type+'"]'));assert(w.document.querySelectorAll('.section-head').length>=4,code);assert(w.document.querySelectorAll('.seg').length>=8,code);assert.equal(w.document.querySelectorAll('input[type=radio]:checked').length,0);assert(w.document.getElementById('_relBtnRascunho'));assert(w.document.getElementById('_relBtnConcluir'));assert(w.document.getElementById('sign_tecnico'));assert(!html.includes('Crie o seu relatório'));}finally{w.close()}}
+ const host=setup();try{const models=checklistModels(host);assert.equal(models.reduce((n,[,v])=>n+Object.keys(v).length,0),15);
+ for(const [type,variants]of models)for(const [code,html]of Object.entries(variants)){const {w}=sheet(html);try{assert(w.document.querySelector('body[data-native-model="'+type+'"]'));assert(w.document.querySelectorAll('.section-head').length>=4,code);assert(w.document.querySelectorAll('.seg').length>=8,code);assert.equal(w.document.querySelectorAll('input[type=radio]:checked').length,0);assert(w.document.getElementById('_relBtnRascunho'));assert(w.document.getElementById('_relBtnConcluir'));assert(w.document.getElementById('sign_tecnico'));assert(!html.includes('Crie o seu relatório'));}finally{w.close()}}
  }finally{host.close()}
 });
 test('each work type opens its exact native model; AVAC works stay separate in a multi-work OS',()=>{
@@ -92,7 +93,7 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=3.0.0-electric-legal'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=3.0.0-electric-legal'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=3.1.0-scie'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=3.1.0-scie'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo,modeloCodigo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -125,7 +126,7 @@ for(const [type,code]of [['RAVAC','Recarga de gás'],['RLIM','Limpeza regular'],
  }finally{reopened?.w.close();first.w.close();host.close()}
 });
 test('all fifteen models can save again and finish after reopening a draft saved through the actual buttons',()=>{
- const host=setup();try{for(const variants of Object.values(host.TGNativeReportModels.models))for(const html of Object.values(variants)){
+ const host=setup();try{for(const [,variants] of checklistModels(host))for(const html of Object.values(variants)){
   const first=sheet(html);let second,third;try{
    init(first.w);first.w.document.getElementById('_relBtnRascunho').click();assert.equal(first.messages.length,1);
    const saved=first.messages[0];second=sheet(saved.html);init(second.w);
@@ -144,8 +145,8 @@ test('old native draft snapshots with disabled buttons use current templates and
   const opening=host._abrirModalRelatorioEspecialidade('os','RAVAC',()=>{});const frame=host.document.getElementById('re_iframe');await ready(frame);assert(!frame.srcdoc.includes('OLD DISABLED SNAPSHOT'));assert(frame.srcdoc.includes('Registo de refrigerante'));let message;frame.contentWindow.postMessage=m=>{if(m.type==='init')message=m};frame.dispatchEvent(new host.Event('load'));await opening;await new Promise(r=>setTimeout(r,180));assert.equal(message.nativeRestoreState.values['native-work'],'Trabalho guardado');
  }finally{host.close()}
 });
-test('every native model persists a customer-signed incomplete draft and repaints it on fresh reopening before finalization',async()=>{
- const host=setup();try{for(const [type,variants]of Object.entries(host.TGNativeReportModels.models))for(const [code,html]of Object.entries(variants)){
+test('every checklist model persists a customer-signed incomplete draft and repaints it on fresh reopening before finalization',async()=>{
+ const host=setup();try{for(const [type,variants]of checklistModels(host))for(const [code,html]of Object.entries(variants)){
   host.dados.relatoriosEspecialidade=[];host.dados.servicos[0].tiposTrabalho=[code];const first=sheet(html);let reopened;try{
    init(first.w);first.w.document.getElementById('native-sign-cliente').value=png;first.w.document.getElementById('sign_cliente_nome').value='Cliente QA';
    first.w.document.getElementById('_relBtnRascunho').click();await host.TGNativeReportModels.persist('os',type,null,first.messages[0]);
@@ -212,4 +213,73 @@ test('cleaning exit queue starts four distinct reports and retains historical co
   const opened=[];host._abrirModalRelatorioEspecialidade=(id,type,saved,equipment,model)=>{opened.push(model);host.dados.relatoriosEspecialidade.push({id:model,adminId:'a',servicoId:id,tipo:type,rascunho:true,campos:{estadoNativo:{modelKeys:[model]}}});saved()};let finished=0;host.abrirFilaRelatoriosEspecialidade('os',[],()=>finished++);assert.deepEqual(plain(opened),os.tiposTrabalho);assert.equal(finished,1);assert.equal(host.TGEquipmentReports.pending(os).length,4);
   const old={id:'legacy-clean',adminId:'a',servicoId:'os',tipo:'RLIM',rascunho:false,campos:{estadoNativo:{modelKeys:os.tiposTrabalho}}};host.dados.relatoriosEspecialidade=[old];assert.equal(host.TGEquipmentReports.pending(os).length,0);assert.equal(host.dados.relatoriosEspecialidade[0],old);
  }finally{host.close()}
+});
+
+test('SCIE terms use the Incêndio OS options and independent drafts with technician-only signatures',async()=>{
+ const host=setup();
+ const views=[];
+ try{
+  const os=host.dados.servicos[0],admin=host.dados.administradores[0];
+  os.tiposTrabalho=['TRSI','TRSM'];os.descricao='Verificação programada';
+  os.planoManutencao={relatoriosEquipamentos:[{tipo:'RSI',equipamentoId:'eq',equipamentoNome:'Central de incêndio'}]};
+  admin.areasNegocio=['seguranca'];admin.nomeFiscal='Instalações QA, Lda.';admin.nif='500000000';admin.numeroAnepc='456';
+  host.dados.locais[0].codigoPostal='1000-001';
+  host.TIPOS_TRABALHO_GRUPO_INCENDIO=['RSI','TRSI','TRSM'];
+  installEntry(host);host.REPORT_TYPE_DEFS.RSI={nome:'Central de Incêndio (SADI)'};
+  let serial=0;host.gerarId=()=> 'scie-'+(++serial);
+  const entries=host.TGEquipmentReports.requirements(os);
+  assert.deepEqual(plain(entries.filter(r=>!r.equipamentoId).map(r=>[r.tipo,r.modeloCodigo])),[['TRSI','TRSI'],['TRSM','TRSM']]);
+  assert.equal(host.TGNativeReportModels.templateFor({tiposTrabalho:[]},'TRSI'),null);
+
+  for(const type of ['TRSI','TRSM']){
+   const opening=host._abrirModalRelatorioEspecialidade(os.id,type,()=>{});
+   const frame=host.document.getElementById('re_iframe');await ready(frame);
+   let prefill;frame.contentWindow.postMessage=m=>{if(m.type==='init')prefill=m;};
+   frame.dispatchEvent(new host.Event('load'));await opening;
+   for(let i=0;i<40&&!prefill;i++)await new Promise(resolve=>setTimeout(resolve,10));
+   assert.equal(prefill.scieAddress,'Rua da Loja, 1000-001');
+   assert.equal(prefill.scieEquipmentList,'Central de incêndio');
+   const editor=sheet(frame.srcdoc);views.push(editor.w);
+   const initWith=(w,msg)=>w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data:msg}));
+   initWith(editor.w,prefill);
+   const get=id=>editor.w.document.getElementById(id);
+   assert.equal(get('native-instalacao').value,'Loja');
+   assert.equal(get('scie-company').value,'Instalações QA, Lda.');
+   assert.equal(get('scie-anepc').value,'456');
+   assert.equal(get('sign_tecnico_nome').value,'Técnico QA');
+   assert.equal(get('scie-tech-nif').value,'');
+   assert.equal(get('sign_cliente'),null);
+   get('_relBtnRascunho').click();
+   await host.TGNativeReportModels.persist(os.id,type,null,editor.messages[0],type);
+   const draft=host.dados.relatoriosEspecialidade.find(r=>r.tipo===type);
+   assert(draft.rascunho);assert.equal(draft.assinaturaCliente,null);
+   const next=sheet(frame.srcdoc);views.push(next.w);
+   initWith(next.w,{...prefill,nativeRestoreState:draft.campos.estadoNativo});
+   const field=id=>next.w.document.getElementById(id);
+   assert.equal(field('scie-equipment-list').value,'Central de incêndio');
+   assert.equal(next.w.TGNativeSheet.validate(true).length>0,true);
+   field('scie-tech-nif').value='200000000';
+   field(type==='TRSI'?'scie-certificates':'scie-maintenance').value=type==='TRSI'?'Certificado 2026/1':'Limpeza e ensaios';
+   field('scie-confirm').checked=true;
+   field('native-sign-tecnico').value=png;
+   const signed=next.w.TGNativeSheet.serialize(false).estadoNativo;
+   const another=sheet(frame.srcdoc);views.push(another.w);
+   initWith(another.w,{...prefill,scieSigner:'other',tecnicoNome:'Outro técnico',nativeRestoreState:signed});
+   assert.equal(another.w.document.getElementById('native-sign-tecnico').value,'');
+   assert.equal(another.w.document.getElementById('scie-tech-nif').value,'');
+   field('scie-equipment').dispatchEvent(new next.w.Event('input',{bubbles:true}));
+   assert.equal(field('native-sign-tecnico').value,'');
+   assert.equal(field('scie-confirm').checked,false);
+   field('scie-confirm').checked=true;field('native-sign-tecnico').value=png;
+   field('_relBtnConcluir').click();
+   const final=next.messages[0];assert.equal(final.type,'relatorioEspecialidadeConcluido');
+   assert(final.html.includes(type==='TRSI'?'PÁGINA 12/13':'PÁGINA 13/13'));
+   assert(final.html.includes('assinatura do técnico responsável'));assert(!final.html.includes('<canvas'));
+   await host.TGNativeReportModels.persist(os.id,type,null,final,type);
+   const saved=host.dados.relatoriosEspecialidade.find(r=>r.tipo===type);
+   assert.equal(saved.id,draft.id);assert.equal(saved.rascunho,false);assert.equal(saved.assinaturaTecnico,png);
+  }
+  assert.equal(host.numberCalls,2);
+  assert.equal(host.TGEquipmentReports.pending(os).filter(r=>!r.equipamentoId).length,0);
+ }finally{for(const view of views)view.close();host.close();}
 });

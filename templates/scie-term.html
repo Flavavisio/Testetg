@@ -34,6 +34,14 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
 #native-status{width:100%;text-align:center}
 #native-briefing{background:#f5f7fa;padding:8px}
 [hidden]{display:none!important}
+@media screen{
+ .signature-label{display:block;margin-bottom:4px;font-weight:700}
+ .signature-line:has(canvas){display:block;width:100%;border-bottom:0}
+ .signature-line canvas{height:90px;border:1px dashed #d8d3c4;touch-action:none;background:#fff}
+ .signature-line:has(canvas) + .signature-caption{display:none}
+ .signing [data-clear-sign]{margin-top:6px;padding:10px 18px;border:1px solid #0f6b5c;border-radius:6px;background:transparent;color:#0f6b5c;font-size:.82rem;font-weight:700;letter-spacing:.3px}
+ .signing [data-clear-sign]:hover{background:#e4efec}
+}
 @media(max-width:700px){
  .paper{margin:0;padding:18px 16px}
  .term{min-height:0}
@@ -72,7 +80,8 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
  <div class="signing">
   <p><input type="date" id="native-data" aria-label="Data do termo"> (data)</p>
   <p class="native-screen"><label><input type="checkbox" id="scie-confirm"> Confirmo que sou o técnico responsável, que disponho do reconhecimento aplicável e que a declaração acima corresponde à intervenção realizada.</label></p>
-  <div><span class="signature-line"><canvas id="sign_tecnico" width="600" height="150" aria-label="Assinatura do técnico responsável"></canvas></span> (assinatura do técnico responsável)</div>
+  <div class="signature-label native-screen">Serviço efetuado por (técnico responsável)</div>
+  <div><span class="signature-line"><canvas id="sign_tecnico" width="600" height="150" aria-label="Assinatura do técnico responsável"></canvas></span> <span class="signature-caption">(assinatura do técnico responsável)</span></div>
   <button class="native-screen" type="button" data-clear-sign="tecnico">Limpar assinatura</button>
  </div>
  <div class="page-label">PÁGINA __PAGE__/13</div>

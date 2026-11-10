@@ -93,7 +93,7 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=3.1.0-scie'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=3.1.0-scie'));
+ const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=3.1.1-scie-signature'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=3.1.1-scie-signature'));
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo,modeloCodigo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -254,6 +254,8 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    assert.equal(get('sign_tecnico_nome').value,'Técnico QA');
    assert.equal(get('scie-tech-nif').value,'');
    assert.equal(get('sign_cliente'),null);
+   assert.equal(get('sign_tecnico').closest('.signature-line').tagName,'SPAN');
+   assert.equal(editor.w.document.querySelector('.signature-label').textContent,'Serviço efetuado por (técnico responsável)');
    get('_relBtnRascunho').click();
    await host.TGNativeReportModels.persist(os.id,type,null,editor.messages[0],type);
    const draft=host.dados.relatoriosEspecialidade.find(r=>r.tipo===type);
@@ -268,6 +270,11 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    field('scie-confirm').checked=true;
    field('native-sign-tecnico').value=png;
    const signed=next.w.TGNativeSheet.serialize(false).estadoNativo;
+   const resumed=sheet(frame.srcdoc);views.push(resumed.w);
+   initWith(resumed.w,{...prefill,nativeRestoreState:signed});
+   assert.equal(resumed.w.document.getElementById('native-sign-tecnico').value,png);
+   resumed.w.document.querySelector('[data-clear-sign="tecnico"]').click();
+   assert.equal(resumed.w.document.getElementById('native-sign-tecnico').value,'');
    const another=sheet(frame.srcdoc);views.push(another.w);
    initWith(another.w,{...prefill,scieSigner:'other',tecnicoNome:'Outro técnico',nativeRestoreState:signed});
    assert.equal(another.w.document.getElementById('native-sign-tecnico').value,'');
@@ -280,6 +287,9 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    const final=next.messages[0];assert.equal(final.type,'relatorioEspecialidadeConcluido');
    assert(final.html.includes(type==='TRSI'?'PÁGINA 12/13':'PÁGINA 13/13'));
    assert(final.html.includes('assinatura do técnico responsável'));assert(!final.html.includes('<canvas'));
+   const printable=new host.DOMParser().parseFromString(final.html,'text/html');
+   assert.equal(printable.querySelector('.signature-line img').getAttribute('src'),png);
+   assert.equal(printable.querySelector('.signature-label'),null);
    await host.TGNativeReportModels.persist(os.id,type,null,final,type);
    const saved=host.dados.relatoriosEspecialidade.find(r=>r.tipo===type);
    assert.equal(saved.id,draft.id);assert.equal(saved.rascunho,false);assert.equal(saved.assinaturaTecnico,png);

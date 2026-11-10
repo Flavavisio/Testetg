@@ -1056,6 +1056,10 @@
         .ff-secao-body { padding:16px; display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; }
         .ff-secao-body .form-group { margin-bottom:0; }
         .ff-secao-body .form-group.ff-span2 { grid-column:1 / -1; }
+        .ob-cliente-pesquisa { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 8px; }
+        .ob-cliente-pesquisa #ob_cliente_busca { min-width:0; }
+        #ob_cliente_busca_dd { grid-column:1 / -1; max-height:min(160px,24dvh); overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; background:#fff; }
+        body.dark-mode #ob_cliente_busca_dd { background:#0f172a; border-color:#334155; }
         .ff-secao.ff-tint-id .ff-secao-head { background:#eff6ff; color:#1d4ed8; }
         .ff-secao.ff-tint-id .ff-secao-head i { background:#dbeafe; color:#1d4ed8; }
         .ff-secao.ff-tint-contacto .ff-secao-head { background:#f0f9fb; color:#0e7490; }

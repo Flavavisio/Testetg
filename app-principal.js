@@ -2119,7 +2119,10 @@ function _assistEstado(value) {
                 dd.style.display = 'block';
                 return;
             }
-            dd.innerHTML = resultados.map(label => `<div class="cliente-busca-item" style="padding:8px 12px;cursor:pointer;font-size:.92rem;" data-label="${label.replace(/"/g, '&quot;')}">${label}</div>`).join('');
+            dd.innerHTML = resultados.map(label => {
+                const seguro = escapeHtmlSimples(label);
+                return `<div class="cliente-busca-item" style="padding:8px 12px;cursor:pointer;font-size:.92rem;" data-label="${seguro}">${seguro}</div>`;
+            }).join('');
             dd.style.display = 'block';
             dd.querySelectorAll('.cliente-busca-item').forEach(el => {
                 el.onmouseenter = () => el.style.background = '#f1f5f9';
@@ -2134,12 +2137,20 @@ function _assistEstado(value) {
                 };
             });
         }
-        function clienteBuscaFoco(inputId) {
-            clienteBuscaInput(inputId, inputId.replace('_busca', ''));
+        function clienteBuscaFoco(inputId, callback) {
+            clienteBuscaInput(inputId, inputId.replace('_busca', ''), callback);
         }
         function clienteBuscaEsconder(inputId) {
             setTimeout(() => { const dd = document.getElementById(inputId + '_dd'); if (dd) dd.style.display = 'none'; }, 200);
         }
+        // O teclado pode reduzir só a área visível, sem redimensionar o modal.
+        window.visualViewport?.addEventListener('resize', () => {
+            const campo = document.activeElement;
+            const vista = window.visualViewport;
+            if (campo?.id !== 'ob_cliente_busca' || vista.scale !== 1 || window.innerHeight - vista.height < 100) return;
+            const excesso = campo.getBoundingClientRect().bottom - (vista.offsetTop + vista.height - 12);
+            if (excesso > 0) campo.closest('.modal').scrollTop += excesso;
+        });
         function contarFuncionarios(adminId) {
             const admins = dados.administradores?.filter(a => a.id === adminId).length || 0;
             const funcs = dados.funcionarios?.filter(f =>
@@ -2261,11 +2272,12 @@ function _assistEstado(value) {
             // vivia só no localStorage de cada aparelho, que não é partilhado; os avisos em si
             // são partilhados (vêm do servidor), por isso cada aparelho achava que era a
             // primeira vez e criava o seu próprio aviso igual. Agora verifica-se aqui, nos
-            // dados partilhados: se já existe um aviso igual (mesmo destinatário, título e
-            // mensagem) nas últimas 20h, não cria outro.
+            // dados partilhados: se já existe um aviso igual (mesmo destinatário, título,
+            // mensagem e destino) nas últimas 20h, não cria outro.
             const _agora = Date.now();
             const _jaExiste = dados.notificacoes.some(n =>
                 n.destinatarioId === funcionarioId && n.titulo === titulo && n.mensagem === (mensagem || '') &&
+                (n.acao || null) === (acao || null) &&
                 (_agora - (n.dataCriacao || 0)) < 20 * 60 * 60 * 1000
             );
             if (_jaExiste) return;
@@ -2279,20 +2291,12 @@ function _assistEstado(value) {
             const _iconeParaEnviar = _destinatarioEhAdminOuSub ? '' : (_adminDoEnvio?.logo || '');
             supa.functions.invoke('enviar-push', { body: { utilizador_id: funcionarioId, titulo, corpo: mensagem || '', icone: _iconeParaEnviar } }).catch(err => console.warn('notificação push:', err));
         }
-        // Sempre que um funcionário cria um artigo novo diretamente numa folha de OS/obra (sem
-        // passar pelo admin), avisa quem gere a empresa — o artigo fica sem preço até o admin o
-        // definir, por isso é importante não passar despercebido. Um clique na notificação leva
-        // logo ao artigo para ser corrigido.
-        function _avisarAdminArtigoNovo(artigoId, nomeArtigo, adminId) {
-            if (!adminId) return;
-            const admin = dados.administradores?.find(a => a.id === adminId);
-            if (!admin) return;
-            const acao = `abrirCardArmazem('artigos');setTimeout(()=>abrirModal('artigo','${artigoId}'),200);`;
-            _notificarFuncionario(admin.id, '📦 Novo artigo criado por um funcionário', `"${nomeArtigo}" foi criado por ${usuarioLogado?.nome || 'um funcionário'} numa folha de trabalho e ainda não tem preço definido.`, adminId, acao);
-            // Também avisa os sub-admins da mesma empresa, que têm as mesmas permissões sobre Stock/Artigos.
-            (dados.funcionarios || []).filter(f => f.adminId === adminId && f.role === 'subadmin' && !f.suspenso).forEach(sub => {
-                _notificarFuncionario(sub.id, '📦 Novo artigo criado por um funcionário', `"${nomeArtigo}" foi criado por ${usuarioLogado?.nome || 'um funcionário'} numa folha de trabalho e ainda não tem preço definido.`, adminId, acao);
-            });
+        function _avisarAdminArtigoNovo(artigoId, nomeArtigo, adminId, origem = 'numa folha de trabalho') {
+            if (!dados.administradores?.some(a => a.id === adminId)) return;
+            const acao = `_abrirRegistoPendenciaAlerta('artigo','${artigoId}')`;
+            const mensagem = `"${nomeArtigo}" foi criado por ${usuarioLogado?.nome || 'um utilizador'} ${origem} e ainda não tem preço definido.`;
+            _notificarAdminESubadmin(adminId, '📦 Novo artigo criado', mensagem, acao);
+            renderizarNotifPessoalBanner();
         }
         function _notifAdminId() {
             if (!usuarioLogado) return null;
@@ -6565,6 +6569,7 @@ function _assistEstado(value) {
             if (!artigoId) { alert('Escolhe o material a adicionar na pesquisa (ou usa o botão + para criar um novo).'); return; }
             if (qtd <= 0) { alert('Indica a quantidade usada (maior que 0).'); return; }
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
+            let artigoNovo = null;
             if (artigoId === '__novo') {
                 const nomeNovo = document.getElementById('veros_novo_artigo_nome')?.value.trim();
                 const unidadeNovo = document.getElementById('veros_novo_artigo_unidade')?.value || 'un';
@@ -6575,11 +6580,12 @@ function _assistEstado(value) {
                 } else {
                     artigoId = gerarId();
                     dados.artigos = dados.artigos || [];
-                    dados.artigos.push({
+                    artigoNovo = {
                         id: artigoId, adminId, nome: nomeNovo, marca: '', categoria: 'Geral', referencia: null,
                         unidade: unidadeNovo, stockInicial: 0, stockMinimo: null, precoVenda: null, precoCompra: null,
                         alertaStock: false, observacoes: 'Criado a partir do "Ver OS" (por ' + (usuarioLogado?.nome || 'funcionário') + ').'
-                    });
+                    };
+                    dados.artigos.push(artigoNovo);
                 }
             }
             dados.movimentosStock = dados.movimentosStock || [];
@@ -6604,6 +6610,7 @@ function _assistEstado(value) {
                 }
             }
             guardarDados(dados);
+            if (artigoNovo && osDoMaterial?.obraId) _avisarAdminArtigoNovo(artigoNovo.id, artigoNovo.nome, adminId, 'nos materiais da ordem de serviço');
             _verOsMostrar(osId, 'materiais');
         }
         function gerarRelatorioOSIndividual(osId, paraCliente) {
@@ -18077,7 +18084,9 @@ function _assistEstado(value) {
             if (!categoria) categoria = (prompt('Categoria (opcional):') || '').trim() || null;
             const adminId = _tenantId();
             const art = { id: gerarId(), adminId, nome, marca, categoria, referencia: null, unidade: 'un', stockInicial: 0, stockMinimo: null, precoVenda: null, precoCompra: null, observacoes: null, dataCriacao: Date.now() };
-            (dados.artigos = dados.artigos || []).push(art); guardarDados(dados);
+            (dados.artigos = dados.artigos || []).push(art);
+            guardarDados(dados);
+            _avisarAdminArtigoNovo(art.id, art.nome, adminId, 'no plano de materiais da obra');
             it.marca = marca; it.categoria = categoria; it.artigoId = art.id;
             renderOmItens(); renderizarArtigos();
         }
@@ -26212,7 +26221,7 @@ async function salvarAdmin(e) {
                     </div>
                 `;
             } else if (entidade === 'obra') {
-                const cliOpts = (dados.clientes||[]).filter(c => c.adminId === _tenantId()).map(c => `<option value="${c.id}" ${item && item.clienteId===c.id?'selected':''}>${c.nome}</option>`).join('');
+                const clienteObra = item?.clienteId && (dados.clientes || []).find(c => c.id === item.clienteId);
                 html = `
                     <div class="ff-wrap">
                     <div class="ff-hero">
@@ -26233,7 +26242,15 @@ async function salvarAdmin(e) {
                     <div class="ff-secao ff-tint-id">
                         <div class="ff-secao-head"><i class="fas fa-location-dot"></i> Instalação e Cliente</div>
                         <div class="ff-secao-body">
-                            <div class="form-group ff-span2"><label>Cliente</label><div style="display:flex;gap:8px;"><input type="text" id="ob_cliente_busca" style="flex:1;" placeholder="Digite o nome ou nº do cliente (opcional)…" value="${item && item.clienteId ? (() => { const cc = (dados.clientes || []).find(x => x.id === item.clienteId); return cc ? _clienteLabel(cc) : ''; })() : ''}" oninput="clienteBuscaInput('ob_cliente_busca','ob_cliente', onClienteObraChange)" onfocus="clienteBuscaFoco('ob_cliente_busca')" onblur="clienteBuscaEsconder('ob_cliente_busca')" autocomplete="off" /><input type="hidden" id="ob_cliente" value="${item && item.clienteId ? item.clienteId : ''}" /><button type="button" class="btn btn-outline" onclick="obraAddCliente()" title="Adicionar cliente"><i class="fas fa-plus"></i></button></div></div>
+                            <div class="form-group ff-span2">
+                                <label for="ob_cliente_busca">Cliente</label>
+                                <div class="ob-cliente-pesquisa">
+                                    <input type="text" id="ob_cliente_busca" placeholder="Digite o nome ou nº do cliente (opcional)…" value="${clienteObra ? escapeHtmlSimples(_clienteLabel(clienteObra)) : ''}" oninput="clienteBuscaInput('ob_cliente_busca','ob_cliente', onClienteObraChange)" onfocus="clienteBuscaFoco('ob_cliente_busca', onClienteObraChange)" onblur="clienteBuscaEsconder('ob_cliente_busca')" autocomplete="off" />
+                                    <input type="hidden" id="ob_cliente" value="${item && item.clienteId ? item.clienteId : ''}" />
+                                    <button type="button" class="btn btn-outline" onclick="obraAddCliente()" title="Adicionar cliente"><i class="fas fa-plus"></i></button>
+                                    <div id="ob_cliente_busca_dd" style="display:none;"></div>
+                                </div>
+                            </div>
                             <div class="form-group ff-span2"><label>Instalação</label>
                                 <select id="ob_local" onchange="onLocalObraChange()">
                                     <option value="">— Morada principal do cliente (Sede) —</option>
@@ -26325,6 +26342,10 @@ async function salvarAdmin(e) {
                 html = '<p>Funcionalidade em desenvolvimento.</p>';
             }
             campos.innerHTML = html;
+            if (entidade === 'obra' && item?.clienteId) {
+                const busca = document.getElementById('ob_cliente_busca');
+                if (busca.value) busca.dataset.selecionadoLabel = busca.value;
+            }
             _preencherDatalistClientes();
             if (entidade === 'servico') _sIniciarTagsDescricao();
             submitBtn.textContent = isEdit ? 'Atualizar' : 'Criar';

@@ -6,7 +6,7 @@
 #tg-os-photo-modal .tg-os-photo-dismiss{width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none;border:0;border-radius:12px;background:var(--bg-light,#eef2f7);color:inherit;font-size:23px;cursor:pointer}
 #tg-os-photo-modal .tg-os-photo-description{font-size:.9rem;line-height:1.45;color:var(--text-secondary,#64748b);margin:8px 0 18px}
 #tg-os-photo-modal .tg-os-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#tg-os-photo-modal .tg-os-photo-actions button{display:flex;gap:8px;align-items:center;justify-content:center;min-height:58px;padding:12px;border:1px solid #c8d9e3;border-radius:12px;background:#f7fafc;color:#175b78;font:600 14px/1.35 inherit;cursor:pointer}
+#tg-os-photo-modal .tg-os-photo-actions button{display:flex;gap:8px;align-items:center;justify-content:center;min-height:58px;padding:12px;border:1px solid #c8d9e3;border-radius:12px;background:#f7fafc;color:#175b78;font-size:14px;font-weight:600;line-height:1.35;font-family:inherit;cursor:pointer}
 #tg-os-photo-modal .tg-os-photo-actions button:active{background:#e7f2f7}
 #tg-os-photo-modal .tg-os-photo-status{font-size:.86rem;min-height:18px;margin:12px 0 0}
 #tg-os-photo-modal .tg-os-photo-count{font-size:.86rem;margin:16px 0 12px;color:var(--text-secondary,#64748b)}

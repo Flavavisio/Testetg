@@ -103,27 +103,38 @@
     status('A enviar '+fileName(file)+'…');
     const blob=await compress(file);
     const path=context.tenant+'/os/'+context.id+'/'+(crypto.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2))+'.jpg';
-    const upload=await supa.storage.from(BUCKET).upload(path,blob,{contentType:'image/jpeg',upsert:false});
+    const storage=supa.storage.from(BUCKET);
+    const upload=await storage.upload(path,blob,{contentType:'image/jpeg',upsert:false});
     if(upload.error)throw Error('Não foi possível guardar a fotografia no armazenamento: '+upload.error.message);
-    const next={bucket:BUCKET,storagePath:path,nome:fileName(file),funcionarioId:context.userId,dataCriacao:Date.now()};
-    // Read the newest photo list so unrelated OS fields and existing photos are retained.
-    const read=await supa.from('servicos').select('id,fotos').eq('id',context.id).eq('admin_id',context.tenant).single();
-    if(read.error||!read.data){throw Error('Não foi possível confirmar a OS no servidor.');}
-    const old=Array.isArray(read.data.fotos)?read.data.fotos:[];
-    if(!valid())throw Error('A sessão mudou durante o envio.');
-    const updated=[...old,next];
-    const save=await supa.from('servicos').update({fotos:updated}).eq('id',context.id).eq('admin_id',context.tenant).select('id,fotos').single();
-    if(save.error||!save.data)throw Error('Não foi possível associar a fotografia à OS.');
-    const os=osFor(context.id);if(os)os.fotos=save.data.fotos;
-    // Keep the native snapshot aligned to avoid a later bulk refresh rewriting the saved list.
-    if(typeof _snap!=='undefined'&&typeof M!=='undefined'&&M.servicos?.to){
-     _snap.servicos?.set(context.id,JSON.stringify(M.servicos.to(os)));
+    let stored=false;
+    try{
+     const next={bucket:BUCKET,storagePath:path,nome:fileName(file),funcionarioId:context.userId,dataCriacao:Date.now()};
+     // Fetch only this OS; do not rewrite other service fields.
+     const read=await supa.from('servicos').select('id,fotos').eq('id',context.id).eq('admin_id',context.tenant).single();
+     if(read.error||!read.data)throw Error('Não foi possível confirmar a OS no servidor.');
+     const old=Array.isArray(read.data.fotos)?read.data.fotos:[];
+     if(!valid())throw Error('A sessão mudou durante o envio.');
+     const updated=[...old,next];
+     const save=await supa.from('servicos').update({fotos:updated}).eq('id',context.id).eq('admin_id',context.tenant).select('id,fotos').single();
+     if(save.error||!save.data)throw Error('Não foi possível associar a fotografia à OS.');
+     stored=true;
+     const os=osFor(context.id);if(os)os.fotos=save.data.fotos;
+     // Align the native snapshot so a later bulk refresh cannot roll back the photo.
+     try{
+      if(os&&typeof _snap!=='undefined'&&typeof M!=='undefined'&&M.servicos?.to){
+       _snap.servicos?.set(context.id,JSON.stringify(M.servicos.to(os)));
+      }
+     }catch(_){}
+     completed++;status(completed+' fotografia(s) guardada(s).');
+    }finally{
+     // Avoid orphaned files if the database rejected the association.
+     if(!stored)try{await storage.remove([path]);}catch(_){}
     }
-    completed++;status(completed+' fotografia(s) guardada(s).');
    }
    await display();
   }catch(e){status(e.message||'Não foi possível guardar fotografias.',true);}
   finally{busy=false;buttons?.forEach(b=>b.disabled=false);}
  }
+ document.addEventListener('tg:interface-updated',()=>{if(modal&&!valid())close();});
  root.TGOSPhotos={open,close};
 })(window);

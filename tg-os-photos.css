@@ -1,0 +1,16 @@
+/* TG-04 — photo dialog aligned with Total Gest mobile modals. */
+#tg-os-photo-modal{position:fixed;inset:0;z-index:110000;display:flex;align-items:center;justify-content:center;background:rgba(12,23,44,.58);padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+#tg-os-photo-modal .tg-os-photo-dialog{box-sizing:border-box;width:min(100%,480px);max-height:min(86dvh,720px);overflow:auto;background:var(--card-bg,#fff);color:var(--text-primary,#17243b);border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.25);padding:22px}
+#tg-os-photo-modal .tg-os-photo-header{display:flex;gap:12px;align-items:center;justify-content:space-between}
+#tg-os-photo-modal h2{margin:0;font-size:1.25rem;line-height:1.25;font-weight:750;color:inherit}
+#tg-os-photo-modal .tg-os-photo-dismiss{width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none;border:0;border-radius:12px;background:var(--bg-light,#eef2f7);color:inherit;font-size:23px;cursor:pointer}
+#tg-os-photo-modal .tg-os-photo-description{font-size:.9rem;line-height:1.45;color:var(--text-secondary,#64748b);margin:8px 0 18px}
+#tg-os-photo-modal .tg-os-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#tg-os-photo-modal .tg-os-photo-actions button{display:flex;gap:8px;align-items:center;justify-content:center;min-height:58px;padding:12px;border:1px solid #c8d9e3;border-radius:12px;background:#f7fafc;color:#175b78;font:600 14px/1.35 inherit;cursor:pointer}
+#tg-os-photo-modal .tg-os-photo-actions button:active{background:#e7f2f7}
+#tg-os-photo-modal .tg-os-photo-status{font-size:.86rem;min-height:18px;margin:12px 0 0}
+#tg-os-photo-modal .tg-os-photo-count{font-size:.86rem;margin:16px 0 12px;color:var(--text-secondary,#64748b)}
+#tg-os-photo-modal .tg-os-photo-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tg-os-photo-modal button:focus-visible{outline:3px solid #268dba;outline-offset:2px}
+#tg-os-photo-modal button:disabled{opacity:.55;cursor:wait}
+@media(max-width:420px){#tg-os-photo-modal{padding-left:12px;padding-right:12px}#tg-os-photo-modal .tg-os-photo-dialog{padding:18px 16px}#tg-os-photo-modal .tg-os-photo-actions{grid-template-columns:1fr}#tg-os-photo-modal .tg-os-photo-actions button{min-height:52px}}

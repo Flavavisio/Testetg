@@ -68,14 +68,14 @@
   if(modal)modal.remove();
   context={id:osId,tenant:me.tenant,userId:me.id};busy=false;
   const wrapper=document.createElement('div');wrapper.id='tg-os-photo-modal';
-  wrapper.style.cssText='position:fixed;inset:0;z-index:110000;background:#0f172a99;display:flex;align-items:center;justify-content:center;padding:14px';
-  wrapper.innerHTML='<section role="dialog" aria-modal="true" aria-labelledby="tg-os-photo-title" style="background:white;color:#0f172a;border-radius:16px;width:min(95vw,480px);max-height:90vh;overflow:auto;padding:18px;box-shadow:0 16px 60px #0003">'
-   +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h2 id="tg-os-photo-title" style="font-size:19px;margin:0">Fotografias da OS</h2><button type="button" data-photo-close aria-label="Fechar">✕</button></div>'
-   +'<p style="font-size:13px;color:#64748b">As fotografias ficam associadas à OS, sem ser necessário criar relatórios.</p>'
-   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button type="button" data-photo-source="camera">📷 Tirar fotografia</button><button type="button" data-photo-source="gallery">▧ Escolher da galeria</button></div>'
+  wrapper.innerHTML='<section class="tg-os-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="tg-os-photo-title">'
+   +'<div class="tg-os-photo-header"><h2 id="tg-os-photo-title">Fotografias da OS</h2><button type="button" class="tg-os-photo-dismiss" data-photo-close aria-label="Fechar fotografias">×</button></div>'
+   +'<p class="tg-os-photo-description">Fotografias associadas à ordem de serviço, sem necessidade de criar relatórios.</p>'
+   +'<div class="tg-os-photo-actions"><button type="button" data-photo-source="camera"><i class="fas fa-camera" aria-hidden="true"></i> Tirar fotografia</button><button type="button" data-photo-source="gallery"><i class="fas fa-images" aria-hidden="true"></i> Escolher da galeria</button></div>'
    +'<input id="tg-os-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>'
-   +'<p id="tg-os-photo-status" role="status" aria-live="polite"></p><p style="font-size:13px">Fotografias guardadas: <strong id="tg-os-photo-count">0</strong></p>'
-   +'<div id="tg-os-photo-gallery" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px"></div></section>';
+   +'<p id="tg-os-photo-status" class="tg-os-photo-status" role="status" aria-live="polite"></p>'
+   +'<p class="tg-os-photo-count">Fotografias guardadas: <strong id="tg-os-photo-count">0</strong></p>'
+   +'<div id="tg-os-photo-gallery" class="tg-os-photo-gallery"></div></section>';
   wrapper.addEventListener('click',event=>{
    if(event.target===wrapper||event.target.closest('[data-photo-close]'))return close();
    const option=event.target.closest('[data-photo-source]');if(!option||busy)return;
@@ -136,5 +136,29 @@
   finally{busy=false;buttons?.forEach(b=>b.disabled=false);}
  }
  document.addEventListener('tg:interface-updated',()=>{if(modal&&!valid())close();});
+
+ // Existing OS details have a separate Add Photo action which may force the camera.
+ // Route that action into this same camera/gallery dialog, using the OS number
+ // shown in the active OS dialog. Fail open to the legacy action if not certain.
+ function osFromNativePhotoButton(button){
+  const root=button.closest('.modal-overlay.open,.modal.open,[role="dialog"]');
+  if(!root||root.id==='tg-os-photo-modal'||root.closest('#tg-os-photo-modal'))return null;
+  const heading=root.querySelector('h1,h2,h3,.modal-title,.modal-header')?.textContent||'';
+  const number=String(heading).match(/\bOS[-\s]*([A-Z0-9-]{4,})/i)?.[0]?.replace(/^OS\s+/i,'').trim();
+  if(!number)return null;
+  const me=identity();if(!me)return null;
+  const matches=(typeof dados==='undefined'?[]:dados.servicos||[])
+   .filter(os=>os.adminId===me.tenant&&os.numeroRegisto===number&&osFor(os.id));
+  return matches.length===1?matches[0]:null;
+ }
+ document.addEventListener('click',event=>{
+  const button=event.target.closest('button');
+  if(!button||!/\badicionar\s+foto(?:grafia)?\b/i.test(button.textContent||''))return;
+  const os=osFromNativePhotoButton(button);
+  if(!os)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  open(os.id);
+ },true);
+
  root.TGOSPhotos={open,close};
 })(window);

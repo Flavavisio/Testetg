@@ -525,7 +525,7 @@
         switch(control.dataset.tgtAction){
             case'choose':if(jobs().some(other=>other.open&&(other.id!==job.id||other.kind!==job.kind)))return details(job);selected=job.kind+':'+job.id;if(job.kind==='obra')return navigate(worksList);view='home';_fecharSecaoAbertaMobile();if($('painelGrupoMobile'))$('painelGrupoMobile').style.display='none';prepareHome();renderHome();window.scrollTo({top:0,behavior:'auto'});return;
             case'details':return details(job);
-            case'photos':return photoChoices(job);
+            case'photos':return window.TGOSPhotos?.open(job.id)||photoChoices(job);
             case'photo-camera':return choosePhotoSource(job,true);
             case'photo-gallery':return choosePhotoSource(job,false);
             case'notes':return notes(job);

@@ -3,3 +3,10 @@
 @media(max-width:1050px){.tg-pp-main{grid-template-columns:minmax(0,1fr)}.tg-pp-main aside{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tg-pp-main aside .tg-pp-panel{margin-bottom:0}.tg-pp-overview{grid-template-columns:1fr 1.2fr}.tg-pp-equipment-card>img,.tg-pp-equipment-card>.tg-pp-placeholder{width:60px;height:70px}}
 @media(max-width:650px){.tg-passport h2{font-size:1.35rem}.tg-pp-heading{align-items:flex-start;flex-direction:column;gap:8px;margin-bottom:16px}.tg-pp-overview,.tg-pp-main aside,.tg-pp-field-grid,.tg-pp-equipment,.tg-pp-equipment-detail{grid-template-columns:1fr}.tg-pp-overview{gap:14px}.tg-pp-cover,.tg-pp-cover>img,.tg-pp-cover>.tg-pp-placeholder{min-height:190px;max-height:230px}.tg-pp-before{padding:18px}.tg-pp-before dl{grid-template-columns:1fr;gap:12px}.tg-pp-panel{padding:16px}.tg-pp-filters{flex-direction:column;gap:0}.tg-pp-equipment-card>img,.tg-pp-equipment-card>.tg-pp-placeholder{width:66px;height:78px}.tg-pp-timeline article{grid-template-columns:1fr;gap:5px}.tg-pp-modal{padding:16px!important;width:98vw!important}.tg-pp-sites{grid-template-columns:1fr}.tg-pp-actions .btn{min-height:44px}.tg-pp-equipment-detail dl{grid-template-columns:1fr 1fr}.tg-pp-main{gap:0}.tg-pp-main aside{gap:16px}}
 [data-theme="dark"] .tg-passport,body.dark-mode .tg-passport{--pp-ink:#e4edf8;--pp-muted:#a3b4c9;--pp-line:#34445b;--pp-surface:#1d2b40;--pp-bg:#24364f}.dark-mode .tg-pp-before,[data-theme="dark"] .tg-pp-before{background:#223952;border-color:#38516b}
+
+/* iPhone safe-area: leave room above the passport and provide a generous close target. */
+@media(max-width:650px){
+ #tgPassportOverlay.open{align-items:center;padding-top:max(18px,env(safe-area-inset-top,0px));padding-bottom:max(18px,env(safe-area-inset-bottom,0px))}
+ #tgPassportOverlay .tg-pp-modal{height:calc(100dvh - 112px)!important;max-height:calc(100dvh - 112px)!important;min-height:0;border-radius:18px}
+ #tgPassportOverlay .tg-pp-modal>.close-modal{position:sticky;top:0;float:right;width:46px;height:46px;min-width:46px;min-height:46px;display:flex;align-items:center;justify-content:center;margin:-4px -4px 0 8px;border-radius:12px;z-index:5}
+}

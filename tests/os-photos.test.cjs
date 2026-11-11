@@ -56,3 +56,19 @@ test('uploads use private tenant folder and scoped OS update rather than reports
  assert.doesNotMatch(code,/from\('relatorios_especialidade'\)/);
  assert.match(code,/if\(!stored\)try\{await storage\.remove/);
 });
+
+test('photo dialog keeps both camera and gallery actions and close control',()=>{
+ const {w,getModal}=setup();
+ assert.equal(w.TGOSPhotos.open('os'),true);
+ const markup=getModal().innerHTML;
+ assert.match(markup,/tg-os-photo-dialog/);
+ assert.match(markup,/data-photo-source="camera"/);
+ assert.match(markup,/data-photo-source="gallery"/);
+ assert.match(markup,/data-photo-close/);
+});
+test('native OS photo button is routed only after matching an authorized OS number',()=>{
+ assert.match(code,/osFromNativePhotoButton/);
+ assert.match(code,/os\.numeroRegisto===number&&osFor\(os\.id\)/);
+ assert.match(code,/if\(!os\)return;/);
+ assert.match(code,/event\.stopImmediatePropagation\(\)/);
+});

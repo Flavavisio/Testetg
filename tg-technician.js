@@ -340,6 +340,51 @@
         const close=overlay.querySelector('.modal-actions .btn-success');if(close){close.style.display='';close.textContent='Fechar';}
         overlay.classList.add('open');
     }
+    // TG-02: ask for camera or gallery before opening the native OS photo field.
+    // The native OS form remains responsible for validation, compression and saving.
+    function photoChoices(job) {
+        document.getElementById('tgt-photo-choices')?.remove();
+        const overlay=document.createElement('div');
+        overlay.id='tgt-photo-choices';
+        overlay.setAttribute('role','presentation');
+        overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:20px';
+        const panel=document.createElement('section');
+        panel.setAttribute('role','dialog');
+        panel.setAttribute('aria-modal','true');
+        panel.setAttribute('aria-label','Adicionar fotografias');
+        panel.style.cssText='background:#fff;color:#17263b;border-radius:16px;padding:22px;width:min(100%,360px);display:grid;gap:12px;box-shadow:0 16px 40px rgba(0,0,0,.22)';
+        panel.innerHTML='<h3 style="margin:0;font-size:19px">Adicionar fotografias</h3>'
+            +button(icon('camera')+' Tirar fotografia','photo-camera',job)
+            +button(icon('images')+' Escolher da galeria','photo-gallery',job)
+            +'<button type="button" class="tgt-button" data-tgt-photo-dismiss>Cancelar</button>';
+        overlay.append(panel);
+        overlay.addEventListener('click',event=>{if(event.target===overlay||event.target.closest('[data-tgt-photo-dismiss]'))overlay.remove();});
+        document.body.append(overlay);
+        panel.querySelector('button')?.focus({preventScroll:true});
+    }
+    function choosePhotoSource(job,camera) {
+        document.getElementById('tgt-photo-choices')?.remove();
+        details(job,'fotos');
+        // Trigger the already configured file input synchronously from the user's tap,
+        // which is required for camera/Photos permissions on iOS and Android.
+        const inputs=[...document.querySelectorAll('input[type="file"]')]
+            .filter(input=>{
+                if(!/image/.test(input.accept||'')||input.disabled)return false;
+                const description=[input.id,input.name,input.getAttribute('aria-label'),input.closest('label')?.textContent].join(' ');
+                // Never send a service photo to an unrelated uploader (profile, logo, absence).
+                return /fot|imag|photo|anexo.os/i.test(description)
+                    &&!input.closest('#onboarding,#modalPedidoOverlay');
+            });
+        const field=inputs.find(input=>input.closest('.open,[aria-modal="true"]'))
+            ||inputs.find(input=>input.getClientRects().length);
+        if(!field){
+            if(typeof mostrarToast==='function')mostrarToast('Abre o campo Fotografias da OS para adicionar imagens.','aviso');
+            return;
+        }
+        if(camera){field.setAttribute('capture','environment');field.removeAttribute('multiple');}
+        else {field.removeAttribute('capture');field.setAttribute('multiple','');}
+        field.click();
+    }
     function details(job,tab) {
         if(job.kind==='os'){abrirVerOS(job.id);if(tab&&typeof _verOsMostrar==='function')_verOsMostrar(job.id,tab);}
         else abrirObraLongaDetalhe(job.id,tab==='relatorios'?'relatorios':tab==='materiais'?'materiais':'resumo');
@@ -480,7 +525,9 @@
         switch(control.dataset.tgtAction){
             case'choose':if(jobs().some(other=>other.open&&(other.id!==job.id||other.kind!==job.kind)))return details(job);selected=job.kind+':'+job.id;if(job.kind==='obra')return navigate(worksList);view='home';_fecharSecaoAbertaMobile();if($('painelGrupoMobile'))$('painelGrupoMobile').style.display='none';prepareHome();renderHome();window.scrollTo({top:0,behavior:'auto'});return;
             case'details':return details(job);
-            case'photos':return details(job,'fotos');
+            case'photos':return photoChoices(job);
+            case'photo-camera':return choosePhotoSource(job,true);
+            case'photo-gallery':return choosePhotoSource(job,false);
             case'notes':return notes(job);
             case'passport':return openPassport(job);
             case'reports':return details(job,'relatorios');

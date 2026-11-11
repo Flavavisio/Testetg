@@ -7,7 +7,7 @@ function setup(){
  for(const name of ['_tiposEspecialidadePendentes','_requisitosEspecialidadePorIniciar','_tiposEspecialidadePorIniciar','_osComRelatoriosPorTerminar','abrirFilaRelatoriosEspecialidade','finalizarEGerarReportOS','_acaoPendenciasAlerta','_htmlResumoEquipaHoje'])vm.runInContext(fn(name),c);
  c._abrirModalRelatorioEspecialidade=(id,tipo,cb,equipamentoId)=>c.opened.push({id,tipo,cb,equipamentoId});return c;
 }
-for(const tipo of ['REX','RBI','RSI','RCM','RIE','RCP','RCCTV','RIN','RDI','RAVAC','RLIM','RELE','CUSTOM'])test(tipo+': saved draft allows OS completion while pending until report completion',()=>{
+for(const tipo of ['REX','RBI','RSI','RCM','RIE','RCP','RCCTV','RIN','RDI','RAVAC','RLIM','RELE','TRSI','TRSM','CUSTOM'])test(tipo+': saved draft allows OS completion while pending until report completion',()=>{
  const c=setup(),os={id:'os',adminId:'a',status:'em andamento',tiposTrabalho:[tipo],data:'2026-11-01'};c.dados.servicos.push(os);
  c.dados.relatoriosEspecialidade.push({id:'draft',adminId:'a',servicoId:'os',tipo,rascunho:true,assinaturaCliente:'signature'});
  c.finalizarEGerarReportOS('os');assert.equal(os.status,'concluído');assert.equal(c.opened.length,0);assert.equal(c._osComRelatoriosPorTerminar('a').length,1);
@@ -24,4 +24,17 @@ test('queue saves draft for each equipment, ignores foreign drafts, and never lo
 test('fallback without equipment module accepts draft and completed OS remains pending for missing reports',()=>{
  const c=setup();delete c.TGEquipmentReports;const os={id:'os',adminId:'a',status:'concluído',tiposTrabalho:['RIN']};c.dados.servicos.push(os);assert.equal(c._osComRelatoriosPorTerminar('a').length,1);assert.equal(c._tiposEspecialidadePorIniciar('os').length,1);
  c.dados.relatoriosEspecialidade.push({adminId:'a',servicoId:'os',tipo:'RIN',rascunho:true});assert.equal(c._tiposEspecialidadePorIniciar('os').length,0);assert.equal(c._tiposEspecialidadePendentes('os').length,1);
+});
+
+test('explicit SCIE terms participate in normal OS report queue without being duplicated',()=>{
+ const c=setup();
+ assert.equal(c.TIPOS_ESPECIALIDADE.filter(x=>x==='TRSI').length,1);
+ assert.equal(c.TIPOS_ESPECIALIDADE.filter(x=>x==='TRSM').length,1);
+ const os={id:'os2',adminId:'a',status:'concluído',tiposTrabalho:['TRSI','TRSM']};
+ c.dados.servicos.push(os);
+ delete c.TGEquipmentReports;
+ assert.equal(c._tiposEspecialidadePorIniciar('os2').length,2);
+ c.dados.relatoriosEspecialidade.push({adminId:'a',servicoId:'os2',tipo:'TRSI',rascunho:true});
+ assert.equal(c._tiposEspecialidadePorIniciar('os2').length,1);
+ assert.equal(c._osComRelatoriosPorTerminar('a').length,1);
 });

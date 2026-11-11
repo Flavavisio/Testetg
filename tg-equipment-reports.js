@@ -1,6 +1,11 @@
 /* Equipment-specific specialty reports. Historic OS keep their original requirements. */
 (function(){
  'use strict';
+ // Include the two SCIE terms in the existing OS completion/draft queue.
+ // The requirements still depend on explicit TRSI/TRSM work codes on this OS.
+ if(typeof TIPOS_ESPECIALIDADE!=='undefined'&&Array.isArray(TIPOS_ESPECIALIDADE)){
+  for(const code of ['TRSI','TRSM'])if(!TIPOS_ESPECIALIDADE.includes(code))TIPOS_ESPECIALIDADE.push(code);
+ }
  const types={REX:'Extintores',RBI:'Bocas de incêndio',RSI:'Sistemas de incêndio',RCM:'Central de incêndio',RIE:'Iluminação de emergência',RCP:'Portas corta-fogo',RCCTV:'CCTV',RIN:'Intrusão',RDI:'Declaração de instalação',RAVAC:'Intervenção e Manutenção AVAC',RELE:'Intervenção e Verificação Elétrica',RLIM:'Limpeza e Desinfeção'};
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const options=value=>`<option value="__choose__" ${value==null?'selected':''} disabled>Escolher relatório ou Sem relatório</option><option value="" ${value===''?'selected':''}>Sem relatório</option>`+Object.entries(types).filter(([id])=>!['RAVAC','RELE','RLIM'].includes(id)||(window.TGSpecialtyCatalog?.available()||[]).some(c=>c.type===id)).map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${id} — ${esc(label)}</option>`).join('');

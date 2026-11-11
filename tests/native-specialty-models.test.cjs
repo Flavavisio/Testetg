@@ -298,3 +298,15 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
   assert.equal(host.TGEquipmentReports.pending(os).filter(r=>!r.equipamentoId).length,0);
  }finally{for(const view of views)view.close();host.close();}
 });
+
+test('SCIE responsibility terms expose a print/PDF button in both installation and maintenance forms',()=>{
+ const host=setup();
+ try{
+  for(const type of ['TRSI','TRSM']){
+   const html=host.TGNativeReportModels.models[type][type];
+   assert.match(html,/id="native-print">Imprimir \/ PDF<\/button>/);
+   assert.match(html,/id="_relBtnRascunho"/);
+   assert.match(html,/id="_relBtnConcluir"/);
+  }
+ }finally{host.close();}
+});

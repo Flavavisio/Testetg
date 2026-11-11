@@ -310,3 +310,16 @@ test('SCIE responsibility terms expose a print/PDF button in both installation a
   }
  }finally{host.close();}
 });
+
+test('native specialty photo chooser offers camera and multi-image gallery without changing report save',()=>{
+ const host=setup();
+ try{
+  const html=host.TGNativeReportModels.templateFor({...host.dados.servicos[0],tiposTrabalho:['Recarga de gás']},'RAVAC','Recarga de gás');
+  assert.match(html,/id="native-photo-camera"/);
+  assert.match(html,/id="native-photo-gallery"/);
+  assert.match(html,/id="native-photo-file"[^>]*multiple hidden/);
+  assert.match(html,/photoPicker\.setAttribute\('capture','environment'\)/);
+  assert.match(html,/photoPicker\.removeAttribute\('capture'\)/);
+  assert.match(html,/photoPicker\.setAttribute\('multiple',''\)/);
+ }finally{host.close();}
+});

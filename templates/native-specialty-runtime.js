@@ -154,7 +154,10 @@
   const url=URL.createObjectURL(file);try{const img=new Image();await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=url;});const c=document.createElement('canvas'),scale=Math.min(1,1000/Math.max(img.width,img.height));c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);const src=c.toDataURL('image/jpeg',.72);if(!safeImage(src))throw Error('A imagem é demasiado grande.');const figure=document.createElement('figure');figure.dataset.nativePhoto='';figure.innerHTML='<img src="'+src+'" alt="Fotografia da intervenção"><input type="text" aria-label="Legenda da fotografia" value="'+esc(file.name)+'"><button class="native-screen" type="button" data-photo-remove>Retirar fotografia</button>';host.append(figure);}finally{URL.revokeObjectURL(url);}
  }
  if(!config.scie){
- byId('native-photo-file').onchange=async e=>{try{for(const file of e.target.files)await photo(file);}catch(err){status(err.message||'Não foi possível ler a fotografia.');}finally{e.target.value='';}};
+ const photoPicker=byId('native-photo-file');
+ byId('native-photo-camera').onclick=()=>{photoPicker.setAttribute('capture','environment');photoPicker.removeAttribute('multiple');photoPicker.click();};
+ byId('native-photo-gallery').onclick=()=>{photoPicker.removeAttribute('capture');photoPicker.setAttribute('multiple','');photoPicker.click();};
+ photoPicker.onchange=async e=>{try{for(const file of e.target.files)await photo(file);}catch(err){status(err.message||'Não foi possível ler a fotografia.');}finally{e.target.value='';}};
  byId('native-photos').onclick=e=>{const button=e.target.closest('[data-photo-remove]');if(button&&!busy)button.closest('figure').remove();};
  }
  function toggleElectricGroups(){if(!config.legal)return;for(const group of ['pt','soc','seg','bt'])document.querySelectorAll('[data-electric-detail="'+group+'"]').forEach(el=>el.hidden=byId('electric-'+group+'_app')?.value!=='Sim');}

@@ -82,7 +82,12 @@ ${doc.querySelector('#secao-pedidos').outerHTML}${doc.querySelector('#modalPedid
  await page.evaluate(()=>{dados.ponto.push({id:'g',adminId:'a',funcionarioId:'e',data:getDataHoje(),entrada:'09:00'});renderizarOMeuDia()});
  await page.locator('.tgt-focus [data-tgt-action="start"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'os:mine:entrada');
  await page.evaluate(()=>{dados.ponto.push({id:'session',adminId:'a',funcionarioId:'e',servicoId:'mine',data:getDataHoje(),entrada:'10:00'});renderizarOMeuDia()});
- await page.locator('.tgt-focus [data-tgt-action="photos"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:fotos');
+ await page.locator('.tgt-focus [data-tgt-action="photos"]').click();
+ assert.equal(await page.locator('#tgt-photo-choices [role="dialog"]').count(),1);
+ assert.match(await page.locator('#tgt-photo-choices').innerText(),/Tirar fotografia/);
+ assert.match(await page.locator('#tgt-photo-choices').innerText(),/Escolher da galeria/);
+ await page.locator('#tgt-photo-choices [data-tgt-action="photo-gallery"]').click();
+ assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:fotos');
  await page.locator('.tgt-focus [data-tgt-action="notes"]').click();assert.match(await page.locator('#modalGenericoCampos').innerText(),/Entrada pela receção/);await page.evaluate(()=>_fecharModalGenerico());
  await page.locator('.tgt-focus [data-tgt-action="materials"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'tab:mine:materiais');
  await page.locator('.tgt-focus [data-tgt-action="exit"]').click();assert.equal(await page.evaluate(()=>calls.at(-1)),'os:mine:saida');

@@ -368,10 +368,15 @@
         // Trigger the already configured file input synchronously from the user's tap,
         // which is required for camera/Photos permissions on iOS and Android.
         const inputs=[...document.querySelectorAll('input[type="file"]')]
-            .filter(input=>/image/.test(input.accept||'')&&!input.disabled);
-        const field=inputs.find(input=>input.closest('.open,[aria-modal="true"],[style*="display: block"]'))
-            ||inputs.find(input=>input.getClientRects().length)
-            ||inputs[0];
+            .filter(input=>{
+                if(!/image/.test(input.accept||'')||input.disabled)return false;
+                const description=[input.id,input.name,input.getAttribute('aria-label'),input.closest('label')?.textContent].join(' ');
+                // Never send a service photo to an unrelated uploader (profile, logo, absence).
+                return /fot|imag|photo|anexo.os/i.test(description)
+                    &&!input.closest('#onboarding,#modalPedidoOverlay');
+            });
+        const field=inputs.find(input=>input.closest('.open,[aria-modal="true"]'))
+            ||inputs.find(input=>input.getClientRects().length);
         if(!field){
             if(typeof mostrarToast==='function')mostrarToast('Abre o campo Fotografias da OS para adicionar imagens.','aviso');
             return;

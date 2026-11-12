@@ -106,7 +106,7 @@
         const mapLink=map && /^https:\/\//i.test(map.url||'')?`<a class="tgt-button" href="${esc(map.url)}" target="_blank" rel="noopener"${job.kind==='os'?` data-tgt-travel="${esc(job.id)}"`:''}>${icon('route')} Navegar</a>`:'';
         const resume=resumingLunch(job);
         const status=open?'EM CURSO':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
-        const startLabel=open?'Registar saída':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
+        const startLabel=open?(job.kind==='obra'?'Pausar obra':'Pausar OS'):resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
         const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):attendance()&&!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';
         return `<section class="tgt-focus" aria-label="Intervenção em destaque"><div class="tgt-focus-head"><span class="tgt-badge">${status}${job.hour?' · '+esc(job.hour):''}</span><span>${esc(label(job))}</span></div><h3>${esc(job.title)}</h3><p class="tgt-client">${esc(job.client)}</p>
             ${job.address?`<div class="tgt-location">${icon('location-dot')}<span>${esc(job.address)}</span></div>`:''}
@@ -459,6 +459,19 @@
         if(wizard.root.parentElement===wizard.fields)wizard.parts.forEach(({node})=>wizard.fields.append(node));wizard.root.remove();
         wizard.submit.hidden=false;wizard.submit.innerHTML=wizard.submitText;wizard.form.noValidate=wizard.noValidate;wizards.delete(wizard.form);
     }
+    // The detailed point screen is read-only for employees in TesteTG:
+    // clocking out is available from "O meu dia", never from the summary.
+    function updatePointSummaryActions() {
+        const point=$('secao-ponto');
+        if(!point)return;
+        point.querySelectorAll('button').forEach(control=>{
+            const label=normal(control.textContent).replace(/\\s+/g,' ').trim();
+            if(/^(picar|dar) saida$/.test(label)) {
+                if(enabled()){control.hidden=true;control.dataset.tgtHiddenClockOut='true';}
+                else if(control.dataset.tgtHiddenClockOut==='true'){control.hidden=false;delete control.dataset.tgtHiddenClockOut;}
+            }
+        });
+    }
     function refresh() {
         if(refreshing)return;refreshing=true;
         try {
@@ -474,7 +487,7 @@
                 _montarMenuInferiorMobile();renderizarOMeuDia();
                 if(!document.querySelector('.section-container.active')&&view==='home')_mostrarInicioConteudo();
             }
-            updateLeaveBalance();wasEnabled=on;
+            updateLeaveBalance();updatePointSummaryActions();wasEnabled=on;
         }finally{refreshing=false;}
     }
     function wrap(name,fn) {const original=window[name];if(typeof original==='function')window[name]=function(...args){return fn.call(this,original,args);};}
@@ -493,7 +506,7 @@
     wrap('_montarMenuInferiorMobile',function(original,args){const result=original.apply(this,args);if(enabled()){document.body.classList.add('tgt-active');menu();}return result;});
     wrap('_voltarMeuDia',function(original,args){if(enabled())return home();return original.apply(this,args);});
     wrap('_abrirGrupoMobile',function(original,args){if(enabled()){view='group';prepareHome();}const result=original.apply(this,args);if(enabled())menu();return result;});
-    wrap('abrirSecao',function(original,args){if(enabled()&&u()?.role==='funcionario'&&args[0]==='frota')return fleet();if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':args[0]==='pedidos'?'leave':'section';const result=original.apply(this,args);if(enabled())menu();return result;});
+    wrap('abrirSecao',function(original,args){if(enabled()&&u()?.role==='funcionario'&&args[0]==='frota')return fleet();if(enabled()&&args[0]==='obras-longa')return worksList();if(enabled()&&['agenda-obras','servicos'].includes(args[0]))return workList();if(enabled())view=args[0]==='folhas'?'records':args[0]==='pedidos'?'leave':'section';const result=original.apply(this,args);if(enabled())menu();updatePointSummaryActions();return result;});
     for(const name of ['criarFolhaDaOS','criarFolhaDaObra'])wrap(name,function(original,args){wizards.forEach(removeWizard);const result=original.apply(this,args);installWizard();return result;});
     wrap('abrirModal',function(original,args){wizards.forEach(removeWizard);return original.apply(this,args);});
     document.addEventListener('submit',event=>{

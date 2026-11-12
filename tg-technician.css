@@ -220,3 +220,6 @@ body.tgt-active #modalPedidoOverlay>.modal{width:min(100%,540px)!important}
  .tgt-active .header,.tgt-active #cardsGrid,.tgt-active #painelGrupoMobile{width:100%;max-width:960px;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
  .tgt-active #menuInferiorMobile.tgt-nav{max-width:960px;margin:0 auto;border-radius:14px 14px 0 0}
 }
+
+/* TesteTG: o resumo do ponto e apenas consulta; a saida faz-se em O meu dia. */
+body.tgt-active #secao-ponto button[data-tgt-hidden-clock-out="true"]{display:none!important}

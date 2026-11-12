@@ -465,7 +465,7 @@
         const point=$('secao-ponto');
         if(!point)return;
         point.querySelectorAll('button').forEach(control=>{
-            const label=normal(control.textContent).replace(/\\s+/g,' ').trim();
+            const label=normal(control.textContent).replace(/\s+/g,' ').trim();
             if(/^(picar|dar) saida$/.test(label)) {
                 if(enabled()){control.hidden=true;control.dataset.tgtHiddenClockOut='true';}
                 else if(control.dataset.tgtHiddenClockOut==='true'){control.hidden=false;delete control.dataset.tgtHiddenClockOut;}
@@ -566,6 +566,9 @@
     document.addEventListener('error', event => {
         if (event.target.matches?.('img[data-tgt-avatar]')) event.target.hidden = true;
     }, true);
+    const pointSummarySection=$('secao-ponto');
+    if(pointSummarySection) new MutationObserver(updatePointSummaryActions)
+        .observe(pointSummarySection,{childList:true,subtree:true});
     document.addEventListener('tg:interface-updated',refresh);
     let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(refresh,180);});
     window.TGTechnician={refresh,jobs,todayJobs,weekJobs,enabled};refresh();

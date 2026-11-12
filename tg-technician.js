@@ -56,6 +56,13 @@
         const pause=typeof _pausaAlmocoPendente==='function'?_pausaAlmocoPendente():null;
         return !!pause && (job.kind==='os'?pause.tipo==='os'&&pause.servicoId===job.id:pause.tipo==='obra'&&pause.obraId===job.id);
     }
+    function pausedWork(job) {
+        if(!job||job.open)return false;
+        const entries=rows(job.kind==='os'?'ponto':'obraPontoLonga')
+            .filter(p=>p.funcionarioId===u()?.id&&p.data===today()
+                &&(job.kind==='os'?p.servicoId===job.id:p.obraId===job.id)&&p.entrada);
+        return entries.length>0&&entries[entries.length-1].motivoSaida==='pausa';
+    }
     const express = () => expressAtivo(adminDoUtilizador());
     const attendance = () => pontoAssiduidadeAtivo();
     function mark(name) {
@@ -88,7 +95,7 @@
     }
     function jobState(job) {
         const state=normal(job.row.status||job.row.estado);
-        return job.open?['live','Em curso']:completed(job)?['done','Concluído']:state.includes('almoco')?['paused','Almoço']:['stand by','suspensa'].includes(state)?['paused','Em pausa']:['pending','Por iniciar'];
+        return job.open?['live','Em curso']:completed(job)?['done','Concluído']:pausedWork(job)?['paused','Em pausa']:state.includes('almoco')?['paused','Almoço']:['stand by','suspensa'].includes(state)?['paused','Em pausa']:['pending','Por iniciar'];
     }
     function rowHTML(job,action) {
         const [state,text]=jobState(job);
@@ -104,9 +111,9 @@
         if (typeof _osMapaInfo==='function')map=_osMapaInfo(job.row.clienteId,job.address,job.row.localId);
         // Keep navigation URLs supplied by the existing location resolver, never arbitrary schemes.
         const mapLink=map && /^https:\/\//i.test(map.url||'')?`<a class="tgt-button" href="${esc(map.url)}" target="_blank" rel="noopener"${job.kind==='os'?` data-tgt-travel="${esc(job.id)}"`:''}>${icon('route')} Navegar</a>`:'';
-        const resume=resumingLunch(job);
-        const status=open?'EM CURSO':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
-        const startLabel=open?(job.kind==='obra'?'Pausar obra':'Pausar OS'):resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
+        const resume=resumingLunch(job),paused=pausedWork(job);
+        const status=open?'EM CURSO':paused?'EM PAUSA':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
+        const startLabel=open?(job.kind==='obra'?'Pausar obra':'Pausar OS'):paused?'Retomar intervenção':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
         const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):attendance()&&!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';
         return `<section class="tgt-focus" aria-label="Intervenção em destaque"><div class="tgt-focus-head"><span class="tgt-badge">${status}${job.hour?' · '+esc(job.hour):''}</span><span>${esc(label(job))}</span></div><h3>${esc(job.title)}</h3><p class="tgt-client">${esc(job.client)}</p>
             ${job.address?`<div class="tgt-location">${icon('location-dot')}<span>${esc(job.address)}</span></div>`:''}

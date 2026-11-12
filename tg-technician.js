@@ -109,7 +109,7 @@
         if(!point?.entrada)return '';
         const raw=String(point.entrada).trim();
         // Native time entries may include seconds. Do not approximate decimal hours.
-        const clock=raw.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?/);
+        const clock=raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
         if(!clock)return '';
         const baseDate=String(point.data||today()).slice(0,10);
         const iso=baseDate+'T'+clock[1].padStart(2,'0')+':'+clock[2]+':'+(clock[3]||'00');
@@ -502,7 +502,7 @@
         if(wizard.root.parentElement===wizard.fields)wizard.parts.forEach(({node})=>wizard.fields.append(node));wizard.root.remove();
         wizard.submit.hidden=false;wizard.submit.innerHTML=wizard.submitText;wizard.form.noValidate=wizard.noValidate;wizards.delete(wizard.form);
     }
-    let pendingOsExitId=null;
+    let pendingOsExitId=null,pendingOsExitJob=null;
     function updateOsExitMenu() {
         const overlay=$('modalSimNaoOverlay'),choice=$('modalSimNaoAlmocoBtn');
         if(!enabled()||!pendingOsExitId||!overlay?.classList.contains('open')||!choice)return;
@@ -518,12 +518,12 @@
         const pause=$('modalSimNaoAlmocoBtn');
         if(pause&&(event.target===pause||pause.contains(event.target))){
             event.preventDefault();event.stopImmediatePropagation();
-            const job=jobs().find(j=>j.kind==='os'&&j.id===pendingOsExitId);
-            pendingOsExitId=null;
+            const job=pendingOsExitJob;
+            pendingOsExitId=null;pendingOsExitJob=null;
             if(typeof _modalSimNaoResponder==='function')_modalSimNaoResponder(null);
             if(job)setTimeout(()=>pauseWork(job),0);
         }else if(event.target.closest('button')&&!event.target.closest('#modalSimNaoAlmocoBtn')){
-            pendingOsExitId=null;
+            pendingOsExitId=null;pendingOsExitJob=null;
         }
     },true);
     if($('modalSimNaoOverlay'))new MutationObserver(updateOsExitMenu)
@@ -689,7 +689,7 @@
             case'pause':return pauseWork(job);
             case'exit':if(!job.open)return;
                 if(job.kind==='os') {
-                    pendingOsExitId=job.id;
+                    pendingOsExitId=job.id;pendingOsExitJob=job;
                     const result=picarPontoOS(job.id,'saida');
                     updateOsExitMenu();
                     return result;

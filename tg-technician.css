@@ -223,3 +223,7 @@ body.tgt-active #modalPedidoOverlay>.modal{width:min(100%,540px)!important}
 
 /* TesteTG: o resumo do ponto e apenas consulta; a saida faz-se em O meu dia. */
 body.tgt-active #secao-ponto button[data-tgt-hidden-clock-out="true"]{display:none!important}
+
+/* TesteTG: live duration of the currently open OS/work interval. */
+.tgt-work-timer{font-size:14px;line-height:1.5;color:#0891b2;font-weight:700;margin:8px 0 13px;overflow-wrap:anywhere}
+.tgt-work-timer span{font-variant-numeric:tabular-nums}

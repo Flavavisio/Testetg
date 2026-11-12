@@ -111,7 +111,7 @@
         if (typeof _osMapaInfo==='function')map=_osMapaInfo(job.row.clienteId,job.address,job.row.localId);
         // Keep navigation URLs supplied by the existing location resolver, never arbitrary schemes.
         const mapLink=map && /^https:\/\//i.test(map.url||'')?`<a class="tgt-button" href="${esc(map.url)}" target="_blank" rel="noopener"${job.kind==='os'?` data-tgt-travel="${esc(job.id)}"`:''}>${icon('route')} Navegar</a>`:'';
-        const resume=resumingLunch(job),paused=pausedWork(job);
+        const resume=resumingLunch(job),paused=typeof pausedWork==='function'&&pausedWork(job);
         const status=open?'EM CURSO':paused?'EM PAUSA':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
         const startLabel=open?(job.kind==='obra'?'Pausar obra':'Pausar OS'):paused?'Retomar intervenção':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
         const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):attendance()&&!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';

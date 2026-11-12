@@ -153,9 +153,11 @@
         const general=personalClock();
         const generalRecords=rows('ponto').filter(p=>p.funcionarioId===u()?.id&&!p.servicoId&&!p.obraId&&p.data===today()&&p.entrada);
         const hasGeneralRecord=generalRecords.length>0;
-        const lunchTaken=generalRecords.some(p=>p.pausaAlmoco&&p.saida);
-        const lunchPending=!general&&lunchTaken&&generalRecords[generalRecords.length-1]?.pausaAlmoco;
-        const lunchBar=hasGeneralRecord&&(general&&!lunchTaken||lunchPending)?`<div class="tgt-clock tgt-lunch"><span>${icon('utensils')}<span><strong>Pausa para almoço</strong><small>${lunchPending?'Em pausa · horário de almoço':'A pausa não conta como tempo em serviço'}</small></span></span>${button(lunchPending?'Regresso de almoço':'Sair para almoço','lunch')}</div>`:'';
+        // Repeated lunch cycles are permitted in TesteTG. Only the latest
+        // attendance interval determines whether lunch is currently active.
+        const latestGeneral=generalRecords[generalRecords.length-1];
+        const lunchPending=!general&&!!latestGeneral?.pausaAlmoco&&!!latestGeneral.saida;
+        const lunchBar=hasGeneralRecord&&(general||lunchPending)?`<div class="tgt-clock tgt-lunch"><span>${icon('utensils')}<span><strong>Pausa para almoço</strong><small>${lunchPending?'Em pausa · horário de almoço':'A pausa não conta como tempo em serviço'}</small></span></span>${button(lunchPending?'Regresso de almoço':'Sair para almoço','lunch')}</div>`:'';
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
         const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):button('Dar entrada','clock')}${general?button('Ver ponto','point'):''}</div>${lunchBar}`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
@@ -520,9 +522,7 @@
         if(!attendance())return;
         const current=personalClock();
         const generalRecords=rows('ponto').filter(p=>p.funcionarioId===u()?.id&&!p.servicoId&&!p.obraId&&p.data===today()&&p.entrada);
-        const lunchTaken=generalRecords.some(p=>p.pausaAlmoco&&p.saida);
         if(current){
-            if(lunchTaken)return;
             if(jobs().some(job=>job.open)||typeof _pausaAlmocoPendente==='function'&&_pausaAlmocoPendente()){
                 const message='Pausa primeiro a OS ou obra em curso antes de saíres para almoço.';
                 if(typeof mostrarErro==='function')mostrarErro(message);else alert(message);

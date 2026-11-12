@@ -158,7 +158,7 @@
         const lunchBar=hasGeneralRecord&&(general&&!lunchTaken||lunchPending)?`<div class="tgt-clock tgt-lunch"><span>${icon('utensils')}<span><strong>Pausa para almoço</strong><small>${lunchPending?'Em pausa · horário de almoço':'A pausa não conta como tempo em serviço'}</small></span></span>${button(lunchPending?'Regresso de almoço':'Sair para almoço','lunch')}</div>`:'';
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
-        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):hasGeneralRecord?button('Ver ponto','point'):button('Picar entrada','clock')}${general?button('Ver ponto','point'):''}</div>${lunchBar}`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
+        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):button('Dar entrada','clock')}${general?button('Ver ponto','point'):''}</div>${lunchBar}`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
         const finalHTML=oldSession?html.replace('</header>','</header>'+button('Entrada anterior por encerrar · Abrir Trabalhos','jobs')):html;
         if(dia.dataset.tgtHtml!==finalHTML){dia.innerHTML=finalHTML;dia.dataset.tgtHtml=finalHTML;}
         dia.style.display=view==='home'&&!document.querySelector('.section-container.active')?'block':'none';
@@ -491,6 +491,31 @@
             if(typeof mostrarErro==='function')mostrarErro(message);else alert(message);
         }finally{pauseBusy=false;}
     }
+    function handleGeneralClock() {
+        if(!attendance())return;
+        if(!personalClock())return picarPonto();
+        if(typeof abrirSliderConfirmacao!=='function') {
+            if(typeof mostrarErro==='function')mostrarErro('A confirmação por arrastar está indisponível.');
+            return;
+        }
+        if(jobs().some(job=>job.open)||(typeof _pausaAlmocoPendente==='function'&&_pausaAlmocoPendente())){
+            if(typeof mostrarErro==='function')mostrarErro('Pausa ou termina primeiro a intervenção em curso antes de dares saída do dia.');
+            else alert('Pausa ou termina primeiro a intervenção em curso antes de dares saída do dia.');
+            return;
+        }
+        abrirSliderConfirmacao('Dar saída','Confirma a saída do serviço. Arrasta para confirmar.',()=>{
+            // Reuse the native end-of-day persistence and its optional mileage flow.
+            // Resolve its existing question immediately with "saida"; lunch is separate.
+            const pending=picarPonto();
+            const popup=$('modalGenericoOverlay');
+            if(popup?.classList.contains('open')
+                &&popup.querySelector('[onclick*="_responderSaidaOuAlmoco"]')
+                &&typeof _responderSaidaOuAlmoco==='function') {
+                _responderSaidaOuAlmoco('saida');
+            }
+            return pending;
+        });
+    }
     function handleLunch() {
         if(!attendance())return;
         const current=personalClock();
@@ -587,7 +612,7 @@
             case'jobs':weekDay=today();return navigate(workList);case'works':return navigate(worksList);case'profile':return abrirEditarPerfil();case'point':if(permitted('ponto'))abrirSecao('ponto');return;
             case'sheets':if(permitted('folhas'))abrirSecao('folhas');return;
             case'leave':if(permitted('pedidos'))return navigate(()=>abrirSecao('pedidos'));return;
-            case'clock':return picarPonto();
+            case'clock':return handleGeneralClock();
             case'lunch':return handleLunch();
             case'wizard-back':if(wizard)setStep(wizard,Math.max(0,wizard.step-1));return;
             case'wizard-next':if(wizard&&validate(wizard,wizard.step))setStep(wizard,Math.min(2,wizard.step+1));return;

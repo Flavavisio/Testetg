@@ -144,9 +144,11 @@
         const oldSession=list.some(job=>job.kind==='os'&&job.open&&job.date!==today());
         const day=new Date(today()+'T12:00:00').toLocaleDateString('pt-PT',{weekday:'long',day:'numeric',month:'long'});
         const general=personalClock();
+        const generalRecords=rows('ponto').filter(p=>p.funcionarioId===u()?.id&&!p.servicoId&&!p.obraId&&p.data===today()&&p.entrada);
+        const hasGeneralRecord=generalRecords.length>0;
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
-        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${button(general?'Ver ponto':'Picar entrada',general?'point':'clock')}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
+        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):hasGeneralRecord?button('Ver ponto','point'):button('Picar entrada','clock')}${general?button('Ver ponto','point'):''}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
         const finalHTML=oldSession?html.replace('</header>','</header>'+button('Entrada anterior por encerrar · Abrir Trabalhos','jobs')):html;
         if(dia.dataset.tgtHtml!==finalHTML){dia.innerHTML=finalHTML;dia.dataset.tgtHtml=finalHTML;}
         dia.style.display=view==='home'&&!document.querySelector('.section-container.active')?'block':'none';

@@ -104,6 +104,36 @@
     function todayListHTML(list,title='OS de hoje',readOnly=false) {
         return `<section class="tgt-today-list" aria-label="${esc(title)}"><div class="tgt-section-head"><h3>${esc(title)}</h3><span>${list.length} ${list.length===1?'serviço':'serviços'}</span></div>${list.length?list.map(job=>rowHTML(job,readOnly?'weekly-details':null)).join(''):'<p class="tgt-message">Sem serviços atribuídos para este dia.</p>'}</section>`;
     }
+    function workTimerHTML(job) {
+        const point=job?.open;
+        if(!point?.entrada)return '';
+        const raw=String(point.entrada).trim();
+        // Native time entries may include seconds. Do not approximate decimal hours.
+        const clock=raw.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?/);
+        if(!clock)return '';
+        const baseDate=String(point.data||today()).slice(0,10);
+        const iso=baseDate+'T'+clock[1].padStart(2,'0')+':'+clock[2]+':'+(clock[3]||'00');
+        const start=new Date(iso).getTime();
+        if(!Number.isFinite(start))return '';
+        const stamp=Math.max(0,Math.floor((Date.now()-start)/1000));
+        const h=String(Math.floor(stamp/3600)).padStart(2,'0');
+        const m=String(Math.floor(stamp%3600/60)).padStart(2,'0');
+        const sec=String(stamp%60).padStart(2,'0');
+        return `<p class="tgt-work-timer" data-tgt-work-timer="${esc(point.id||job.id)}" data-start-ms="${start}">Em serviço ${job.kind==='os'?'neste cliente':'nesta obra'} há <span>${h}h ${m}m ${sec}s</span></p>`;
+    }
+    function updateWorkTimers() {
+        if(!enabled()||document.hidden)return;
+        document.querySelectorAll('.tgt-work-timer[data-start-ms]').forEach(node=>{
+            const start=Number(node.dataset.startMs);
+            if(!Number.isFinite(start))return;
+            const seconds=Math.max(0,Math.floor((Date.now()-start)/1000));
+            const h=String(Math.floor(seconds/3600)).padStart(2,'0');
+            const m=String(Math.floor(seconds%3600/60)).padStart(2,'0');
+            const sec=String(seconds%60).padStart(2,'0');
+            const span=node.querySelector('span');
+            if(span)span.textContent=h+'h '+m+'m '+sec+'s';
+        });
+    }
     function focusHTML(job) {
         if (!job) return `<section class="tgt-empty">${icon('circle-check')}<h3>Sem OS por iniciar</h3><p>Consulta as OS de hoje abaixo ou a agenda da semana em Trabalhos.</p>${button('Ver a agenda da semana','jobs')}</section>`;
         const open=!!job.open, clock=!!personalClock();
@@ -113,14 +143,15 @@
         const mapLink=map && /^https:\/\//i.test(map.url||'')?`<a class="tgt-button" href="${esc(map.url)}" target="_blank" rel="noopener"${job.kind==='os'?` data-tgt-travel="${esc(job.id)}"`:''}>${icon('route')} Navegar</a>`:'';
         const resume=resumingLunch(job),paused=typeof pausedWork==='function'&&pausedWork(job);
         const status=open?'EM CURSO':paused?'EM PAUSA':resume?'REGRESSAR DO ALMOÇO':'A SEGUIR';
-        const startLabel=open?(job.kind==='obra'?'Pausar obra':'Pausar OS'):paused?'Retomar intervenção':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
+        const startLabel=open?(job.kind==='os'?'Registar saída':'Pausar obra'):paused?'Retomar intervenção':resume?'Regressar à intervenção':attendance()&&!clock?'Picar entrada no dia':'Iniciar intervenção';
         const info=open?'Entrada registada às '+job.open.entrada+(job.open.data!==today()?' · '+job.open.data.split('-').reverse().join('/'):''):attendance()&&!clock&&!resume?'Regista primeiro a entrada no dia para iniciares a intervenção.':'';
         return `<section class="tgt-focus" aria-label="Intervenção em destaque"><div class="tgt-focus-head"><span class="tgt-badge">${status}${job.hour?' · '+esc(job.hour):''}</span><span>${esc(label(job))}</span></div><h3>${esc(job.title)}</h3><p class="tgt-client">${esc(job.client)}</p>
             ${job.address?`<div class="tgt-location">${icon('location-dot')}<span>${esc(job.address)}</span></div>`:''}
             ${job.row.observacoes?`<div class="tgt-access">${icon('circle-info')}<p>${esc(job.row.observacoes)}</p></div>`:''}
             ${info?`<p class="tgt-focus-info">${esc(info)}</p>`:''}
+            ${open?workTimerHTML(job):''}
             ${open?`<div class="tgt-tools">${job.kind==='os'?button(icon('camera')+' Fotografias','photos',job):''}${button(icon('boxes-stacked')+' Materiais','materials',job)}${passportTarget(job)?button(icon('id-card')+' Passaporte','passport',job):''}</div>`:''}
-            <div class="tgt-focus-actions">${button(startLabel+' '+icon('arrow-right'),open?'pause':'start',job,true)}<div class="tgt-detail-actions">${button('Ver '+(job.kind==='os'?'ordem de serviço':'obra'),'details',job)}${mapLink}</div></div></section>`;
+            <div class="tgt-focus-actions">${button(startLabel+' '+icon('arrow-right'),open?(job.kind==='os'?'exit':'pause'):'start',job,true)}<div class="tgt-detail-actions">${button('Ver '+(job.kind==='os'?'ordem de serviço':'obra'),'details',job)}${mapLink}</div></div></section>`;
     }
     function recordsHTML() {
         if(!permitted('folhas'))return '';
@@ -471,6 +502,32 @@
         if(wizard.root.parentElement===wizard.fields)wizard.parts.forEach(({node})=>wizard.fields.append(node));wizard.root.remove();
         wizard.submit.hidden=false;wizard.submit.innerHTML=wizard.submitText;wizard.form.noValidate=wizard.noValidate;wizards.delete(wizard.form);
     }
+    let pendingOsExitId=null;
+    function updateOsExitMenu() {
+        const overlay=$('modalSimNaoOverlay'),choice=$('modalSimNaoAlmocoBtn');
+        if(!enabled()||!pendingOsExitId||!overlay?.classList.contains('open')||!choice)return;
+        choice.innerHTML=icon('pause')+' Pausar OS';
+    }
+    // Keep the production exit modal's other native options unchanged.
+    // Choosing "Pausar OS" cancels its pending exit flow first, then saves
+    // a dedicated pause of the OS; the general attendance clock keeps running.
+    document.addEventListener('click',event=>{
+        if(!enabled()||!pendingOsExitId)return;
+        const overlay=$('modalSimNaoOverlay');
+        if(!overlay?.classList.contains('open'))return;
+        const pause=$('modalSimNaoAlmocoBtn');
+        if(pause&&(event.target===pause||pause.contains(event.target))){
+            event.preventDefault();event.stopImmediatePropagation();
+            const job=jobs().find(j=>j.kind==='os'&&j.id===pendingOsExitId);
+            pendingOsExitId=null;
+            if(typeof _modalSimNaoResponder==='function')_modalSimNaoResponder(null);
+            if(job)setTimeout(()=>pauseWork(job),0);
+        }else if(event.target.closest('button')&&!event.target.closest('#modalSimNaoAlmocoBtn')){
+            pendingOsExitId=null;
+        }
+    },true);
+    if($('modalSimNaoOverlay'))new MutationObserver(updateOsExitMenu)
+        .observe($('modalSimNaoOverlay'),{attributes:true,attributeFilter:['class']});
     let pauseBusy=false;
     async function pauseWork(job) {
         if(pauseBusy||!job?.open||!enabled())return;
@@ -630,7 +687,14 @@
             case'materials':return details(job,'materiais');
             case'start':if(completed(job))return;if(express()&&job.kind==='os')return criarFolhaDaOS(job.id);if(attendance()&&!personalClock()&&!resumingLunch(job))return picarPonto();if(job.open)return;return job.kind==='os'?picarPontoOS(job.id,'entrada'):obraLongaPicarEntrada(job.id);
             case'pause':return pauseWork(job);
-            case'exit':if(!job.open)return;return job.kind==='os'?picarPontoOS(job.id,'saida'):obraLongaPicarSaida(job.id);
+            case'exit':if(!job.open)return;
+                if(job.kind==='os') {
+                    pendingOsExitId=job.id;
+                    const result=picarPontoOS(job.id,'saida');
+                    updateOsExitMenu();
+                    return result;
+                }
+                return obraLongaPicarSaida(job.id);
         }
     });
     // Watch only modal open/close. Native constructors are synchronous, so background
@@ -652,6 +716,7 @@
     if(pointSummarySection) new MutationObserver(updatePointSummaryActions)
         .observe(pointSummarySection,{childList:true,subtree:true});
     document.addEventListener('tg:interface-updated',refresh);
+    setInterval(updateWorkTimers,1000);
     let resize;window.addEventListener('resize',()=>{clearTimeout(resize);resize=setTimeout(refresh,180);});
     window.TGTechnician={refresh,jobs,todayJobs,weekJobs,enabled};refresh();
 }());

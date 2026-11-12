@@ -113,7 +113,7 @@
             ${job.row.observacoes?`<div class="tgt-access">${icon('circle-info')}<p>${esc(job.row.observacoes)}</p></div>`:''}
             ${info?`<p class="tgt-focus-info">${esc(info)}</p>`:''}
             ${open?`<div class="tgt-tools">${job.kind==='os'?button(icon('camera')+' Fotografias','photos',job):''}${button(icon('boxes-stacked')+' Materiais','materials',job)}${passportTarget(job)?button(icon('id-card')+' Passaporte','passport',job):''}</div>`:''}
-            <div class="tgt-focus-actions">${button(startLabel+' '+icon('arrow-right'),open?'exit':'start',job,true)}<div class="tgt-detail-actions">${button('Ver '+(job.kind==='os'?'ordem de serviço':'obra'),'details',job)}${mapLink}</div></div></section>`;
+            <div class="tgt-focus-actions">${button(startLabel+' '+icon('arrow-right'),open?'pause':'start',job,true)}<div class="tgt-detail-actions">${button('Ver '+(job.kind==='os'?'ordem de serviço':'obra'),'details',job)}${mapLink}</div></div></section>`;
     }
     function recordsHTML() {
         if(!permitted('folhas'))return '';
@@ -146,9 +146,12 @@
         const general=personalClock();
         const generalRecords=rows('ponto').filter(p=>p.funcionarioId===u()?.id&&!p.servicoId&&!p.obraId&&p.data===today()&&p.entrada);
         const hasGeneralRecord=generalRecords.length>0;
+        const lunchTaken=generalRecords.some(p=>p.pausaAlmoco&&p.saida);
+        const lunchPending=!general&&lunchTaken&&generalRecords[generalRecords.length-1]?.pausaAlmoco;
+        const lunchBar=hasGeneralRecord&&(general&&!lunchTaken||lunchPending)?`<div class="tgt-clock tgt-lunch"><span>${icon('utensils')}<span><strong>Pausa para almoço</strong><small>${lunchPending?'Em pausa · horário de almoço':'A pausa não conta como tempo em serviço'}</small></span></span>${button(lunchPending?'Regresso de almoço':'Sair para almoço','lunch')}</div>`:'';
         const team=u()?.role==='encarregado' && window.TGSupervisorHome ? `<details class="tgt-team"><summary>${icon('users')} A minha equipa</summary>${TGSupervisorHome.html(tenant(),today())}</details>`:'';
 
-        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):hasGeneralRecord?button('Ver ponto','point'):button('Picar entrada','clock')}${general?button('Ver ponto','point'):''}</div>`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
+        const html=`<div class="tgt-home"><header class="tgt-day-head"><p class="tgt-eyebrow">ÁREA DO TÉCNICO</p><h2>O meu dia</h2><p>Hoje · ${esc(day)}</p>${avatarHTML()}</header>${attendance()?`<div class="tgt-clock"><span>${icon('fingerprint')}<span><strong>Ponto de hoje</strong><small>${general?'Entrada às '+esc(general.entrada):'Sem entrada registada'}</small></span></span>${general?button('Dar saída','clock'):hasGeneralRecord?button('Ver ponto','point'):button('Picar entrada','clock')}${general?button('Ver ponto','point'):''}</div>${lunchBar}`:''}${openWork?button('Tens uma obra em curso · Abrir Obras','works'):''}${focusHTML(focus)}${recordsHTML()}${todayListHTML(available)}${draftsHTML(list)}${team}</div>`;
         const finalHTML=oldSession?html.replace('</header>','</header>'+button('Entrada anterior por encerrar · Abrir Trabalhos','jobs')):html;
         if(dia.dataset.tgtHtml!==finalHTML){dia.innerHTML=finalHTML;dia.dataset.tgtHtml=finalHTML;}
         dia.style.display=view==='home'&&!document.querySelector('.section-container.active')?'block':'none';
@@ -459,6 +462,51 @@
         if(wizard.root.parentElement===wizard.fields)wizard.parts.forEach(({node})=>wizard.fields.append(node));wizard.root.remove();
         wizard.submit.hidden=false;wizard.submit.innerHTML=wizard.submitText;wizard.form.noValidate=wizard.noValidate;wizards.delete(wizard.form);
     }
+    let pauseBusy=false;
+    async function pauseWork(job) {
+        if(pauseBusy||!job?.open||!enabled())return;
+        const active=job.kind==='os'
+            ? rows('ponto').find(p=>p.id===job.open.id&&p.funcionarioId===u()?.id&&p.servicoId===job.id&&!p.saida)
+            : rows('obraPontoLonga').find(p=>p.id===job.open.id&&p.funcionarioId===u()?.id&&p.obraId===job.id&&!p.saida);
+        if(!active)return;
+        pauseBusy=true;
+        const oldExit=active.saida,oldReason=active.motivoSaida;
+        active.saida=new Date().toTimeString().slice(0,8);
+        active.motivoSaida='pausa';
+        try {
+            await guardarDados(dados);
+            renderizarTudo();
+            refresh();
+        }catch(error){
+            active.saida=oldExit;
+            if(oldReason===undefined)delete active.motivoSaida;else active.motivoSaida=oldReason;
+            const message='Não foi possível confirmar a pausa. Tenta novamente: '+(error?.message||'falha de ligação');
+            if(typeof mostrarErro==='function')mostrarErro(message);else alert(message);
+        }finally{pauseBusy=false;}
+    }
+    function handleLunch() {
+        if(!attendance())return;
+        const current=personalClock();
+        const generalRecords=rows('ponto').filter(p=>p.funcionarioId===u()?.id&&!p.servicoId&&!p.obraId&&p.data===today()&&p.entrada);
+        const lunchTaken=generalRecords.some(p=>p.pausaAlmoco&&p.saida);
+        if(current){
+            if(lunchTaken)return;
+            if(jobs().some(job=>job.open)||typeof _pausaAlmocoPendente==='function'&&_pausaAlmocoPendente()){
+                const message='Pausa primeiro a OS ou obra em curso antes de saíres para almoço.';
+                if(typeof mostrarErro==='function')mostrarErro(message);else alert(message);
+                return;
+            }
+            // The native attendance workflow already records pausaAlmoco and persists it.
+            const operation=picarPonto();
+            const popup=$('modalGenericoOverlay');
+            if(popup?.classList.contains('open')&&popup.querySelector('[onclick*="_responderSaidaOuAlmoco"]')&&typeof _responderSaidaOuAlmoco==='function'){
+                _responderSaidaOuAlmoco('almoco');
+            }
+            return operation;
+        }
+        const last=generalRecords[generalRecords.length-1];
+        if(last?.pausaAlmoco&&last.saida)return picarPonto();
+    }
     // The detailed point screen is read-only for employees in TesteTG:
     // clocking out is available from "O meu dia", never from the summary.
     function updatePointSummaryActions() {
@@ -533,6 +581,7 @@
             case'sheets':if(permitted('folhas'))abrirSecao('folhas');return;
             case'leave':if(permitted('pedidos'))return navigate(()=>abrirSecao('pedidos'));return;
             case'clock':return picarPonto();
+            case'lunch':return handleLunch();
             case'wizard-back':if(wizard)setStep(wizard,Math.max(0,wizard.step-1));return;
             case'wizard-next':if(wizard&&validate(wizard,wizard.step))setStep(wizard,Math.min(2,wizard.step+1));return;
         }
@@ -548,6 +597,7 @@
             case'reports':return details(job,'relatorios');
             case'materials':return details(job,'materiais');
             case'start':if(completed(job))return;if(express()&&job.kind==='os')return criarFolhaDaOS(job.id);if(attendance()&&!personalClock()&&!resumingLunch(job))return picarPonto();if(job.open)return;return job.kind==='os'?picarPontoOS(job.id,'entrada'):obraLongaPicarEntrada(job.id);
+            case'pause':return pauseWork(job);
             case'exit':if(!job.open)return;return job.kind==='os'?picarPontoOS(job.id,'saida'):obraLongaPicarSaida(job.id);
         }
     });

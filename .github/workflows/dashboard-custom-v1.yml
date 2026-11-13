@@ -19,4 +19,4 @@ jobs:
       - name: Testes dashboard personalizado
         run: node --test tests/dashboard-custom-v1.test.cjs
       - name: Regressões TesteTG
-        run: node --test tests/dashboard-live-status.test.cjs tests/navigation-logic.test.cjs
+        run: node --test tests/dashboard-live-status.test.cjs

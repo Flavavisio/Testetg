@@ -1,0 +1,24 @@
+name: Dashboard limpo com mapa e modelos TesteTG
+on:
+  push:
+    branches:
+      - feat/dashboard-limpo-mapa-modelos-20261113
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock jsdom@26
+      - name: Verificar sintaxe
+        run: |
+          node --check tg-dashboard-custom-test.js
+          node --check tg-dashboard-map-test.js
+      - name: Testar Dashboard personalizavel e mapa
+        run: node --test tests/dashboard-custom-v1.test.cjs
+      - name: Regressao equipa e dashboard
+        run: node --test tests/dashboard-live-status.test.cjs

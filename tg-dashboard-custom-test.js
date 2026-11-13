@@ -7,16 +7,24 @@ const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
 const DAY=86400000;
-const START=['os','team','works','pending','attention','live','activity','planning','satisfaction','shortcuts'];
+const START=['os','assist','works','team','pending','attention','live','activity','planning','assistdetail','satisfaction','productivity'];
+const PRESETS={
+ operacional:{label:'Operacional',widgets:['os','assist','works','team','pending','attention','live','activity','planning','assistdetail','satisfaction','productivity']},
+ gestao:{label:'Gestão',widgets:['os','assist','works','team','pending','attention','live','planning','satisfaction','productivity','finance']},
+ assistencias:{label:'Assistências',widgets:['assist','pending','assistdetail','attention','live','activity','planning','satisfaction','team']},
+ comercial:{label:'Comercial',widgets:['os','assist','satisfaction','shortcuts','planning','activity','clients','pending']},
+ financeiro:{label:'Financeiro',widgets:['finance','os','assist','works','productivity','satisfaction','pending','activity']},
+ simples:{label:'Essencial',widgets:['os','assist','team','pending','attention','live']}
+};
 const WIDGETS=[
  ['os','OS no período','fa-clipboard-list'],['team','Técnicos agora','fa-users'],['works','Obras ativas','fa-hard-hat'],
  ['pending','Pendências','fa-triangle-exclamation'],['attention','Precisa da tua atenção','fa-bell'],
  ['live','Equipa em tempo real','fa-people-group'],['activity','Atividade recente','fa-wave-square'],
  ['planning','Planeamento','fa-calendar-days'],['satisfaction','Satisfação dos clientes','fa-star'],
- ['shortcuts','Acesso rápido','fa-bolt'],['assist','Assistências','fa-headset'],['finance','Financeiro','fa-wallet']
+ ['shortcuts','Acesso rápido','fa-bolt'],['assist','Assistências','fa-headset'],['assistdetail','Assistências · estados','fa-headset'],['productivity','Produtividade da equipa','fa-chart-simple'],['clients','Clientes','fa-address-book'],['finance','Financeiro','fa-wallet']
 ];
 const names=Object.fromEntries(WIDGETS.map(([id,name,icon])=>[id,{name,icon}]));
-const defaults=()=>({period:'monthly',start:'',end:'',visible:[...START],order:WIDGETS.map(x=>x[0]),sizes:{},collapsed:[]});
+const defaults=()=>({profile:'operacional',period:'monthly',start:'',end:'',visible:[...START],order:WIDGETS.map(x=>x[0]),sizes:{},collapsed:[]});
 let key='',state=null,editing=false,chosen=null,lastSig='',pendingSave=false;
 function auth(){
  const u=typeof usuarioLogado==='undefined'?null:usuarioLogado;
@@ -36,7 +44,7 @@ function load(a){
  key=prefKey(a);
  let raw={};try{raw=JSON.parse(localStorage.getItem(key)||'{}')||{};}catch(_){}
  const base=defaults();
- state={...base,period:['weekly','monthly','annual','custom'].includes(raw.period)?raw.period:base.period,
+ state={...base,profile:PRESETS[raw.profile]?raw.profile:'operacional',period:['weekly','monthly','annual','custom'].includes(raw.period)?raw.period:base.period,
  start:/^\d{4}-\d{2}-\d{2}$/.test(raw.start||'')?raw.start:'',
  end:/^\d{4}-\d{2}-\d{2}$/.test(raw.end||'')?raw.end:'',
  visible:Array.isArray(raw.visible)?raw.visible.filter(x=>names[x]&&allowed(x)):base.visible,
@@ -75,9 +83,13 @@ function group(a,b){
  const osPeriod=os.filter(x=>inPeriod(x.data||recordDate(x),b));
  const activeWorks=works.filter(x=>{const v=norm(x.estado||x.status);return !/inativ|desativ|concluid|cancelad|suspens/.test(v)&&/ativ|andamento|execuc/.test(v);});
  const openAssist=assist.filter(x=>!/resolvid|concluid|fechad/.test(norm(x.estado||x.status)));
+ const assistPeriod=assist.filter(x=>inPeriod(x.data||recordDate(x),b));
+ const resolvedAssist=assistPeriod.filter(x=>/resolvid|concluid|fechad/.test(norm(x.estado||x.status)));
+ const assignedAssist=openAssist.filter(x=>!!(x.osGeradaId||x.atribuidoId||x.tecnicoId||x.funcionarioId));
+ const potentialAssist=openAssist.filter(x=>x.potencialContrato===true||x.potencialContrato==='sim'||/potencial/.test(norm(x.estadoContrato||'')));
  const pendingOs=os.filter(x=>/reagend|penden|prepar/.test(norm(x.status)));
  const unassigned=assist.filter(x=>!/resolvid|concluid|fechad/.test(norm(x.estado||x.status))&&!x.osGeradaId&&!x.atribuidoId);
- const team=[],activity=[];
+ const team=[],activity=[],mapPoints=[];
  const current=today();
  for(const e of unique.values()){
   const p=clock.filter(x=>String(x.funcionarioId)===String(e.id)&&String(x.data)===current);
@@ -91,6 +103,17 @@ function group(a,b){
   else if(general?.pausaAlmoco&&general.saida){type='pause';detail='Em almoço';}
   else if(general&&!general.saida){type='active';detail='Em serviço';}
   team.push({name:e.nome||'Técnico',type,detail});
+  // Only show GPS sent with a real time record. Never invent map coordinates.
+  const records=[...p,...wp].filter(x=>x.entrada).sort((x,y)=>String(y.data||'') .localeCompare(String(x.data||''))||String(y.entrada||'').localeCompare(String(x.entrada||'')));
+  for(const rec of records){
+   const obj=rec.localizacao&&typeof rec.localizacao==='object'?rec.localizacao:{};
+   const lat=Number(rec.latitude??rec.lat??rec.gpsLat??rec.gpsLatitude??obj.latitude??obj.lat);
+   const lng=Number(rec.longitude??rec.lng??rec.lon??rec.gpsLng??rec.gpsLongitude??obj.longitude??obj.lng);
+   if(Number.isFinite(lat)&&Number.isFinite(lng)&&Math.abs(lat)<=90&&Math.abs(lng)<=180&&!(lat===0&&lng===0)){
+    mapPoints.push({id:String(e.id),name:e.nome||'Técnico',lat,lng,type,detail});
+    break;
+   }
+  }
  }
  for(const [kind,rows,field] of [['OS',clock,'servicoId'],['Obra',workClock,'obraId']]){
   for(const x of rows.filter(x=>x[field]&&inPeriod(x.data,b))){
@@ -105,7 +128,7 @@ function group(a,b){
  const agenda=os.filter(x=>inPeriod(x.data,b)).sort((a,c)=>String(a.data||'').localeCompare(String(c.data||''))||String(a.hora||'').localeCompare(String(c.hora||''))).slice(0,6);
  const openWorkIds=new Set([...workClock.filter(x=>!x.saida&&x.obraId).map(x=>String(x.obraId))]);
  const openOsIds=new Set(clock.filter(x=>!x.saida&&x.servicoId).map(x=>String(x.servicoId)));
- return {osPeriod,activeWorks,openAssist,pendingOs,unassigned,team,activity:activity.slice(0,6),agenda,clientMap,openWorkIds,openOsIds,totals:team.reduce((v,x)=>(v[x.type]++,v),{active:0,pause:0,off:0})};
+ return {osPeriod,activeWorks,assistPeriod,resolvedAssist,assignedAssist,potentialAssist,openAssist,pendingOs,unassigned,team,mapPoints,activity:activity.slice(0,6),agenda,clientMap,openWorkIds,openOsIds,clientCount:scoped(source.clientes,a).length,totals:team.reduce((v,x)=>(v[x.type]++,v),{active:0,pause:0,off:0})};
 }
 function boxValue(value,label,note='',tone='blue'){return '<div class="tgd-stat tgd-'+tone+'"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span><small>'+esc(note)+'</small></div>';}
 function listRows(items,empty){

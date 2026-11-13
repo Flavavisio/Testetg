@@ -24,7 +24,7 @@ const WIDGETS=[
  ['shortcuts','Acesso rápido','fa-bolt'],['assist','Assistências','fa-headset'],['assistdetail','Assistências · estados','fa-headset'],['productivity','Produtividade da equipa','fa-chart-simple'],['clients','Clientes','fa-address-book'],['finance','Financeiro','fa-wallet']
 ];
 const names=Object.fromEntries(WIDGETS.map(([id,name,icon])=>[id,{name,icon}]));
-const defaults=()=>({profile:'operacional',period:'monthly',start:'',end:'',visible:[...START],order:WIDGETS.map(x=>x[0]),sizes:{},collapsed:[]});
+const defaults=()=>({profile:'operacional',period:'monthly',start:'',end:'',visible:[...START],order:[...PRESETS.operacional.widgets,...WIDGETS.map(x=>x[0]).filter(id=>!PRESETS.operacional.widgets.includes(id))],sizes:{},collapsed:[],presets:{}});
 let key='',state=null,editing=false,chosen=null,lastSig='',pendingSave=false;
 function auth(){
  const u=typeof usuarioLogado==='undefined'?null:usuarioLogado;
@@ -50,7 +50,9 @@ function load(a){
  visible:Array.isArray(raw.visible)?raw.visible.filter(x=>names[x]&&allowed(x)):base.visible,
  order:[...new Set([...(Array.isArray(raw.order)?raw.order:[]),...base.order].filter(x=>names[x]))],
  sizes:Object.fromEntries(Object.entries(raw.sizes||{}).filter(([k,v])=>names[k]&&['normal','wide'].includes(v))),
- collapsed:Array.isArray(raw.collapsed)?raw.collapsed.filter(x=>names[x]):[]};
+ collapsed:Array.isArray(raw.collapsed)?raw.collapsed.filter(x=>names[x]):[],
+ presets:raw.presets&&typeof raw.presets==='object'&&!Array.isArray(raw.presets)?raw.presets:{},
+ satTab:['reports','inqueritos'].includes(raw.satTab)?raw.satTab:'reports'};
 }
 function save(){try{localStorage.setItem(key,JSON.stringify(state));return true;}catch(e){console.warn('Dashboard: não foi possível guardar neste navegador.',e);return false;}}
 function bounds(){
@@ -248,9 +250,18 @@ function shift(id,delta){
  const rest=state.order.filter(x=>!order.includes(x));state.order=[...order,...rest];save();render();
 }
 function applyPreset(id){
- const preset=PRESETS[id];if(!preset)return;
- state.profile=id;state.visible=preset.widgets.filter(allowed);state.order=[...preset.widgets,...WIDGETS.map(x=>x[0]).filter(x=>!preset.widgets.includes(x))];
- state.sizes={};state.collapsed=[];save();render();
+ const preset=PRESETS[id];if(!preset||!state)return;
+ const snapshot=()=>({visible:[...state.visible],order:[...state.order],sizes:{...state.sizes},collapsed:[...state.collapsed]});
+ state.presets=state.presets||{};
+ state.presets[state.profile]=snapshot();
+ const existing=state.presets[id];
+ state.profile=id;
+ state.visible=existing?.visible?.filter(x=>names[x]&&allowed(x))||preset.widgets.filter(allowed);
+ state.order=existing?.order?.filter(x=>names[x])||[...preset.widgets,...WIDGETS.map(x=>x[0]).filter(x=>!preset.widgets.includes(x))];
+ state.order=[...new Set([...state.order,...WIDGETS.map(x=>x[0])])];
+ state.sizes=existing?.sizes&&typeof existing.sizes==='object'?{...existing.sizes}:{};
+ state.collapsed=Array.isArray(existing?.collapsed)?[...existing.collapsed]:[];
+ save();render();
 }
 function openModule(id){
  const card=[...document.querySelectorAll('#cardsGrid [data-card]')].find(x=>x.dataset.card===id);

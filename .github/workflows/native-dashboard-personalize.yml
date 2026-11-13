@@ -1,0 +1,21 @@
+name: TesteTG - original dashboard with personalization
+on:
+  push:
+    branches:
+      - feat/native-dashboard-personalize-20261113
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock jsdom@26
+      - run: node --check tg-dashboard-native-personalize-test.js
+      - name: Preserve original dashboard and personalize widgets
+        run: node --test tests/native-dashboard-personalize.test.cjs
+      - name: Existing live dashboard status tests
+        run: node --test tests/dashboard-live-status.test.cjs

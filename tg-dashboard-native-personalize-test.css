@@ -1,0 +1,31 @@
+/* TesteTG — apenas barra discreta de personalização do Dashboard ORIGINAL. */
+#secao-dashboard-central #tgNativeDashControls{margin:0 0 12px}
+#secao-dashboard-central #tgNativeDashControls button{font:inherit;cursor:pointer}
+#secao-dashboard-central #tgNativeDashControls>.tgnd-primary{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;background:#08796f;border:1px solid #08796f;color:white;border-radius:9px;font-size:12px;font-weight:700}
+#secao-dashboard-central #tgNativeDashControls .tgnd-panel{border:1px solid #dfe6ec;background:var(--card-bg,#fff);border-radius:12px;max-width:880px;padding:16px;margin:0 0 15px;box-shadow:0 2px 8px #00000008}
+#secao-dashboard-central #tgNativeDashControls .tgnd-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid #edf0f2;padding-bottom:10px}
+#secao-dashboard-central #tgNativeDashControls .tgnd-heading strong{font-size:15px;color:var(--text-primary,#183040)}
+#secao-dashboard-central #tgNativeDashControls .tgnd-heading p{font-size:12px;color:#64748b;margin:4px 0 0}
+#secao-dashboard-central #tgNativeDashControls .tgnd-heading>button{background:transparent;border:0;font-size:24px;color:#64748b;line-height:1}
+#secao-dashboard-central #tgNativeDashControls .tgnd-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+#secao-dashboard-central #tgNativeDashControls .tgnd-groups section{border:1px solid #e4e9ef;border-radius:9px;padding:9px;min-width:0}
+#secao-dashboard-central #tgNativeDashControls .tgnd-groups section>header{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:0 2px 8px}
+#secao-dashboard-central #tgNativeDashControls .tgnd-groups section>header strong{font-size:12px;color:#334155}
+#secao-dashboard-central #tgNativeDashControls .tgnd-groups section>header button,#secao-dashboard-central #tgNativeDashControls .tgnd-item>button{border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;color:#475569;min-width:25px;min-height:27px;padding:3px 6px}
+#secao-dashboard-central #tgNativeDashControls .tgnd-item{display:flex;gap:7px;align-items:center;border-top:1px solid #f0f2f5;padding:8px 2px;min-width:0}
+#secao-dashboard-central #tgNativeDashControls .tgnd-item[draggable=true]{cursor:grab}
+#secao-dashboard-central #tgNativeDashControls .tgnd-grip{color:#94a3b8}
+#secao-dashboard-central #tgNativeDashControls .tgnd-item label{display:flex;align-items:center;gap:7px;flex:1;min-width:0;font-size:11px;line-height:1.3;color:#334155}
+#secao-dashboard-central #tgNativeDashControls .tgnd-item label input{accent-color:#08796f;flex:none;width:16px;height:16px}
+#secao-dashboard-central #tgNativeDashControls .tgnd-footer{display:flex;gap:8px;justify-content:flex-end}
+#secao-dashboard-central #tgNativeDashControls .tgnd-footer button{border:1px solid #d8e3e6;color:#08796f;border-radius:8px;background:white;padding:10px 13px;font-size:12px;font-weight:700}
+#secao-dashboard-central #tgNativeDashControls .tgnd-footer button.tgnd-primary{background:#08796f;color:white;border-color:#08796f}
+#secao-dashboard-central #tgNativeDashControls .tgnd-panel>small{display:block;color:#64748b;margin-top:10px;font-size:10px}
+#secao-dashboard-central [data-native-hidden="1"],#secao-dashboard-central [data-native-empty="1"]{display:none!important}
+@media(max-width:700px){
+ #secao-dashboard-central #tgNativeDashControls .tgnd-groups{grid-template-columns:1fr}
+ #secao-dashboard-central #tgNativeDashControls .tgnd-panel{padding:12px}
+ #secao-dashboard-central #tgNativeDashControls .tgnd-item{gap:4px}
+ #secao-dashboard-central #tgNativeDashControls .tgnd-item>button{min-width:24px}
+ #secao-dashboard-central #dashboardCentralConteudo [data-native-reduced="1"]{grid-template-columns:1fr!important}
+}

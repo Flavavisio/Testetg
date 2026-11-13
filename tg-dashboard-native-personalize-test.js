@@ -58,7 +58,10 @@
   for(const group of groups){
    const node=holder.querySelector(':scope > '+group.selector);
    if(!node)continue;
-   const widgets=nodeList(node).map((el,i)=>({el,id:group.prefix+'-'+i,label:describe(el,group,i)}));
+   const widgets=nodeList(node).map((el,i)=>{
+    if(!el.dataset.nativeKey){el.dataset.nativeKey=group.prefix+'-'+i;el.dataset.nativeOriginOrder=String(i);}
+    return {el,id:el.dataset.nativeKey,label:describe(el,group,i),origin:Number(el.dataset.nativeOriginOrder)};
+   });
    all.push({...group,node,widgets});
   }
   return all;
@@ -66,7 +69,7 @@
  function ordered(arr,ids){const ranks=new Map((ids||[]).map((x,i)=>[x,i]));return [...arr].sort((a,b)=>{
   const ia=ranks.has(a.id)?ranks.get(a.id):1e6;
   const ib=ranks.has(b.id)?ranks.get(b.id):1e6;
-  return ia-ib||arr.indexOf(a)-arr.indexOf(b);
+  return ia-ib||(a.origin??arr.indexOf(a))-(b.origin??arr.indexOf(b));
  });}
  function apply(){
   if(applying||!current())return;

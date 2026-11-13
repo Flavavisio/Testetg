@@ -73,7 +73,7 @@ function group(a,b){
  const osById=new Map(os.map(x=>[String(x.id),x])),workById=new Map(works.map(x=>[String(x.id),x]));
  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
  const osPeriod=os.filter(x=>inPeriod(x.data||recordDate(x),b));
- const activeWorks=works.filter(x=>/ativ|andamento|execuc/.test(norm(x.estado||x.status)));
+ const activeWorks=works.filter(x=>{const v=norm(x.estado||x.status);return !/inativ|desativ|concluid|cancelad|suspens/.test(v)&&/ativ|andamento|execuc/.test(v);});
  const openAssist=assist.filter(x=>!/resolvid|concluid|fechad/.test(norm(x.estado||x.status)));
  const pendingOs=os.filter(x=>/reagend|penden|prepar/.test(norm(x.status)));
  const unassigned=assist.filter(x=>!/resolvid|concluid|fechad/.test(norm(x.estado||x.status))&&!x.osGeradaId&&!x.atribuidoId);
@@ -174,7 +174,9 @@ function signature(){
  const a=auth(),d0=d();
  if(!a)return '';
  const counts=['servicos','obras','assistencias','ponto','obraPontoLonga','funcionarios','encarregados'].map(k=>(d0[k]||[]).length);
- return [a.user,a.tenant,...counts,state?.period,state?.start,state?.end].join('|');
+ const flags=['ponto','obraPontoLonga'].flatMap(k=>(d0[k]||[]).filter(x=>String(x.adminId)===a.tenant).slice(-100).map(x=>[x.id,x.saida,x.motivoSaida,x.pausaAlmoco].join(':')));
+ const statuses=['servicos','obras','assistencias'].flatMap(k=>(d0[k]||[]).filter(x=>String(x.adminId)===a.tenant).slice(-100).map(x=>[x.id,x.status,x.estado,x.atribuidoId].join(':')));
+ return [a.user,a.tenant,today(),...counts,...flags,...statuses,state?.period,state?.start,state?.end].join('|');
 }
 function activate(){
  const a=auth();if(!a)return;

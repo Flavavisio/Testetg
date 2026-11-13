@@ -51,7 +51,7 @@ test('Estatísticas respeitam tenant e período e não inventam dados',()=>{
   assert.equal(info.unassigned.length,1);
   assert.equal(info.team.length,1);
   assert(!info.osPeriod.some(x=>x.adminId==='b'));
-  assert.match(t.w.document.querySelector('[data-widget="finance"]')?.textContent||'','');
+  assert.equal(info.osPeriod[0].id,'os1');
  }finally{t.done()}
 });
 test('Cada admin e subadmin tem chave independente',()=>{

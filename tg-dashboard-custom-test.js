@@ -189,7 +189,8 @@ function render(){
  const actions='<div class="tgd-period" role="group" aria-label="Período">'+
    [['weekly','Semanal'],['monthly','Mensal'],['annual','Anual'],['custom','Personalizado']].map(([v,t])=>'<button type="button" data-period="'+v+'" class="'+(period===v?'selected':'')+'">'+t+'</button>').join('')+'</div>';
  const pick=period==='custom'?'<div class="tgd-range"><label>De <input type="date" data-date="start" value="'+esc(state.start||today())+'"></label><label>Até <input type="date" data-date="end" value="'+esc(state.end||today())+'"></label></div>':'';
- const header='<div class="tgd-top"><div><h2>Dashboard principal</h2><p>Resumo da operação e gestão da tua equipa</p></div><div class="tgd-controls">'+actions+pick+'<button type="button" class="tgd-edit" data-editor-toggle><i class="fas fa-sliders"></i> '+(editing?'Concluir personalização':'Personalizar Dashboard')+'</button></div></div>';
+ const template='<label class="tgd-template"><span>Tipo de Dashboard</span><select data-template aria-label="Modelo de Dashboard">'+Object.entries(PRESETS).map(([id,p])=>'<option value="'+id+'" '+(id===state.profile?'selected':'')+'>'+esc(p.label)+'</option>').join('')+'</select></label>';
+ const header='<div class="tgd-top"><div><h2>Dashboard Principal</h2><p>Visão operacional da equipa, obras, OS e assistências.</p></div><div class="tgd-controls">'+template+actions+pick+'<button type="button" class="tgd-edit" data-editor-toggle><i class="fas fa-sliders"></i> '+(editing?'Concluir personalização':'Personalizar')+'</button></div></div>';
  const ids=state.order.filter(id=>state.visible.includes(id)&&allowed(id));
  const cards=ids.map(id=>{
   const meta=names[id],wide=state.sizes[id]==='wide',collapse=state.collapsed.includes(id);
@@ -200,11 +201,16 @@ function render(){
     '<button type="button" data-collapse aria-label="'+(collapse?'Expandir':'Recolher')+'">'+(collapse?'▾':'▴')+'</button>')+
     '</div></header><div class="tgd-body">'+widget(id,info,b)+'</div></section>';
  }).join('');
- const editor=editing?'<aside class="tgd-editor"><h3><i class="fas fa-sliders"></i> Personalizar layout</h3><p>Escolhe os blocos, arrasta para ordenar ou usa as setas. O tamanho pode ser normal ou alargado.</p>'+
+ const editor=editing?'<aside class="tgd-editor"><h3><i class="fas fa-sliders"></i> Personalizar layout</h3><p>Seleciona um modelo de Dashboard e adapta a disposição à tua função. Os teus ajustes não alteram os de outros administradores.</p>'+
+ '<div class="tgd-presets">'+Object.entries(PRESETS).map(([id,p])=>'<button type="button" data-preset="'+id+'" class="'+(state.profile===id?'active':'')+'">'+esc(p.label)+'</button>').join('')+'</div><h4>Widgets disponíveis</h4>'+
  WIDGETS.filter(([id])=>allowed(id)).map(([id,name,icon])=>'<label class="tgd-option"><input type="checkbox" data-visible="'+id+'" '+(state.visible.includes(id)?'checked':'')+'><i class="fas '+icon+'"></i> '+esc(name)+'</label>').join('')+
  '<div class="tgd-editor-actions"><button type="button" data-reset>Repor layout</button><button type="button" data-save>Guardar layout</button></div><small>Preferências guardadas por utilizador neste navegador do TesteTG.</small></aside>':'';
  const msg=b.invalid?'<div class="tgd-warning" role="alert">A data inicial tem de ser anterior ou igual à data final.</div>':'';
+ if(root.TGDashboardMapTest?.dispose)root.TGDashboardMapTest.dispose();
  mount.innerHTML=header+msg+'<div class="tgd-stage"><div class="tgd-grid">'+cards+'</div>'+editor+'</div>';
+ if(ids.includes('live')&&info.mapPoints.length&&root.TGDashboardMapTest?.render){
+  root.TGDashboardMapTest.render($('tgdTeamMiniMap'),info.mapPoints);
+ }
  lastSig=signature();
 }
 function ensure(section){
@@ -241,6 +247,11 @@ function shift(id,delta){
  [order[index],order[newIndex]]=[order[newIndex],order[index]];
  const rest=state.order.filter(x=>!order.includes(x));state.order=[...order,...rest];save();render();
 }
+function applyPreset(id){
+ const preset=PRESETS[id];if(!preset)return;
+ state.profile=id;state.visible=preset.widgets.filter(allowed);state.order=[...preset.widgets,...WIDGETS.map(x=>x[0]).filter(x=>!preset.widgets.includes(x))];
+ state.sizes={};state.collapsed=[];save();render();
+}
 function openModule(id){
  const card=[...document.querySelectorAll('#cardsGrid [data-card]')].find(x=>x.dataset.card===id);
  if(!card||card.hidden||card.classList.contains('card-bloqueado')||card.classList.contains('hidden-card'))return;
@@ -254,6 +265,8 @@ function onClick(e){
  if(action.hasAttribute('data-editor-toggle')){editing=!editing;render();return;}
  if(action.hasAttribute('data-save')){save();editing=false;render();return;}
  if(action.hasAttribute('data-reset')){state=defaults();save();render();return;}
+ if(action.dataset.preset){applyPreset(action.dataset.preset);return;}
+ if(action.dataset.satTab){state.satTab=action.dataset.satTab;save();render();return;}
  if(action.dataset.open){openModule(action.dataset.open);return;}
  const card=action.closest('[data-widget]');if(!card)return;
  const id=card.dataset.widget;
@@ -264,6 +277,7 @@ function onClick(e){
 }
 function onChange(e){
  const input=e.target;if(!input.closest('#tgdCustomRoot'))return;
+ if(input.hasAttribute('data-template')){applyPreset(input.value);return;}
  if(input.hasAttribute('data-visible')){const id=input.dataset.visible;state.visible=input.checked?[...new Set([...state.visible,id])]:state.visible.filter(x=>x!==id);save();render();}
  if(input.hasAttribute('data-date')){state[input.dataset.date]=input.value;save();render();}
 }
@@ -286,5 +300,5 @@ function start(){
  activate();setInterval(update,7000);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
-root.TGDashboardCustom={bounds,group,load,render,save,update,defaults,prefKey};
+root.TGDashboardCustom={bounds,group,load,render,save,update,defaults,prefKey,applyPreset,PRESETS};
 })(window);

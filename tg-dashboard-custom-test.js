@@ -130,34 +130,55 @@ function group(a,b){
  const openOsIds=new Set(clock.filter(x=>!x.saida&&x.servicoId).map(x=>String(x.servicoId)));
  return {osPeriod,activeWorks,assistPeriod,resolvedAssist,assignedAssist,potentialAssist,openAssist,pendingOs,unassigned,team,mapPoints,activity:activity.slice(0,6),agenda,clientMap,openWorkIds,openOsIds,clientCount:scoped(source.clientes,a).length,totals:team.reduce((v,x)=>(v[x.type]++,v),{active:0,pause:0,off:0})};
 }
-function boxValue(value,label,note='',tone='blue'){return '<div class="tgd-stat tgd-'+tone+'"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span><small>'+esc(note)+'</small></div>';}
+function boxValue(value,label,note='',tone='blue',target=''){
+ const inside='<strong>'+esc(value)+'</strong><span>'+esc(label)+'</span><small>'+esc(note)+'</small>';
+ return target?'<button type="button" class="tgd-stat tgd-'+tone+'" data-open="'+esc(target)+'">'+inside+'<i class="fas fa-chevron-right" aria-hidden="true"></i></button>':
+ '<div class="tgd-stat tgd-'+tone+'">'+inside+'</div>';
+}
 function listRows(items,empty){
  if(!items.length)return '<p class="tgd-empty">'+esc(empty)+'</p>';
  return '<div class="tgd-list">'+items.map(x=>'<div class="tgd-line">'+x+'</div>').join('')+'</div>';
 }
 function widget(id,info,b){
- const count=info.team.length,periodLabel=state.period==='weekly'?'semana':state.period==='monthly'?'mês':state.period==='annual'?'ano':'período';
+ const label=state.period==='weekly'?'semana':state.period==='monthly'?'mês':state.period==='annual'?'ano':'período';
  switch(id){
-  case 'os':return boxValue(info.osPeriod.length,'OS no '+periodLabel,info.openOsIds.size+' em execução','blue');
-  case 'team':return boxValue(info.totals.active,'Técnicos em serviço',info.totals.pause+' em almoço/pausa','green');
-  case 'works':return boxValue(info.activeWorks.length,'Obras ativas',info.openWorkIds.size+' com trabalho em curso','purple');
-  case 'pending':return boxValue(info.pendingOs.length+info.unassigned.length,'Pendências prioritárias',info.pendingOs.length+' OS e '+info.unassigned.length+' assistências','red');
+  case 'os':return boxValue(info.osPeriod.length,'OS no '+label,info.openOsIds.size+' em execução','blue','servicos');
+  case 'team':return boxValue(info.totals.active,'Técnicos em serviço',info.totals.pause+' em pausa / almoço','green','mapa-equipa');
+  case 'works':return boxValue(info.activeWorks.length,'Obras ativas',info.openWorkIds.size+' em execução','purple','obras-longa');
+  case 'pending':return boxValue(info.pendingOs.length+info.unassigned.length,'Pendências','Precisam de atenção','red','servicos');
+  case 'assist':return boxValue(info.assistPeriod.length,'Assistências no '+label,info.openAssist.length+' abertas','teal','assistencias');
   case 'attention':return listRows([
-   '<span><i class="fas fa-calendar-xmark"></i> OS pendentes / por reagendar</span><b>'+info.pendingOs.length+'</b>',
-   '<span><i class="fas fa-headset"></i> Assistências sem atribuição</span><b>'+info.unassigned.length+'</b>',
-   '<span><i class="fas fa-headset"></i> Assistências abertas</span><b>'+info.openAssist.length+'</b>'
-  ],'Sem alertas.');
-  case 'live':return '<div class="tgd-team-count">'+boxValue(info.totals.active,'Em serviço','','green')+boxValue(info.totals.pause,'Em almoço/pausa','','amber')+boxValue(info.totals.off,'Sem serviço ativo','','muted')+'</div>'+
-    listRows(info.team.slice(0,5).map(x=>'<span><i class="tgd-dot tgd-dot-'+x.type+'"></i> '+esc(x.name)+'</span><small>'+esc(x.detail)+'</small>'),'Sem equipa registada.');
-  case 'activity':return listRows(info.activity.map(x=>'<span><b>'+esc(x.time)+'</b> · '+esc(x.kind)+' · '+esc(x.client)+'</span><small>'+esc(x.person)+' · '+esc(x.state)+'</small>'),'Sem atividade no período.');
-  case 'planning':return listRows(info.agenda.map(x=>'<span><b>'+esc(String(x.hora||'').slice(0,5))+'</b> · '+esc(x.numeroRegisto||'OS')+'</span><small>'+esc(info.clientMap.get(String(x.clienteId))||'Cliente')+' · '+esc(x.data||'')+'</small>'),'Sem OS agendadas no período.');
-  case 'satisfaction':return '<div class="tgd-shortcuts"><button data-open="relatorio-os"><i class="fas fa-file-lines"></i> Satisfação dos reports</button><button data-open="dashboard-analitico"><i class="fas fa-star"></i> Consultar indicadores</button></div><p class="tgd-caption">Os resultados são consultados nos módulos originais; não se misturam inquéritos com reports.</p>';
+   '<button data-open="servicos"><span><i class="fas fa-calendar-check"></i> OS pendentes / por reagendar</span><b>'+info.pendingOs.length+'</b><i class="fas fa-chevron-right"></i></button>',
+   '<button data-open="assistencias"><span><i class="fas fa-headset"></i> Assistências sem atribuição</span><b>'+info.unassigned.length+'</b><i class="fas fa-chevron-right"></i></button>',
+   '<button data-open="folhas"><span><i class="fas fa-file-circle-check"></i> Ver folhas de obra por validar</span><i class="fas fa-chevron-right"></i></button>'
+  ],'Sem pendências.');
+  case 'live':return '<div class="tgd-live-layout"><div class="tgd-live-summary">'+
+    '<div><i class="tgd-dot tgd-dot-active"></i> Em serviço <strong>'+info.totals.active+'</strong></div>'+
+    '<div><i class="tgd-dot tgd-dot-pause"></i> Em pausa / almoço <strong>'+info.totals.pause+'</strong></div>'+
+    '<div><i class="tgd-dot tgd-dot-off"></i> Fora de serviço <strong>'+info.totals.off+'</strong></div>'+
+    '<div class="tgd-live-total">Total da equipa <strong>'+info.team.length+'</strong></div>'+
+    '<button type="button" data-open="mapa-equipa">Ver mapa completo <i class="fas fa-arrow-up-right-from-square"></i></button></div>'+
+    '<div class="tgd-map-wrap">'+(info.mapPoints.length?'<div id="tgdTeamMiniMap" class="tgd-map" role="region" aria-label="Mapa com GPS da equipa"></div>':
+    '<div class="tgd-map-empty"><i class="fas fa-map-location-dot"></i><strong>Sem GPS recente</strong><span>A localização aparece quando os técnicos fazem picagens com GPS.</span></div>')+
+    '<div class="tgd-map-note">'+info.mapPoints.length+' técnico(s) com localização registada hoje</div></div></div>';
+  case 'activity':return listRows(info.activity.map(x=>'<button data-open="'+(x.kind==='OS'?'servicos':'obras-longa')+'"><span><b>'+esc(x.time)+'</b> · '+esc(x.kind)+' · '+esc(x.client)+'</span><small>'+esc(x.person)+' · '+esc(x.state)+'</small><i class="fas fa-chevron-right"></i></button>'),'Sem atividade no período.');
+  case 'planning':return listRows(info.agenda.map(x=>'<button data-open="agenda-obras"><span><b>'+esc(String(x.hora||'').slice(0,5))+'</b> · '+esc(x.numeroRegisto||'OS')+'</span><small>'+esc(info.clientMap.get(String(x.clienteId))||'Cliente')+' · '+esc(x.data||'')+'</small><i class="fas fa-chevron-right"></i></button>'),'Sem OS agendadas no período.');
+  case 'assistdetail':return '<div class="tgd-assist-summary">'+[
+     [info.assistPeriod.length,'Total no período'],[info.openAssist.length,'Abertas'],[info.unassigned.length,'Sem atribuição'],[info.resolvedAssist.length,'Resolvidas']
+   ].map(([n,t])=>'<button data-open="assistencias"><strong>'+esc(n)+'</strong><small>'+esc(t)+'</small></button>').join('')+'</div>'+
+   listRows(info.openAssist.slice(0,3).map(x=>'<button data-open="assistencias"><span><i class="fas fa-headset"></i> '+esc(x.numeroRegisto||x.numero||'Assistência')+'</span><small>'+esc(x.descricao||x.estado||'Aberta')+'</small><i class="fas fa-chevron-right"></i></button>'),'Sem assistências abertas.');
+  case 'satisfaction':return '<div class="tgd-switches"><button type="button" class="tgd-switch '+(state.satTab==='reports'||!state.satTab?'selected':'')+'" data-sat-tab="reports">Reports</button><button type="button" class="tgd-switch '+(state.satTab==='inqueritos'?'selected':'')+'" data-sat-tab="inqueritos">Inquéritos</button></div>'+
+    '<p class="tgd-caption">Satisfação dos '+(state.satTab==='inqueritos'?'inquéritos':'reports')+' — consulta os dados reais no respetivo módulo.</p>'+
+    '<button type="button" class="tgd-open-link" data-open="'+(state.satTab==='inqueritos'?'dashboard-analitico':'relatorio-os')+'">Consultar satisfação <i class="fas fa-arrow-right"></i></button>';
+  case 'productivity':return '<div class="tgd-productivity">'+info.team.slice(0,5).map(x=>'<div><span>'+esc(x.name)+'</span><b class="tgd-state '+x.type+'">'+esc(x.type==='active'?'Em serviço':x.type==='pause'?'Em pausa':'Fora de serviço')+'</b></div>').join('')+'</div>'+
+    '<p class="tgd-caption">Estado real da equipa, sem percentagens estimadas.</p><button type="button" class="tgd-open-link" data-open="funcionarios">Ver equipa <i class="fas fa-arrow-right"></i></button>';
+  case 'clients':return boxValue(info.clientCount,'Clientes registados','Consulta de clientes','teal','clientes');
   case 'shortcuts':return '<div class="tgd-shortcuts"><button data-open="servicos">Ordens de serviço</button><button data-open="assistencias">Assistências</button><button data-open="obras-longa">Obras</button><button data-open="agenda-obras">Planeamento</button></div>';
-  case 'assist':return boxValue(info.openAssist.length,'Assistências abertas',info.unassigned.length+' sem atribuição','blue');
-  case 'finance':return '<div class="tgd-shortcuts"><button data-open="financeiro"><i class="fas fa-wallet"></i> Abrir Financeiro</button></div><p class="tgd-caption">Valores financeiros permanecem no módulo autorizado.</p>';
+  case 'finance':return '<p class="tgd-caption">Os valores financeiros são apresentados no módulo com as permissões atuais.</p><button type="button" class="tgd-open-link" data-open="financeiro">Abrir Financeiro <i class="fas fa-arrow-right"></i></button>';
   default:return '';
  }
 }
+
 function render(){
  const a=auth(),section=$('secao-dashboard-central');
  if(!a||!a.tenant||!section)return;

@@ -23,7 +23,7 @@ function env(role='admin',id='a',tenant='a'){
 test('Dashboard novo monta, preserva o conteúdo antigo e mostra todos os filtros de datas',()=>{
  const t=env();try{
   const root=t.w.document.getElementById('tgdCustomRoot');
-  assert(root);assert.match(root.textContent,/Dashboard principal/);
+  assert(root);assert.match(root.textContent,/Dashboard Principal/);
   for(const term of ['Semanal','Mensal','Anual','Personalizado'])assert(root.textContent.includes(term));
   assert.match(t.w.document.getElementById('dashboardCentralConteudo').textContent,/Antigo Dashboard/);
   assert(t.w.document.querySelector('#secao-dashboard-central.tgd-custom-active'));

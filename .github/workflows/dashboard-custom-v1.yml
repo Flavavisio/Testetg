@@ -1,0 +1,22 @@
+name: Dashboard personalizavel v1 TesteTG
+on:
+  push:
+    branches:
+      - feat/dashboard-personalizado-v1-20261113
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock jsdom@26
+      - name: Sintaxe
+        run: node --check tg-dashboard-custom-test.js
+      - name: Testes dashboard personalizado
+        run: node --test tests/dashboard-custom-v1.test.cjs
+      - name: Regressões TesteTG
+        run: node --test tests/dashboard-live-status.test.cjs tests/navigation-logic.test.cjs

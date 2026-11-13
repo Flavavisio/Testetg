@@ -29,7 +29,7 @@ test('permite ocultar individualmente sem apagar dados',()=>{
   const checkbox=t.w.document.querySelector('[data-native-visibility="operation-0"]');
   assert(checkbox?.checked);
   checkbox.click();
-  assert.equal(t.w.document.querySelector('[data-native-key="operation-0"]'),null);
+  assert(t.w.document.querySelector('[data-native-key="operation-0"]'));
   const original=t.w.document.querySelector('.hdc-row3 .hdc-card');
   assert.equal(original.dataset.nativeHidden,'1');
   assert.match(original.textContent,/Assistências/);

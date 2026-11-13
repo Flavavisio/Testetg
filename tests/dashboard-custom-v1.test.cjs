@@ -118,3 +118,16 @@ test('PWA do TesteTG tem scripts e versão de cache isolada',()=>{
  }
  assert.match(fs.readFileSync('sw.js','utf8'),/testetg-dashboard-personalizado-v1-20261113/);
 });
+
+test('Obras inativas não contam como ativas e mudança de pausa atualiza os dados',()=>{
+ const t=env();try{
+  t.w.dados.obras.push({id:'o2',adminId:'a',estado:'Inativa'});
+  const b={first:'2026-11-01',last:'2026-11-30',invalid:false};
+  assert.equal(t.api.group({tenant:'a',user:'a'},b).activeWorks.length,1);
+  const prev=t.w.document.getElementById('tgdCustomRoot').textContent;
+  t.w.dados.ponto[0].saida='12:00';t.w.dados.ponto[0].motivoSaida='pausa';
+  t.api.update();
+  assert(t.w.document.getElementById('tgdCustomRoot'));
+  assert.notEqual(t.w.document.getElementById('tgdCustomRoot').textContent,prev);
+ }finally{t.done()}
+});

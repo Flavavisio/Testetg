@@ -3341,31 +3341,134 @@ function _assistEstado(value) {
                 </div>
             `;
         }
-        function _quiosqueAgendaToggleMateriais(usou) {
-            document.getElementById('qsa_mat_sim').style.background = usou ? '#152a52' : '#e2e8f0';
-            document.getElementById('qsa_mat_sim').style.color = usou ? '#fff' : '#152a52';
-            document.getElementById('qsa_mat_nao').style.background = !usou ? '#152a52' : '#e2e8f0';
-            document.getElementById('qsa_mat_nao').style.color = !usou ? '#fff' : '#152a52';
+        function _quiosqueAgendaContextoMateriais() {
+            const s = _quiosqueAgendaSessaoAtual, p = _quiosqueAgendaPessoaSelecionada;
+            const adminId = _tenantQuiosque();
+            if (!s || !p || !adminId || s.responsavelId !== p.id) return null;
+            const item = (s.tipo === 'servico' ? dados.servicos : s.tipo === 'obra' ? dados.obras : [])
+                ?.find(x => x.id === s.id && x.adminId === adminId);
+            if (!item) return null;
+            const obraId = s.tipo === 'obra' ? item.id : item.obraId;
+            const obra = (dados.obras || []).find(x => x.id === obraId && x.adminId === adminId);
+            if (obraId && !obra) return null;
+            const pessoa = [...(dados.funcionarios || []), ...(dados.encarregados || [])].find(x => x.id === p.id && x.adminId === adminId && !x.suspenso);
+            if (!pessoa) return null;
+            return { adminId, item, obraId: obra?.id || null, pessoa,
+                chave: JSON.stringify([adminId, s.tipo, s.id, s.responsavelId, p.id]) };
+        }
+        function _quiosqueAgendaPlanoMateriais(ctx) {
+            if (!ctx?.obraId) return [];
+            return (dados.obraMateriais || []).filter(m => m.adminId === ctx.adminId && m.obraId === ctx.obraId)
+                .map(m => ({ plano: m, artigo: (dados.artigos || []).find(a => a.id === m.artigoId && a.adminId === ctx.adminId) }))
+                .filter(x => x.artigo);
+        }
+        function _quiosqueAgendaValidarMateriais(lista, ctx) {
+            if (!ctx) throw new Error('A sessão da obra mudou. Volta a identificar o responsável.');
+            const plano = _quiosqueAgendaPlanoMateriais(ctx);
+            return lista.map(m => {
+                const quantidade = Number(m.quantidade);
+                if (!Number.isFinite(quantidade) || quantidade <= 0) throw new Error('Indica uma quantidade maior que zero para cada material selecionado.');
+                const artigo = m.artigoId ? (dados.artigos || []).find(a => a.id === m.artigoId && a.adminId === ctx.adminId) : null;
+                if (m.artigoId && !artigo) throw new Error('Um dos artigos já não está disponível nesta empresa.');
+                const nome = String(artigo?.nome || m.nome || '').trim();
+                if (!nome || nome.length > 200) throw new Error('Indica um nome de material até 200 caracteres.');
+                const previsto = artigo && plano.some(x => x.artigo.id === artigo.id && Number(x.plano.qtdPrevista) > 0);
+                return { artigoId: artigo?.id || null, nome, quantidade, unidade: artigo?.unidade || m.unidade || 'un', extra: !previsto };
+            });
+        }
+        function _quiosqueAgendaResumoMateriais() {
             const area = document.getElementById('qsa_mat_area');
-            area.style.display = usou ? 'block' : 'none';
-            if (!usou) { _quiosqueAgendaMateriaisTemp = []; return; }
-            const s = _quiosqueAgendaSessaoAtual;
-            const adminId = s ? _tenantQuiosque() : null;
-            const artigos = (dados.artigos || []).filter(a => a.adminId === adminId);
-            window._qsaArtigosCache = artigos;
-            area.innerHTML = `
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-                    <div style="position:relative;flex:1;">
-                        <input type="text" id="qsa_busca_artigo" placeholder="Pesquisar material..." autocomplete="off" oninput="_quiosqueAgendaFiltrarArtigos()" onfocus="_quiosqueAgendaFiltrarArtigos()" style="width:100%;" />
-                        <div id="qsa_resultados_artigos" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.12);max-height:min(55vh,420px);overflow-y:auto;z-index:50;margin-top:2px;"></div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline" onclick="_quiosqueAgendaAdicionarMaterial()" title="Adicionar este material"><i class="fas fa-plus"></i></button>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="number" id="qsa_novo_qtd" min="0" max="9999" step="1" placeholder="Qtd" style="width:100px;text-align:center;" />
-                </div>
-                <div id="qsa_materiais_lista" style="margin-top:8px;display:flex;flex-direction:column;gap:4px;"></div>
-            `;
+            if (!area) return;
+            area.style.display = 'block';
+            area.innerHTML = '<button type="button" class="btn btn-outline" id="qsa_reabrir_materiais">Selecionar / alterar materiais</button><div id="qsa_resumo_materiais"></div>';
+            document.getElementById('qsa_reabrir_materiais').onclick = () => _quiosqueAgendaToggleMateriais(true);
+            const resumo = document.getElementById('qsa_resumo_materiais');
+            resumo.textContent = _quiosqueAgendaMateriaisTemp.length
+                ? _quiosqueAgendaMateriaisTemp.map(m => m.nome + ' × ' + m.quantidade + ' ' + (m.unidade || 'un') + (m.extra ? ' (não planeado — informar admin)' : '')).join('; ')
+                : 'Nenhum material confirmado.';
+        }
+        function _quiosqueAgendaToggleMateriais(usou) {
+            const sim = document.getElementById('qsa_mat_sim'), nao = document.getElementById('qsa_mat_nao');
+            if (!usou) {
+                _quiosqueAgendaMateriaisTemp = [];
+                document.getElementById('qsa_mat_area').style.display = 'none';
+                sim.style.background = '#e2e8f0'; sim.style.color = '#152a52';
+                nao.style.background = '#152a52'; nao.style.color = '#fff';
+                return;
+            }
+            const ctx = _quiosqueAgendaContextoMateriais();
+            if (!ctx) { alert('Volta a identificar o responsável desta obra/OS.'); return; }
+            if (document.getElementById('qsa_materiais_modal')) return;
+            let rascunho = _quiosqueAgendaMateriaisTemp.map(m => ({ ...m }));
+            const dialog = document.createElement('dialog');
+            dialog.id = 'qsa_materiais_modal';
+            dialog.setAttribute('aria-labelledby', 'qsa_materiais_titulo');
+            dialog.style.cssText = 'width:min(620px,94vw);max-height:85dvh;overflow:auto;border:1px solid #e2e8f0;border-radius:14px;padding:20px;color:#152a52;background:#fff;';
+            dialog.innerHTML = '<h3 id="qsa_materiais_titulo">Materiais usados</h3><p>Assinala o material programado e indica a quantidade realmente usada.</p><div id="qsa_planeados"></div><h4>Material não planeado</h4><p>Os extras ficam identificados para o administrador.</p><label>Material<input id="qsa_extra_nome" maxlength="200" list="qsa_catalogo" placeholder="Pesquisar ou escrever o nome" style="width:100%;"></label><datalist id="qsa_catalogo"></datalist><div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;"><label>Quantidade<input id="qsa_extra_qtd" type="number" min="0.001" step="any" style="width:100px;"></label><label>Unidade<select id="qsa_extra_un"><option>un</option><option>m</option><option>kg</option><option>L</option><option>cx</option><option>rolo</option><option>par</option></select></label><button id="qsa_extra_adicionar" type="button" class="btn btn-outline">Adicionar material</button></div><div id="qsa_extras"></div><p id="qsa_mat_erro" role="alert" style="color:#b91c1c;"></p><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;"><button id="qsa_mat_cancelar" type="button" class="btn btn-outline">Cancelar</button><button id="qsa_mat_confirmar" type="button" class="btn btn-primary">Confirmar materiais</button></div>';
+            document.body.appendChild(dialog);
+            const el = id => dialog.querySelector('#' + id);
+            const erro = msg => { el('qsa_mat_erro').textContent = msg; };
+            const plano = _quiosqueAgendaPlanoMateriais(ctx).filter(x => Number(x.plano.qtdPrevista) > 0);
+            if (!plano.length) el('qsa_planeados').textContent = 'Sem materiais programados para esta obra/OS. Podes acrescentar os usados abaixo.';
+            plano.forEach(({ plano: m, artigo: a }) => {
+                const linha = document.createElement('div');
+                linha.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e2e8f0;';
+                const label = document.createElement('label'), check = document.createElement('input');
+                check.type = 'checkbox'; check.style.width = 'auto'; label.style.flex = '1';
+                const anterior = rascunho.find(x => x.artigoId === a.id);
+                check.checked = !!anterior; label.append(check, document.createTextNode(' ' + a.nome + ' — previsto: ' + m.qtdPrevista + ' ' + (a.unidade || 'un')));
+                const qtd = document.createElement('input');
+                qtd.type = 'number'; qtd.min = '0.001'; qtd.step = 'any'; qtd.style.width = '95px';
+                qtd.setAttribute('aria-label', 'Quantidade usada de ' + a.nome);
+                qtd.value = anterior?.quantidade || ''; qtd.disabled = !check.checked;
+                const atualizar = () => {
+                    rascunho = rascunho.filter(x => x.artigoId !== a.id);
+                    if (check.checked) rascunho.push({ artigoId: a.id, nome: a.nome, unidade: a.unidade || 'un', quantidade: Number(qtd.value), extra: false });
+                };
+                check.onchange = () => { qtd.disabled = !check.checked; atualizar(); if (check.checked) qtd.focus(); };
+                qtd.oninput = atualizar; linha.append(label, qtd); el('qsa_planeados').appendChild(linha);
+            });
+            (dados.artigos || []).filter(a => a.adminId === ctx.adminId).forEach(a => {
+                const option = document.createElement('option'); option.value = a.nome; el('qsa_catalogo').appendChild(option);
+            });
+            const mostrarExtras = () => {
+                el('qsa_extras').replaceChildren();
+                rascunho.filter(m => !plano.some(x => x.artigo.id === m.artigoId)).forEach(m => {
+                    const row = document.createElement('div'), remover = document.createElement('button');
+                    row.textContent = m.nome + ' × ' + m.quantidade + ' ' + (m.unidade || 'un') + ' (não planeado) ';
+                    remover.type = 'button'; remover.className = 'btn btn-sm btn-outline'; remover.textContent = 'Remover';
+                    remover.onclick = () => { rascunho = rascunho.filter(x => x !== m); mostrarExtras(); };
+                    row.appendChild(remover); el('qsa_extras').appendChild(row);
+                });
+            };
+            mostrarExtras();
+            el('qsa_extra_adicionar').onclick = () => {
+                try {
+                    if (_quiosqueAgendaContextoMateriais()?.chave !== ctx.chave) throw new Error('A sessão mudou. Fecha e volta a abrir os materiais.');
+                    const nome = el('qsa_extra_nome').value.trim();
+                    const artigo = (dados.artigos || []).find(a => a.adminId === ctx.adminId && String(a.nome).trim().toLocaleLowerCase('pt') === nome.toLocaleLowerCase('pt'));
+                    if (artigo && rascunho.some(x => x.artigoId === artigo.id)) throw new Error('Este material já está selecionado. Altera a quantidade na linha existente.');
+                    if (artigo && plano.some(x => x.artigo.id === artigo.id)) throw new Error('Este material está programado. Seleciona-o na lista acima.');
+                    const [novo] = _quiosqueAgendaValidarMateriais([{ artigoId: artigo?.id || null, nome, quantidade: Number(el('qsa_extra_qtd').value), unidade: el('qsa_extra_un').value }], ctx);
+                    rascunho.push(novo); mostrarExtras(); erro('');
+                    el('qsa_extra_nome').value = ''; el('qsa_extra_qtd').value = '';
+                } catch (e) { erro(e.message); }
+            };
+            el('qsa_mat_cancelar').onclick = () => dialog.close();
+            el('qsa_mat_confirmar').onclick = () => {
+                try {
+                    const atual = _quiosqueAgendaContextoMateriais();
+                    if (atual?.chave !== ctx.chave) throw new Error('A sessão mudou. Fecha e volta a abrir os materiais.');
+                    const validados = _quiosqueAgendaValidarMateriais(rascunho, atual);
+                    if (!validados.length) throw new Error('Seleciona pelo menos um material ou cancela e escolhe Não.');
+                    _quiosqueAgendaMateriaisTemp = validados;
+                    sim.style.background = '#152a52'; sim.style.color = '#fff';
+                    nao.style.background = '#e2e8f0'; nao.style.color = '#152a52';
+                    _quiosqueAgendaResumoMateriais(); dialog.close();
+                } catch (e) { erro(e.message); }
+            };
+            dialog.addEventListener('close', () => { dialog.remove(); sim.focus(); }, { once: true });
+            dialog.showModal();
         }
         function _quiosqueAgendaFiltrarArtigos() {
             const input = document.getElementById('qsa_busca_artigo');
@@ -3392,40 +3495,80 @@ function _assistEstado(value) {
             document.getElementById('qsa_materiais_lista').innerHTML = _quiosqueAgendaMateriaisTemp.map((m, i) => `<div style="display:flex;justify-content:space-between;background:#f8fafc;padding:6px 10px;border-radius:6px;font-size:.85rem;">${escapeHtmlSimples(m.nome)} × ${m.quantidade}<span onclick="_quiosqueAgendaMateriaisTemp.splice(${i},1);_quiosqueAgendaToggleMateriais(true);" style="cursor:pointer;color:#dc2626;">✕</span></div>`).join('');
         }
         async function _quiosqueAgendaConfirmarFolha(acaoPendente) {
-            const desc = document.getElementById('qsa_folha_desc').value.trim();
+            const fn = _quiosqueAgendaConfirmarFolha;
+            if (fn.aGuardar) return;
+            const campo = document.getElementById('qsa_folha_desc');
+            const desc = campo?.value.trim();
             if (!desc || desc.length < 3) { alert('Escreve pelo menos 3 caracteres a descrever o trabalho.'); return; }
-            const s = _quiosqueAgendaSessaoAtual; const p = _quiosqueAgendaPessoaSelecionada;
-            const adminId = _tenantQuiosque();
-            const hoje = getDataHoje();
-            const aberto = _quiosqueAgendaAberto(p.id);
-            const registosDia = _picagensParaFolha(s.tipo === 'servico' ? 'os' : 'obra', s.id, p.id, hoje);
-            const horas = _somarIntervalosPicagem(registosDia, hoje, new Date().toTimeString().slice(0, 5)).horas;
-            const item = s.tipo === 'servico' ? dados.servicos?.find(x => x.id === s.id) : dados.obras?.find(x => x.id === s.id);
-            const obraDescricao = s.tipo === 'servico' ? ('OS — ' + (obterNomeCliente(item?.clienteId) || 'Cliente')) : (item?.nome || 'Obra');
-            const folhaId = gerarId();
-            dados.folhasObra = dados.folhasObra || [];
-            dados.folhasObra.push({
-                id: folhaId, obraId: s.tipo === 'obra' ? s.id : null, servicoId: s.tipo === 'servico' ? s.id : null,
-                obraDescricao, descricao: desc, materiais: _quiosqueAgendaMateriaisTemp.length ? _quiosqueAgendaMateriaisTemp.map(m => `${m.nome} × ${m.quantidade}`).join('; ') : null,
-                horasTrabalhadas: +horas.toFixed(2), data: hoje, funcionarioId: p.id, adminId,
-                dataAtualizacao: Date.now(), origem: 'quiosque_agenda_responsavel'
-            });
-            if (_quiosqueAgendaMateriaisTemp.length) {
-                dados.movimentosStock = dados.movimentosStock || [];
-                _quiosqueAgendaMateriaisTemp.forEach(m => {
-                    dados.movimentosStock.push({
-                        id: gerarId(), adminId, artigoId: m.artigoId, obraId: s.tipo === 'obra' ? s.id : (item?.obraId || null),
-                        tipo: 'saida', quantidade: m.quantidade, origemTipo: s.tipo === 'obra' ? 'folha' : 'os',
-                        origemId: s.tipo === 'obra' ? folhaId : s.id, data: hoje,
-                        funcionarioId: p.id, armazemId: _armazemPrincipalId(adminId),
-                        observacoes: 'Registado no Modo Quiosque (Agenda), por ' + (p.nome || '') + '.'
+            const ctx = _quiosqueAgendaContextoMateriais();
+            if (!ctx) { alert('Volta a identificar o responsável desta obra/OS.'); return; }
+            if (document.getElementById('qsa_materiais_modal')) { alert('Confirma ou cancela primeiro a seleção de materiais.'); return; }
+            const s = _quiosqueAgendaSessaoAtual, p = _quiosqueAgendaPessoaSelecionada;
+            let materiais;
+            try { materiais = _quiosqueAgendaValidarMateriais(_quiosqueAgendaMateriaisTemp, ctx); }
+            catch (e) { alert(e.message); return; }
+            fn.aGuardar = true;
+            try {
+                // A failed sync retries the same local sheet and stock movements.
+                if (!fn.pendente || fn.pendente.campo !== campo || fn.pendente.chave !== ctx.chave) {
+                    const { adminId, obraId, item } = ctx, hoje = getDataHoje(), folhaId = gerarId();
+                    const registosDia = _picagensParaFolha(s.tipo === 'servico' ? 'os' : 'obra', s.id, p.id, hoje);
+                    const horas = _somarIntervalosPicagem(registosDia, hoje, new Date().toTimeString().slice(0, 5)).horas;
+                    materiais.forEach(m => {
+                        if (m.artigoId) return;
+                        const existente = (dados.artigos || []).find(a => a.adminId === adminId && String(a.nome).trim().toLocaleLowerCase('pt') === m.nome.toLocaleLowerCase('pt'));
+                        m.artigoId = existente?.id || gerarId();
+                        if (!existente) (dados.artigos = dados.artigos || []).push({
+                            id: m.artigoId, adminId, nome: m.nome, unidade: m.unidade, marca: '', categoria: 'Geral',
+                            referencia: null, stockInicial: 0, stockMinimo: null, precoVenda: null, precoCompra: null,
+                            alertaStock: false, observacoes: 'Material não planeado, criado na folha ' + folhaId + ' pelo responsável ' + (p.nome || ctx.pessoa.nome) + '.'
+                        });
                     });
-                });
-            }
-            _vincularPicagensFolha(dados.folhasObra.find(f => f.id === folhaId), s.tipo === 'servico' ? 'os' : 'obra', s.id, registosDia);
-            guardarDados(dados);
-            const locFolha = await _quiosqueObterLocalizacaoAgora();
-            _quiosqueAgendaFecharSaida(p, new Date().toTimeString().slice(0, 5), acaoPendente === 'terminar_servico', locFolha);
+                    const folha = {
+                        id: folhaId, obraId, servicoId: s.tipo === 'servico' ? s.id : null,
+                        obraDescricao: s.tipo === 'servico' ? ('OS — ' + (obterNomeCliente(item.clienteId) || 'Cliente')) : item.nome || 'Obra',
+                        descricao: desc, materiais: materiais.length ? materiais.map(m => m.nome + ' × ' + m.quantidade + ' ' + m.unidade + (m.extra ? ' [NÃO PLANEADO — informar admin]' : '')).join('; ') : null,
+                        horasTrabalhadas: +horas.toFixed(2), data: hoje, funcionarioId: p.id, adminId,
+                        dataAtualizacao: Date.now(), origem: 'quiosque_agenda_responsavel'
+                    };
+                    (dados.folhasObra = dados.folhasObra || []).push(folha);
+                    materiais.forEach(m => {
+                        (dados.movimentosStock = dados.movimentosStock || []).push({
+                            id: gerarId(), adminId, artigoId: m.artigoId, obraId, tipo: 'saida', quantidade: m.quantidade,
+                            origemTipo: 'folha', origemId: folhaId, data: hoje, dataCriacao: Date.now(),
+                            funcionarioId: p.id, armazemId: _armazemPrincipalId(adminId),
+                            nota: (m.extra ? 'Material não planeado' : 'Material programado') + ' — quiosque agenda, responsável ' + (p.nome || ctx.pessoa.nome)
+                        });
+                        if (obraId) {
+                            let om = (dados.obraMateriais || []).find(x => x.adminId === adminId && x.obraId === obraId && x.artigoId === m.artigoId);
+                            if (!om) {
+                                om = { id: gerarId(), adminId, obraId, artigoId: m.artigoId, qtdPrevista: 0, qtdConsumida: 0, qtdDevolvida: 0 };
+                                (dados.obraMateriais = dados.obraMateriais || []).push(om);
+                            }
+                            om.qtdConsumida = (Number(om.qtdConsumida) || 0) + m.quantidade;
+                            om.qtdDevolvida = Math.max(0, (Number(om.qtdPrevista) || 0) - om.qtdConsumida);
+                        }
+                    });
+                    const extras = materiais.filter(m => m.extra);
+                    if (extras.length) {
+                        // An operational admin record, independent of the optional push add-on.
+                        (dados.notificacoes = dados.notificacoes || []).push({
+                            id: gerarId(), adminId, destinatarioId: adminId, titulo: 'Material não planeado usado',
+                            mensagem: (p.nome || ctx.pessoa.nome) + ' — ' + folha.obraDescricao + ' — folha ' + folhaId + ': ' + extras.map(m => m.nome + ' × ' + m.quantidade + ' ' + m.unidade).join('; '),
+                            acao: null, lida: false, dataCriacao: Date.now()
+                        });
+                    }
+                    _vincularPicagensFolha(folha, s.tipo === 'servico' ? 'os' : 'obra', s.id, registosDia);
+                    fn.pendente = { campo, chave: ctx.chave, folhaId, acaoPendente };
+                }
+                await guardarDados(dados);
+                const loc = await _quiosqueObterLocalizacaoAgora();
+                if (_quiosqueAgendaContextoMateriais()?.chave !== ctx.chave) return;
+                _quiosqueAgendaFecharSaida(p, new Date().toTimeString().slice(0, 5), fn.pendente.acaoPendente === 'terminar_servico', loc);
+                fn.pendente = null;
+            } catch (e) {
+                alert('Não foi possível confirmar a gravação. A folha e os materiais foram mantidos neste dispositivo. Volta a confirmar para repetir a sincronização sem duplicar o consumo.');
+            } finally { fn.aGuardar = false; }
         }
         function _quiosqueIniciarMonitorizacaoGeofence() {
             if (_quiosqueIntervaloGeo) return;

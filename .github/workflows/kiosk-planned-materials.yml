@@ -1,0 +1,23 @@
+name: TesteTG - kiosk planned materials
+on:
+  push:
+    branches:
+      - feat/kiosk-planned-materials-test-20261116
+  pull_request:
+    paths:
+      - app-principal.js
+      - tests/kiosk-planned-materials*.test.cjs
+      - .github/workflows/kiosk-planned-materials.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --no-package-lock jsdom@26
+      - run: node --check app-principal.js
+      - run: node --test tests/kiosk-planned-materials.test.cjs tests/kiosk-planned-materials-ui.test.cjs tests/kiosk-work-hours.test.cjs tests/contract-kiosk.test.cjs

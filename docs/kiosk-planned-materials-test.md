@@ -14,4 +14,4 @@ Inclui três testes de DOM com jsdom e regressões existentes, configurados no G
 
 ## Publicação
 
-Esta proposta fica numa branch isolada do repositório Testetg. Não altera TG nem faz deploy. Antes de integrar/publicar, confirmar a URL e o destino de testes: o CNAME atual deste repositório contém www.totalgest.pt, também identificado como domínio de produção.
+Destino confirmado pelo utilizador em 16/11/2026: repositório Flavavisio/Testetg no GitHub, para utilização em testes. A integração é feita apenas neste repositório. Não altera o repositório TG, configuração de domínio ou dados de produção.

@@ -3416,7 +3416,24 @@ function _assistEstado(value) {
                 const label = document.createElement('label'), check = document.createElement('input');
                 check.type = 'checkbox'; check.style.width = 'auto'; label.style.flex = '1';
                 const anterior = rascunho.find(x => x.artigoId === a.id);
-                check.checked = !!anterior; label.append(check, document.createTextNode(' ' + a.nome + ' — previsto: ' + m.qtdPrevista + ' ' + (a.unidade || 'un')));
+                check.checked = !!anterior;
+                const info = document.createElement('span'), nome = document.createElement('span');
+                info.className = 'qsa_material_info';
+                info.style.cssText = 'display:block;min-width:0;overflow-wrap:anywhere;';
+                nome.className = 'qsa_material_nome';
+                nome.style.display = 'block'; nome.textContent = a.nome;
+                info.appendChild(nome);
+                const numero = valor => Number.isFinite(Number(valor)) ? Math.max(0, Number(valor)) : 0;
+                const previsto = numero(m.qtdPrevista), consumido = numero(m.qtdConsumida);
+                // Only persisted consumption belongs in the work balance; the draft is saved with the sheet.
+                [['Previsto', previsto], ['Consumido', consumido], ['Falta consumir', Math.max(0, previsto - consumido)]].forEach(([titulo, valor]) => {
+                    const detalhe = document.createElement('span');
+                    detalhe.className = 'qsa_material_saldo';
+                    detalhe.style.cssText = 'display:block;font-size:.85rem;font-weight:400;color:#475569;';
+                    detalhe.textContent = titulo + ': ' + valor.toLocaleString('pt-PT', { maximumFractionDigits: 6 }) + ' ' + (a.unidade || 'un');
+                    info.appendChild(detalhe);
+                });
+                label.append(check, info);
                 const qtd = document.createElement('input');
                 qtd.type = 'number'; qtd.min = '0.001'; qtd.step = 'any'; qtd.style.width = '95px';
                 qtd.setAttribute('aria-label', 'Quantidade usada de ' + a.nome);

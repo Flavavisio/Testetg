@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/kiosk-planned-materials-test-20261116
+      - feat/kiosk-material-balances-20261116
   pull_request:
     paths:
       - app-principal.js

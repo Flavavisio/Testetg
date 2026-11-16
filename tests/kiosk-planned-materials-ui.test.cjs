@@ -74,3 +74,39 @@ test('confirm rejects empty quantities and stale sessions while preserving draft
         assert.equal(w.ctx._quiosqueAgendaMateriaisTemp.length,0);
     }finally{w.dom.window.close();}
 });
+
+test('material balance stays below the name, uses saved consumption and refreshes after saving',async()=>{
+    const w=screen();try{
+        const doc=w.dom.window.document;
+        w.ctx._quiosqueAgendaMateriaisTemp=[{artigoId:'planned',nome:'Cabo',quantidade:1.5,unidade:'m'}];
+        const read=()=>{
+            const info=doc.querySelector('#qsa_planeados .qsa_material_info');
+            assert.equal(info.querySelector('.qsa_material_nome').textContent,'Cabo');
+            assert.equal(info.querySelector('.qsa_material_nome').style.display,'block');
+            return [...info.querySelectorAll('.qsa_material_saldo')].map(el=>{
+                assert.equal(el.style.display,'block'); return el.textContent;
+            });
+        };
+        w._quiosqueAgendaToggleMateriais(true);
+        assert.deepEqual(read(),['Previsto: 10 m','Consumido: 2 m','Falta consumir: 8 m']);
+        const q=doc.querySelector('#qsa_planeados input[type=number]');
+        q.value='2.5';q.dispatchEvent(new w.dom.window.Event('input'));
+        assert.deepEqual(read(),['Previsto: 10 m','Consumido: 2 m','Falta consumir: 8 m']);
+        doc.getElementById('qsa_mat_confirmar').click();
+        const field=doc.createElement('input');field.id='qsa_folha_desc';field.value='Trabalho realizado';doc.body.appendChild(field);
+        await w._quiosqueAgendaConfirmarFolha('terminar_hoje');
+        assert.deepEqual(w.ctx.alerts,[]);
+        w._quiosqueAgendaToggleMateriais(true);
+        assert.deepEqual(read(),['Previsto: 10 m','Consumido: 4,5 m','Falta consumir: 5,5 m']);
+    }finally{w.dom.window.close();}
+});
+test('balances handle zero, complete and excess consumption without negative remaining quantities',()=>{
+    for(const [consumido,expected] of [[0,'10'],[10,'0'],[12,'0'],[2.25,'7,75']]){
+        const w=screen();try{
+            w.ctx.dados.obraMateriais[0].qtdConsumida=consumido;
+            w._quiosqueAgendaToggleMateriais(true);
+            const rows=[...w.dom.window.document.querySelectorAll('.qsa_material_saldo')].map(el=>el.textContent);
+            assert.deepEqual(rows,['Previsto: 10 m','Consumido: '+String(consumido).replace('.',',')+' m','Falta consumir: '+expected+' m']);
+        }finally{w.dom.window.close();}
+    }
+});

@@ -1808,3 +1808,43 @@ body.dark-mode .obras-estado-contador[aria-pressed="true"]{background:#183b4d;bo
 /* OS: mesmos contadores das obras, em quatro grupos. */
 #servicosContadores{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:850px){#servicosContadores{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#servicosContadores .obras-estado-contador{grid-column:auto;min-height:82px;padding:12px 8px}#servicosContadores .obras-estado-contador span{font-size:12px}}
+
+/* TesteTG: modal de materiais centrado e seleção legível no quiosque. */
+#qsa_materiais_modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    inset-block-start: 50% !important;
+    inset-inline-start: 50% !important;
+    margin: 0 !important;
+    transform: translate(-50%, -50%) !important;
+    box-sizing: border-box;
+    width: min(620px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 32px) !important;
+    max-height: min(85dvh, calc(100dvh - 32px)) !important;
+    overflow-y: auto !important;
+    text-align: left;
+}
+#qsa_materiais_modal #qsa_planeados > div > label {
+    display: flex !important;
+    align-items: flex-start;
+    gap: 14px;
+    min-width: 0;
+    text-align: left;
+    line-height: 1.45;
+    cursor: pointer;
+}
+#qsa_materiais_modal #qsa_planeados input[type="checkbox"] {
+    appearance: auto !important;
+    -webkit-appearance: checkbox !important;
+    flex: 0 0 24px !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    margin: 2px 0 0 !important;
+    padding: 0 !important;
+    accent-color: #152a52;
+    cursor: pointer;
+}

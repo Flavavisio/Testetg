@@ -6633,20 +6633,21 @@ function _assistEstado(value) {
                 // Se esta OS veio de uma Obra, mostra também os materiais ESTIPULADOS no plano da
                 // obra (previsto vs. já consumido) — é o que fica realmente "associado" à OS,
                 // distinto do registo de consumo manual feito diretamente aqui em baixo.
-                const materiaisObra = os.obraId ? (dados.obraMateriais || []).filter(m => m.obraId === os.obraId) : [];
+                const materiaisObra = os.obraId ? (dados.obraMateriais || []).filter(m => m.obraId === os.obraId && m.adminId === adminIdVerOs) : [];
                 const blocoEstipulados = materiaisObra.length ? `
                     <div style="margin-bottom:16px;">
                         <div style="font-weight:700;font-size:.85rem;margin-bottom:6px;color:#334155;"><i class="fas fa-clipboard-list"></i> Materiais estipulados nesta Obra</div>
                         <table style="width:100%;border-collapse:collapse;">
                             <thead><tr style="text-align:left;font-size:.78rem;color:#64748b;"><th style="padding:4px 0;">Artigo</th><th style="padding:4px 0;">Previsto</th><th style="padding:4px 0;">Consumido</th></tr></thead>
                             <tbody>${materiaisObra.map(m => {
-                                const art = dados.artigos?.find(a => a.id === m.artigoId);
+                                const art = dados.artigos?.find(a => a.id === m.artigoId && a.adminId === adminIdVerOs);
                                 const prev = Number(m.qtdPrevista) || 0, cons = Number(m.qtdConsumida) || 0;
+                                const falta = Math.max(0, prev - cons), excedente = Math.max(0, cons - prev);
                                 const cor = cons >= prev ? '#16a34a' : (cons > 0 ? '#f59e0b' : '#94a3b8');
                                 return `<tr style="border-top:1px solid #f1f5f9;">
                                     <td style="padding:6px 0;">${escapeHtmlSimples(art ? art.nome : '(artigo removido)')}</td>
                                     <td style="padding:6px 0;">${prev} ${art ? (art.unidade || 'un') : ''}</td>
-                                    <td style="padding:6px 0;color:${cor};font-weight:600;">${cons} ${art ? (art.unidade || 'un') : ''} ${cons >= prev && prev > 0 ? '<i class="fas fa-check-circle"></i>' : ''}</td>
+                                    <td style="padding:6px 0;color:${cor};font-weight:600;">${cons} ${art ? (art.unidade || 'un') : ''} ${cons >= prev && prev > 0 ? '<i class="fas fa-check-circle"></i>' : ''}<div style="font-size:.75rem;color:#64748b;font-weight:400;">Falta: ${falta} ${art ? (art.unidade || 'un') : ''}${excedente > 0 ? ' · Excedente: ' + excedente : ''}</div></td>
                                 </tr>`;
                             }).join('')}</tbody>
                         </table>
@@ -6725,10 +6726,13 @@ function _assistEstado(value) {
             const nomeNovoPreenchido = document.getElementById('veros_novo_artigo_campos')?.style.display === 'block';
             const qtdInput = document.getElementById('veros_novo_qtd');
             let artigoId = escolhidoId || (nomeNovoPreenchido ? '__novo' : '');
-            const qtd = parseInt(qtdInput?.value, 10) || 0;
+            const qtd = Number(String(qtdInput?.value || '').replace(',', '.'));
             if (!artigoId) { alert('Escolhe o material a adicionar na pesquisa (ou usa o botão + para criar um novo).'); return; }
-            if (qtd <= 0) { alert('Indica a quantidade usada (maior que 0).'); return; }
+            if (!Number.isFinite(qtd) || qtd <= 0) { alert('Indica uma quantidade válida e maior que 0.'); return; }
             const adminId = usuarioLogado?.adminId || usuarioLogado?.id;
+            const osAutorizada = (dados.servicos || []).find(s => s.id === osId && s.adminId === adminId);
+            if (!osAutorizada) { alert('Ordem de serviço indisponível para esta empresa.'); return; }
+            if (artigoId !== '__novo' && !(dados.artigos || []).some(a => a.id === artigoId && a.adminId === adminId)) { alert('Artigo indisponível.'); return; }
             let artigoNovo = null;
             if (artigoId === '__novo') {
                 const nomeNovo = document.getElementById('veros_novo_artigo_nome')?.value.trim();
@@ -6761,12 +6765,12 @@ function _assistEstado(value) {
             const osDoMaterial = dados.servicos?.find(s => s.id === osId);
             if (osDoMaterial?.obraId) {
                 dados.obraMateriais = dados.obraMateriais || [];
-                let om = dados.obraMateriais.find(m => m.obraId === osDoMaterial.obraId && m.artigoId === artigoId);
+                let om = dados.obraMateriais.find(m => m.adminId === adminId && m.obraId === osDoMaterial.obraId && m.artigoId === artigoId);
                 if (om) {
-                    om.qtdPrevista = (Number(om.qtdPrevista) || 0) + qtd;
                     om.qtdConsumida = (Number(om.qtdConsumida) || 0) + qtd;
                 } else {
-                    dados.obraMateriais.push({ id: gerarId(), adminId, obraId: osDoMaterial.obraId, artigoId, qtdPrevista: qtd, qtdConsumida: qtd, qtdDevolvida: 0 });
+                    // Non-planned material must not silently increase the original plan.
+                    dados.obraMateriais.push({ id: gerarId(), adminId, obraId: osDoMaterial.obraId, artigoId, qtdPrevista: 0, qtdConsumida: qtd, qtdDevolvida: 0 });
                 }
             }
             guardarDados(dados);

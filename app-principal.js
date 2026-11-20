@@ -310,8 +310,8 @@ function _assistEstado(value) {
             },
             servicos: {
                 tabela: 'servicos',
-                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, ...(r.plano_manutencao != null ? { planoManutencao: r.plano_manutencao } : {}), checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [], ...(r.passaporte_intervencao != null ? { passaporteIntervencao: r.passaporte_intervencao } : {}) }),
-                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, ...(o.planoManutencao !== undefined ? { plano_manutencao: o.planoManutencao } : {}), checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [], ...(o.passaporteIntervencao !== undefined ? { passaporte_intervencao: o.passaporteIntervencao } : {}) })
+                from: r => ({ id: r.id, numeroRegisto: r.numero_registo, clienteId: r.cliente_id, funcionarioId: r.funcionario_id, funcionariosIds: Array.isArray(r.funcionarios_ids) ? r.funcionarios_ids : [], relatorioResponsavelId: r.relatorio_responsavel_id || null, contratoId: r.contrato_id, obraId: r.obra_id, localId: r.local_id || null, assistenciaId: r.assistencia_id || null, valor: r.valor != null ? Number(r.valor) : null, duracao: r.duracao != null ? Number(r.duracao) : null, duracaoDias: r.duracao_dias != null ? Number(r.duracao_dias) : null, morada: r.morada || null, numeroPorta: r.numero_porta || null, codigoPostal: r.codigo_postal || null, cidade: r.cidade || null, freguesia: r.freguesia || null, data: r.data || '', hora: hhmm(r.hora) || '', descricao: r.descricao, observacoes: r.observacoes || null, checklist: r.checklist || {}, ...(r.plano_manutencao != null ? { planoManutencao: r.plano_manutencao } : {}), checklistEntrada: r.checklist_entrada || {}, status: r.status, origem: r.origem || null, tiposTrabalho: Array.isArray(r.tipos_trabalho) ? r.tipos_trabalho : [], adminId: r.admin_id, pagamentoLocal: r.pagamento_local === true, pago: r.pago == null ? null : (r.pago === true), faturaMoloniId: r.fatura_moloni_id || null, faturaMoloniUrl: r.fatura_moloni_url || null, reciboMoloniId: r.recibo_moloni_id || null, reciboMoloniUrl: r.recibo_moloni_url || null, guiaMoloniId: r.guia_moloni_id || null, guiaMoloniUrl: r.guia_moloni_url || null, notaCreditoMoloniId: r.nota_credito_moloni_id || null, notaCreditoMoloniUrl: r.nota_credito_moloni_url || null, faturaTOConlineId: r.fatura_toconline_id || null, faturaTOConlineUrl: r.fatura_toconline_url || null, fotos: Array.isArray(r.fotos) ? r.fotos : [], materiaisPlano: Array.isArray(r.materiais_previstos) ? r.materiais_previstos : [], ...(r.passaporte_intervencao != null ? { passaporteIntervencao: r.passaporte_intervencao } : {}) }),
+                to:   o => ({ id: o.id, numero_registo: o.numeroRegisto || null, cliente_id: o.clienteId || null, funcionario_id: o.funcionarioId || null, funcionarios_ids: o.funcionariosIds || [], relatorio_responsavel_id: o.relatorioResponsavelId || null, contrato_id: o.contratoId || null, obra_id: o.obraId || null, local_id: o.localId || null, assistencia_id: o.assistenciaId || null, valor: (o.valor === '' || o.valor == null) ? null : Number(o.valor), duracao: (o.duracao === '' || o.duracao == null) ? null : parseInt(o.duracao,10), duracao_dias: (o.duracaoDias === '' || o.duracaoDias == null) ? null : parseInt(o.duracaoDias,10), morada: o.morada || null, numero_porta: o.numeroPorta || null, codigo_postal: o.codigoPostal || null, cidade: o.cidade || null, freguesia: o.freguesia || null, data: nn(o.data), hora: nn(o.hora), descricao: o.descricao || null, observacoes: o.observacoes || null, checklist: o.checklist || {}, ...(o.planoManutencao !== undefined ? { plano_manutencao: o.planoManutencao } : {}), checklist_entrada: o.checklistEntrada || {}, status: o.status || 'pendente', origem: o.origem || null, tipos_trabalho: o.tiposTrabalho || [], admin_id: o.adminId, pagamento_local: o.pagamentoLocal === true, pago: o.pago === undefined ? null : o.pago, fatura_moloni_id: o.faturaMoloniId || null, fatura_moloni_url: o.faturaMoloniUrl || null, recibo_moloni_id: o.reciboMoloniId || null, recibo_moloni_url: o.reciboMoloniUrl || null, guia_moloni_id: o.guiaMoloniId || null, guia_moloni_url: o.guiaMoloniUrl || null, nota_credito_moloni_id: o.notaCreditoMoloniId || null, nota_credito_moloni_url: o.notaCreditoMoloniUrl || null, fatura_toconline_id: o.faturaTOConlineId || null, fatura_toconline_url: o.faturaTOConlineUrl || null, fotos: o.fotos || [], materiais_previstos: o.materiaisPlano || [], ...(o.passaporteIntervencao !== undefined ? { passaporte_intervencao: o.passaporteIntervencao } : {}) })
             },
             assistencias: {
                 tabela: 'assistencias',
@@ -3357,6 +3357,9 @@ function _assistEstado(value) {
                 chave: JSON.stringify([adminId, s.tipo, s.id, s.responsavelId, p.id]) };
         }
         function _quiosqueAgendaPlanoMateriais(ctx) {
+            if (ctx && !ctx.obraId && (dados.servicos || []).some(s => s.id === ctx.item?.id && s.adminId === ctx.adminId)) {
+                return (ctx.item.materiaisPlano || []).map(m => ({ plano:m, artigo:(dados.artigos || []).find(a => a.id === m.artigoId && a.adminId === ctx.adminId) })).filter(x => x.artigo);
+            }
             if (!ctx?.obraId) return [];
             return (dados.obraMateriais || []).filter(m => m.adminId === ctx.adminId && m.obraId === ctx.obraId)
                 .map(m => ({ plano: m, artigo: (dados.artigos || []).find(a => a.id === m.artigoId && a.adminId === ctx.adminId) }))
@@ -3556,6 +3559,12 @@ function _assistEstado(value) {
                             funcionarioId: p.id, armazemId: _armazemPrincipalId(adminId),
                             nota: (m.extra ? 'Material não planeado' : 'Material programado') + ' — quiosque agenda, responsável ' + (p.nome || ctx.pessoa.nome)
                         });
+                        if (!obraId && s.tipo === 'servico') {
+                            const planoOS = item.materiaisPlano = item.materiaisPlano || [];
+                            let p = planoOS.find(x => x.artigoId === m.artigoId);
+                            if (!p) { p = { artigoId:m.artigoId, qtdPrevista:0, qtdConsumida:0 }; planoOS.push(p); }
+                            p.qtdConsumida = (Number(p.qtdConsumida) || 0) + m.quantidade;
+                        }
                         if (obraId) {
                             let om = (dados.obraMateriais || []).find(x => x.adminId === adminId && x.obraId === obraId && x.artigoId === m.artigoId);
                             if (!om) {
@@ -6517,6 +6526,120 @@ function _assistEstado(value) {
             overlay.classList.add('open', 'modal-veros');
             _verOsMostrar(osId, 'folhas');
         }
+
+        // ---- Plano de materiais das OS independentes (a OS ligada a obra usa o plano da obra) ----
+        let _planoOSAbertoId = null, _planoOSTemp = [];
+        function abrirPlanoMateriaisOS(osId) {
+            const tenant = _tenantId();
+            const os = (dados.servicos || []).find(s => s.id === osId && s.adminId === tenant);
+            if (!os || os.obraId || !['admin','subadmin'].includes(usuarioLogado?.role)) { alert('Plano de OS indisponível.'); return; }
+            _planoOSAbertoId = osId;
+            _planoOSTemp = (os.materiaisPlano || []).map(m => ({artigoId:m.artigoId,qtdPrevista:Number(m.qtdPrevista)||0,qtdConsumida:Number(m.qtdConsumida)||0}));
+            document.getElementById('modalGenericoTitulo').textContent = 'Plano de materiais — ' + (os.numeroRegisto || 'OS');
+            document.getElementById('modalGenericoCampos').innerHTML = `
+                <p class="help-text">As quantidades previstas são independentes dos consumos já registados. Para OS associadas a obras, o plano é gerido na obra.</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+                    <button class="btn btn-outline" type="button" onclick="document.getElementById('os_plano_ficheiro').click()"><i class="fas fa-file-import"></i> Importar Excel/CSV</button>
+                    <input type="file" id="os_plano_ficheiro" accept=".xlsx,.xls,.csv" style="display:none" onchange="importarPlanoMateriaisOS(this)">
+                    <button class="btn btn-outline" type="button" onclick="adicionarItemPlanoOS()"><i class="fas fa-plus"></i> Adicionar artigo</button>
+                </div><div id="os_plano_lista"></div>
+                <div id="os_plano_erros" class="help-text" role="alert"></div>`;
+            document.getElementById('modalGenericoForm').onsubmit = async event => { event.preventDefault(); await salvarPlanoMateriaisOS(); };
+            const save = document.querySelector('#modalGenericoOverlay .modal-actions .btn-success');
+            if (save) {save.style.display='';save.textContent='Guardar plano';}
+            renderizarPlanoMateriaisOS();
+            document.getElementById('modalGenericoOverlay').classList.add('open');
+        }
+        function renderizarPlanoMateriaisOS() {
+            const el = document.getElementById('os_plano_lista'); if (!el) return;
+            const artigos = (dados.artigos || []).filter(a => a.adminId === _tenantId());
+            el.innerHTML = !_planoOSTemp.length ? '<p class="help-text">Sem artigos planeados.</p>' :
+                _planoOSTemp.map((m,i) => {
+                    const art = artigos.find(a => a.id === m.artigoId);
+                    const opcoes = artigos.map(a => '<option value="'+escapeHtmlSimples(a.id)+'" '+(a.id === m.artigoId?'selected':'')+'>'+escapeHtmlSimples(a.nome)+' ('+escapeHtmlSimples(a.unidade||'un')+')</option>').join('');
+                    const falta = Math.max(0, (Number(m.qtdPrevista)||0) - (Number(m.qtdConsumida)||0));
+                    return '<div style="padding:9px 0;border-bottom:1px solid #e2e8f0;">'
+                      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><select style="flex:2;min-width:150px;" onchange="alterarItemPlanoOS('+i+',\'artigoId\',this.value)">'+opcoes+'</select>'
+                      + '<label style="font-size:.8rem;">Previsto <input type="number" min="0" step="any" style="width:90px;" value="'+m.qtdPrevista+'" onchange="alterarItemPlanoOS('+i+',\'qtdPrevista\',this.value)"></label>'
+                      + '<button type="button" class="btn btn-sm btn-outline" onclick="removerItemPlanoOS('+i+')" title="Retirar do plano">✕</button></div>'
+                      + '<div style="font-size:.78rem;color:#64748b;margin-top:4px;">Consumido: '+m.qtdConsumida+' '+escapeHtmlSimples(art?.unidade||'un')+' · Por consumir: '+falta+' '+escapeHtmlSimples(art?.unidade||'un')+'</div></div>';
+                }).join('');
+        }
+        function adicionarItemPlanoOS() {
+            const primeiro = (dados.artigos || []).find(a => a.adminId === _tenantId() && !_planoOSTemp.some(m => m.artigoId === a.id));
+            if (!primeiro) { alert('Não existem mais artigos disponíveis no armazém.'); return; }
+            _planoOSTemp.push({artigoId:primeiro.id,qtdPrevista:1,qtdConsumida:0});renderizarPlanoMateriaisOS();
+        }
+        function alterarItemPlanoOS(index, campo, valor) {
+            if (!_planoOSTemp[index]) return;
+            _planoOSTemp[index][campo] = campo === 'qtdPrevista' ? Number(String(valor).replace(',','.')) : valor;
+            renderizarPlanoMateriaisOS();
+        }
+        function removerItemPlanoOS(index) {
+            const item = _planoOSTemp[index];if (!item) return;
+            if (Number(item.qtdConsumida) > 0) { item.qtdPrevista = 0; alert('Este artigo já tem consumo registado. A previsão foi colocada a zero para preservar o histórico.'); }
+            else _planoOSTemp.splice(index,1);
+            renderizarPlanoMateriaisOS();
+        }
+        function importarPlanoMateriaisOS(input) {
+            const file = input.files?.[0]; if (!file) return;
+            const processar = linhas => {
+                const headers = (linhas[0] || []).map(x=>String(x||'').trim().toLowerCase());
+                const idxArt = headers.findIndex(h=>['artigo','nome','material','referência','referencia','ref'].includes(h));
+                const idxQtd = headers.findIndex(h=>['quantidade','qtd','previsto'].includes(h));
+                if (idxArt < 0 || idxQtd < 0) throw Error('São necessárias as colunas Artigo e Quantidade.');
+                const arts = (dados.artigos || []).filter(a => a.adminId === _tenantId());
+                const plano = _planoOSTemp.map(m=>({...m})), erros=[];
+                linhas.slice(1).forEach((row,index) => {
+                    const chave = String(row?.[idxArt]||'').trim(); if (!chave) return;
+                    const raw = String(row?.[idxQtd]??'').trim().replace(',','.');
+                    const qtd = Number(raw);
+                    const encontrados = arts.filter(a => (a.referencia && a.referencia.trim().toLowerCase() === chave.toLowerCase()) || String(a.nome).trim().toLowerCase() === chave.toLowerCase());
+                    if (encontrados.length !== 1 || !raw || !Number.isFinite(qtd) || qtd <= 0) {erros.push('Linha '+(index+2)+': artigo ou quantidade inválidos — '+chave);return;}
+                    const art = encontrados[0];
+                    let item = plano.find(x=>x.artigoId === art.id);
+                    if (!item) {item={artigoId:art.id,qtdPrevista:0,qtdConsumida:0};plano.push(item);}
+                    item.qtdPrevista = Math.round((Number(item.qtdPrevista)+qtd)*1000000)/1000000;
+                });
+                const msg = document.getElementById('os_plano_erros');
+                if (erros.length) {if(msg)msg.textContent='Importação não aplicada. '+erros.slice(0,8).join('; ');return;}
+                _planoOSTemp = plano;
+                if(msg)msg.textContent='Ficheiro importado para pré-visualização. Confirma em Guardar plano.';
+                renderizarPlanoMateriaisOS();
+            };
+            const reader = new FileReader();
+            reader.onerror = () => {alert('Não foi possível ler o ficheiro.');input.value='';};
+            reader.onload = () => {try{
+                let linhas;
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const txt = String(reader.result||'').replace(/^\ufeff/,'');
+                    const lines = txt.split(/\r?\n/).filter(x=>x.trim());
+                    const sep = lines[0]?.includes(';') ? ';' : ',';
+                    linhas = lines.map(line=>_parseCsvLine(line,sep));
+                } else {
+                    if (typeof XLSX === 'undefined') throw Error('Biblioteca Excel indisponível.');
+                    const wb=XLSX.read(new Uint8Array(reader.result),{type:'array'});
+                    linhas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+                }
+                processar(linhas);
+            } catch(e) {const msg=document.getElementById('os_plano_erros');if(msg)msg.textContent='Erro na importação: '+e.message;} finally {input.value='';}};
+            if (file.name.toLowerCase().endsWith('.csv')) reader.readAsText(file,'utf-8'); else reader.readAsArrayBuffer(file);
+        }
+        async function salvarPlanoMateriaisOS() {
+            const os = (dados.servicos || []).find(s=>s.id === _planoOSAbertoId && s.adminId === _tenantId() && !s.obraId);
+            if (!os || !['admin','subadmin'].includes(usuarioLogado?.role)) {alert('Não tens acesso a este plano.');return;}
+            const arts = (dados.artigos||[]).filter(a=>a.adminId===_tenantId());
+            const ids = new Set();
+            for(const m of _planoOSTemp) {
+                if (!arts.some(a=>a.id===m.artigoId) || ids.has(m.artigoId) || !Number.isFinite(m.qtdPrevista) || m.qtdPrevista < 0) {alert('Confirma os artigos e quantidades: não são permitidos duplicados ou valores inválidos.');return;}
+                ids.add(m.artigoId);
+            }
+            const anterior = os.materiaisPlano;
+            os.materiaisPlano = _planoOSTemp.map(m=>({...m}));
+            try {await guardarDados(dados,['servicos']);_fecharGenerico();_verOsMostrar(os.id,'materiais');}
+            catch(e) {os.materiaisPlano=anterior;alert('Erro ao gravar o plano da OS. Tenta novamente.');}
+        }
+
         function _verOsMostrar(osId, aba) {
             const os = dados.servicos?.find(s => s.id === osId); if (!os) return;
             const cont = document.getElementById('verOsConteudo');
@@ -6633,10 +6756,10 @@ function _assistEstado(value) {
                 // Se esta OS veio de uma Obra, mostra também os materiais ESTIPULADOS no plano da
                 // obra (previsto vs. já consumido) — é o que fica realmente "associado" à OS,
                 // distinto do registo de consumo manual feito diretamente aqui em baixo.
-                const materiaisObra = os.obraId ? (dados.obraMateriais || []).filter(m => m.obraId === os.obraId && m.adminId === adminIdVerOs) : [];
+                const materiaisObra = os.obraId ? (dados.obraMateriais || []).filter(m => m.obraId === os.obraId && m.adminId === adminIdVerOs) : (os.materiaisPlano || []);
                 const blocoEstipulados = materiaisObra.length ? `
                     <div style="margin-bottom:16px;">
-                        <div style="font-weight:700;font-size:.85rem;margin-bottom:6px;color:#334155;"><i class="fas fa-clipboard-list"></i> Materiais estipulados nesta Obra</div>
+                        <div style="font-weight:700;font-size:.85rem;margin-bottom:6px;color:#334155;"><i class="fas fa-clipboard-list"></i> Materiais previstos ${os.obraId ? 'na Obra' : 'na OS'}</div>
                         <table style="width:100%;border-collapse:collapse;">
                             <thead><tr style="text-align:left;font-size:.78rem;color:#64748b;"><th style="padding:4px 0;">Artigo</th><th style="padding:4px 0;">Previsto</th><th style="padding:4px 0;">Consumido</th></tr></thead>
                             <tbody>${materiaisObra.map(m => {
@@ -6653,7 +6776,7 @@ function _assistEstado(value) {
                         </table>
                     </div>
                 ` : '';
-                cont.innerHTML = blocoEstipulados +
+                cont.innerHTML = (!os.obraId && (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin') ? `<button type="button" class="btn btn-sm btn-outline" style="margin-bottom:12px;" onclick="abrirPlanoMateriaisOS('${osId}')"><i class="fas fa-clipboard-list"></i> Gerir plano de materiais · Importar Excel</button>` : '') + blocoEstipulados +
                     (ids.length
                         ? `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button type="button" class="btn btn-sm btn-outline" onclick="_fecharModalGenerico();abrirDevolverMaterialOS('${osId}')"><i class="fas fa-truck-ramp-box"></i> Devolver material ao armazém</button></div>
                           <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><thead><tr style="text-align:left;font-size:.78rem;color:#64748b;"><th style="padding:4px 0;">Artigo</th><th style="padding:4px 0;">Quantidade</th></tr></thead><tbody>` +
@@ -6772,6 +6895,12 @@ function _assistEstado(value) {
                     // Non-planned material must not silently increase the original plan.
                     dados.obraMateriais.push({ id: gerarId(), adminId, obraId: osDoMaterial.obraId, artigoId, qtdPrevista: 0, qtdConsumida: qtd, qtdDevolvida: 0 });
                 }
+            }
+            if (osDoMaterial && !osDoMaterial.obraId) {
+                const plano = osDoMaterial.materiaisPlano = osDoMaterial.materiaisPlano || [];
+                let item = plano.find(m => m.artigoId === artigoId);
+                if (!item) { item = {artigoId, qtdPrevista:0, qtdConsumida:0}; plano.push(item); }
+                item.qtdConsumida = (Number(item.qtdConsumida) || 0) + qtd;
             }
             guardarDados(dados);
             if (artigoNovo && osDoMaterial?.obraId) _avisarAdminArtigoNovo(artigoNovo.id, artigoNovo.nome, adminId, 'nos materiais da ordem de serviço');

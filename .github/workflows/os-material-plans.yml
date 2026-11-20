@@ -1,0 +1,22 @@
+name: OS and worksite material plans
+on:
+  pull_request:
+    paths:
+      - 'app-principal.js'
+      - 'tg-material-planning.js'
+      - 'tests/os-materials-plan.test.cjs'
+      - 'tests/material-planning-shared.test.cjs'
+      - '.github/workflows/os-material-plans.yml'
+  workflow_dispatch:
+jobs:
+  material-plans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: node --check app-principal.js && node --check tg-material-planning.js
+      - name: Run material plan unit tests
+        run: node --test tests/material-planning-shared.test.cjs tests/os-materials-plan.test.cjs

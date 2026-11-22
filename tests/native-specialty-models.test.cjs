@@ -93,7 +93,13 @@ test('native save failure preserves draft editor state and access restrictions s
  }finally{w.close();host.close()}
 });
 test('both app entries use the native template bundle and cache instead of the generic editor',()=>{
- const sw=fs.readFileSync('sw.js','utf8');for(const f of ['index.html','login.html']){const html=fs.readFileSync(f,'utf8');assert(html.includes('tg-specialty-templates.js?v=3.1.1-scie-signature'));assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));}assert(sw.includes('tg-specialty-templates.js?v=3.1.1-scie-signature'));
+ const sw=fs.readFileSync('sw.js','utf8');
+ for(const f of ['index.html','login.html']){
+  const html=fs.readFileSync(f,'utf8');
+  const bundle=html.match(/src="(tg-specialty-templates\.js\?v=[^"]+)"/)?.[1];
+  assert(bundle);assert(sw.includes('"./'+bundle+'"'));
+  assert(!html.includes('src="tg-specialty-reports.js'));assert(!html.includes('tg-specialty-reports.css'));
+ }
  const main=fs.readFileSync('app-principal.js','utf8');assert(main.includes('templateFor(os,tipo,modeloCodigo)'));assert(!main.includes('return window.TGSpecialtyReports.open(osId, tipo'));
 });
 test('the actual OS report entrypoint uses the CCTV/intrusion iframe pipeline, fills the installation and confirms the native save',async()=>{
@@ -224,12 +230,14 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
   os.planoManutencao={relatoriosEquipamentos:[{tipo:'RSI',equipamentoId:'eq',equipamentoNome:'Central de incêndio'}]};
   admin.areasNegocio=['seguranca'];admin.nomeFiscal='Instalações QA, Lda.';admin.nif='500000000';admin.numeroAnepc='456';
   host.dados.locais[0].codigoPostal='1000-001';
+  host.dados.locais[0].morada='Rua da Loja, Edifício Comercial, Bloco B, Entrada Sul, 1.º andar';
+  const address=host.dados.locais[0].morada+', 1000-001';
   host.TIPOS_TRABALHO_GRUPO_INCENDIO=['RSI','TRSI','TRSM'];
   installEntry(host);host.REPORT_TYPE_DEFS.RSI={nome:'Central de Incêndio (SADI)'};
   let serial=0;host.gerarId=()=> 'scie-'+(++serial);
   os.relatorioResponsavelId='f';host.dados.funcionarios[0].nome='Técnica responsável';
   const draftAccess=host.TGNativeReportModels.guard(os.id,'TRSI');
-  assert.equal(draftAccess.canSign,false);assert.equal(draftAccess.signerName,'Técnica responsável');
+  assert.equal(draftAccess.canSign,false);
   assert.equal(host.TGNativeReportModels.scope(host.dados,{id:'f',nome:'Técnica responsável',role:'funcionario',adminId:'a'},os.id,'TRSI').canSign,true);
   delete os.relatorioResponsavelId;
   const entries=host.TGEquipmentReports.requirements(os);
@@ -242,7 +250,7 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    let prefill;frame.contentWindow.postMessage=m=>{if(m.type==='init')prefill=m;};
    frame.dispatchEvent(new host.Event('load'));await opening;
    for(let i=0;i<40&&!prefill;i++)await new Promise(resolve=>setTimeout(resolve,10));
-   assert.equal(prefill.scieAddress,'Rua da Loja, 1000-001');
+   assert.equal(prefill.scieAddress,address);
    assert.equal(prefill.scieEquipmentList,'Central de incêndio');
    const editor=sheet(frame.srcdoc);views.push(editor.w);
    const initWith=(w,msg)=>w.dispatchEvent(new w.MessageEvent('message',{source:w.parent,data:msg}));
@@ -251,7 +259,10 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    assert.equal(get('native-instalacao').value,'Loja');
    assert.equal(get('scie-company').value,'Instalações QA, Lda.');
    assert.equal(get('scie-anepc').value,'456');
-   assert.equal(get('sign_tecnico_nome').value,'Técnico QA');
+   assert.equal(get('native-morada').tagName,'TEXTAREA');
+   assert.equal(get('scie-address-copy').textContent,address);
+   assert.equal(get('sign_tecnico_nome').value,'');
+   assert.equal(get('sign_tecnico_nome').readOnly,false);
    assert.equal(get('scie-tech-nif').value,'');
    assert.equal(get('sign_cliente'),null);
    assert.equal(get('sign_tecnico').closest('.signature-line').tagName,'SPAN');
@@ -264,7 +275,13 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    initWith(next.w,{...prefill,nativeRestoreState:draft.campos.estadoNativo});
    const field=id=>next.w.document.getElementById(id);
    assert.equal(field('scie-equipment-list').value,'Central de incêndio');
-   assert.equal(next.w.TGNativeSheet.validate(true).length>0,true);
+   assert(next.w.TGNativeSheet.validate(true).includes('Preenche o nome do técnico responsável.'));
+   const manualName='Técnico QA de Silva';
+   const editedAddress=address+'\nZona de cargas e descargas';
+   field('sign_tecnico_nome').value=manualName;
+   field('native-morada').value=editedAddress;
+   field('native-morada').dispatchEvent(new next.w.Event('input',{bubbles:true}));
+   assert.equal(field('scie-address-copy').textContent,editedAddress);
    field('scie-tech-nif').value='200000000';
    field(type==='TRSI'?'scie-certificates':'scie-maintenance').value=type==='TRSI'?'Certificado 2026/1':'Limpeza e ensaios';
    field('scie-confirm').checked=true;
@@ -272,13 +289,23 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    const signed=next.w.TGNativeSheet.serialize(false).estadoNativo;
    const resumed=sheet(frame.srcdoc);views.push(resumed.w);
    initWith(resumed.w,{...prefill,nativeRestoreState:signed});
+   assert.equal(resumed.w.document.getElementById('sign_tecnico_nome').value,manualName);
+   assert.equal(resumed.w.document.getElementById('scie-address-copy').textContent,editedAddress);
    assert.equal(resumed.w.document.getElementById('native-sign-tecnico').value,png);
    resumed.w.document.querySelector('[data-clear-sign="tecnico"]').click();
    assert.equal(resumed.w.document.getElementById('native-sign-tecnico').value,'');
    const another=sheet(frame.srcdoc);views.push(another.w);
    initWith(another.w,{...prefill,scieSigner:'other',tecnicoNome:'Outro técnico',nativeRestoreState:signed});
+   assert.equal(another.w.document.getElementById('sign_tecnico_nome').value,'');
    assert.equal(another.w.document.getElementById('native-sign-tecnico').value,'');
    assert.equal(another.w.document.getElementById('scie-tech-nif').value,'');
+   const legacy=sheet(frame.srcdoc);views.push(legacy.w);
+   const legacyValues={...signed.values,sign_tecnico_nome:'Técnico QA'};
+   delete legacyValues['scie-manual-name'];
+   initWith(legacy.w,{...prefill,nativeRestoreState:{...signed,values:legacyValues}});
+   assert.equal(legacy.w.document.getElementById('sign_tecnico_nome').value,'');
+   assert.equal(legacy.w.document.getElementById('native-sign-tecnico').value,'');
+   assert.equal(legacy.w.document.getElementById('scie-confirm').checked,false);
    field('scie-equipment').dispatchEvent(new next.w.Event('input',{bubbles:true}));
    assert.equal(field('native-sign-tecnico').value,'');
    assert.equal(field('scie-confirm').checked,false);
@@ -290,9 +317,15 @@ test('SCIE terms use the Incêndio OS options and independent drafts with techni
    const printable=new host.DOMParser().parseFromString(final.html,'text/html');
    assert.equal(printable.querySelector('.signature-line img').getAttribute('src'),png);
    assert.equal(printable.querySelector('.signature-label'),null);
+   assert.equal(printable.getElementById('native-morada').textContent,editedAddress);
+   assert.equal(printable.getElementById('scie-address-copy'),null);
+   assert.equal(printable.getElementById('sign_tecnico_nome').textContent,manualName);
+   const otherSigner={...final,estadoNativo:{...final.estadoNativo,values:{...final.estadoNativo.values,'scie-signer':'other'}}};
+   await assert.rejects(host.TGNativeReportModels.persist(os.id,type,null,otherSigner,type),/própria sessão/);
    await host.TGNativeReportModels.persist(os.id,type,null,final,type);
    const saved=host.dados.relatoriosEspecialidade.find(r=>r.tipo===type);
    assert.equal(saved.id,draft.id);assert.equal(saved.rascunho,false);assert.equal(saved.assinaturaTecnico,png);
+   assert.equal(saved.assinaturaTecnicoNome,manualName);
   }
   assert.equal(host.numberCalls,2);
   assert.equal(host.TGEquipmentReports.pending(os).filter(r=>!r.equipamentoId).length,0);

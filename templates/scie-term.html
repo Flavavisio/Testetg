@@ -20,6 +20,14 @@ input:not([type=checkbox]){max-width:100%;width:26ch}
 input.wide{width:47ch}
 input.short{width:12ch}
 textarea{width:100%;min-height:90px;resize:vertical}
+.address-lines{display:grid;grid-template-columns:minmax(0,1fr)}
+.address-lines textarea,.address-copy,.address-lines .native-print-value{
+ grid-area:1/1;padding:0 3px;border-bottom:1px solid #333;
+ line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere
+}
+.address-lines textarea{align-self:stretch;min-height:0;overflow:hidden;resize:none}
+.address-copy{visibility:hidden}
+.address-copy::after{content:"\00a0"}
 .signing{margin-top:10mm}
 .signature-line{display:inline-block;width:min(53mm,100%);vertical-align:bottom;border-bottom:1px solid #333}
 canvas{display:block;width:100%;height:56px;touch-action:none;background:#f5f7fa}
@@ -49,6 +57,7 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
  .subtitle{margin-bottom:26px}
  input:not([type=checkbox]),textarea{font-size:16px;min-height:34px}
  .identification input{display:block;width:100%;margin-bottom:8px}
+ .address-lines{margin-bottom:8px;font-size:16px}
  .signature-line{width:min(53mm,100%)}
 }
 @page{size:A4;margin:0}
@@ -58,6 +67,8 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
  .term{min-height:297mm}
  .annex{break-before:page}
  .native-screen{display:none!important}
+ .address-lines textarea{display:none}
+ .address-copy{visibility:visible}
  h1{margin-top:23mm}
  .subtitle{margin-bottom:18mm}
  .signature-line{width:53mm}
@@ -71,10 +82,14 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
  <p class="subtitle">__SUBTITLE__</p>
  <div class="identification">
   <label>Identificação do edifício/recinto: <input class="wide" id="native-instalacao" maxlength="160"></label>
-  <label>Morada do edifício/recinto: <input class="wide" id="native-morada" maxlength="240"></label>
+  <label for="native-morada">Morada do edifício/recinto:</label>
+  <div class="address-lines">
+   <textarea id="native-morada" rows="2" maxlength="240"></textarea>
+   <span id="scie-address-copy" class="address-copy" aria-hidden="true"></span>
+  </div>
   <label>Identificação do Cliente: <input class="wide" id="native-cliente" maxlength="160"></label>
  </div>
- <p><input id="sign_tecnico_nome" aria-label="Nome do técnico responsável" readonly> <em>(nome do técnico responsável)</em>, NIF n.º <input class="short" id="scie-tech-nif" aria-label="NIF do técnico responsável" inputmode="numeric" maxlength="18">, com reconhecimento da capacidade técnica pela ANEPC, __DECLARATION__</p>
+ <p><input id="sign_tecnico_nome" aria-label="Nome do técnico responsável" autocomplete="off"> <em>(nome do técnico responsável)</em>, NIF n.º <input class="short" id="scie-tech-nif" aria-label="NIF do técnico responsável" inputmode="numeric" maxlength="18">, com reconhecimento da capacidade técnica pela ANEPC, __DECLARATION__</p>
  <p>__ENTITY_DECLARATION__ <input id="scie-company" aria-label="Nome fiscal da entidade" maxlength="180">, NIF/NIPC <input class="short" id="scie-company-nif" aria-label="NIF/NIPC da entidade" inputmode="numeric" maxlength="18">, registada na ANEPC sob o n.º <input class="short" id="scie-anepc" aria-label="Número de registo ANEPC da entidade" maxlength="32">, no âmbito da Portaria n.º 773/2009, de 21 de julho.</p>
  <p>__ATTACHMENT_DECLARATION__</p>
  <div class="signing">
@@ -101,6 +116,7 @@ button{font:inherit;padding:5px 12px;cursor:pointer}
 <input type="hidden" id="native-numero">
 <input type="hidden" id="native-sign-tecnico">
 <input type="hidden" id="scie-signer">
+<input type="hidden" id="scie-manual-name" value="yes">
 <script>__RUNTIME__</script>
 </body>
 </html>

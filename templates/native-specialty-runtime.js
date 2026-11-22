@@ -7,6 +7,7 @@
  const safeImage=v=>typeof v==='string'&&/^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(v)&&v.length<1500000;
  function status(text){byId('native-status').textContent=text;}
  function set(id,value){const el=byId(id);if(el&&value!=null)el.value=String(value);}
+ function syncSCIEAddress(){byId('scie-address-copy').textContent=byId('native-morada').value;}
  function prefillSCIE(msg){
   set('native-numero',msg.numero);
   set('native-data',msg.data);
@@ -22,21 +23,27 @@
   byId('native-briefing').hidden=!msg.osDescricao;
   const restore=msg.nativeRestoreState;
   const sameSigner=msg.scieSigner&&restore?.values?.['scie-signer']===msg.scieSigner;
+  set('sign_tecnico_nome','');
   set('scie-tech-nif','');
   set('native-sign-tecnico','');
   byId('scie-confirm').checked=false;
   if(restore?.type===config.type){
    for(const [id,value] of Object.entries(restore.values||{})){
-    if(!['scie-confirm','scie-signer','sign_tecnico_nome','native-sign-tecnico','scie-tech-nif'].includes(id))set(id,value);
+    if(!['scie-confirm','scie-signer','sign_tecnico_nome','native-sign-tecnico','scie-tech-nif','scie-manual-name'].includes(id))set(id,value);
    }
    if(sameSigner){
     set('scie-tech-nif',restore.values['scie-tech-nif']);
-    if(permitted)set('native-sign-tecnico',restore.techSignature);
-    byId('scie-confirm').checked=permitted&&restore.values['scie-confirm']==='yes';
+    if(restore.values['scie-manual-name']==='yes'){
+     set('sign_tecnico_nome',restore.values.sign_tecnico_nome);
+     if(permitted&&restore.values.sign_tecnico_nome?.trim()){
+      set('native-sign-tecnico',restore.techSignature);
+      byId('scie-confirm').checked=restore.values['scie-confirm']==='yes';
+     }
+    }
    }
   }
-  set('sign_tecnico_nome',msg.tecnicoNome);
   set('scie-signer',msg.scieSigner);
+  syncSCIEAddress();
   paintSignature('tecnico');
  }
  function prefill(msg){
@@ -106,6 +113,7 @@
   clone.querySelector('#native-status').textContent='';
   clone.querySelectorAll('.native-footer button').forEach(button=>button.removeAttribute('disabled'));
   if(final){
+   if(config.scie)clone.querySelector('#scie-address-copy').remove();
    clone.querySelectorAll('script,.native-screen,[data-photo-remove]').forEach(el=>el.remove());
    clone.querySelectorAll('.seg').forEach(seg=>{const result=seg.querySelector('input[checked]');seg.textContent=result?.value||'Por verificar';});
    for(const key of ['tecnico','cliente']){
@@ -153,7 +161,9 @@
   if(!/^image\/(jpeg|png|webp)$/.test(file.type)||file.size>8*1024*1024)throw Error('Escolhe JPG, PNG ou WebP até 8 MB.');
   const url=URL.createObjectURL(file);try{const img=new Image();await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=url;});const c=document.createElement('canvas'),scale=Math.min(1,1000/Math.max(img.width,img.height));c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);const src=c.toDataURL('image/jpeg',.72);if(!safeImage(src))throw Error('A imagem é demasiado grande.');const figure=document.createElement('figure');figure.dataset.nativePhoto='';figure.innerHTML='<img src="'+src+'" alt="Fotografia da intervenção"><input type="text" aria-label="Legenda da fotografia" value="'+esc(file.name)+'"><button class="native-screen" type="button" data-photo-remove>Retirar fotografia</button>';host.append(figure);}finally{URL.revokeObjectURL(url);}
  }
- if(!config.scie){
+ if(config.scie){
+  byId('native-morada').addEventListener('input',syncSCIEAddress);
+ }else{
  const photoPicker=byId('native-photo-file');
  byId('native-photo-camera').onclick=()=>{photoPicker.setAttribute('capture','environment');photoPicker.removeAttribute('multiple');photoPicker.click();};
  byId('native-photo-gallery').onclick=()=>{photoPicker.removeAttribute('capture');photoPicker.setAttribute('multiple','');photoPicker.click();};

@@ -1083,6 +1083,9 @@
             const lngInicial = lead?.lng ?? preset?.lng ?? '';
             document.getElementById('modalGenericoCampos').innerHTML = `
                 <div class="form-group"><label>Empresa *</label><input type="text" id="lead_empresa" value="${lead ? escapeHtmlSimples(lead.empresa) : ''}" required /></div>
+                ${lead
+                    ? (lead.dataCriacao ? `<div class="form-group"><span>Data de criação</span><div>${new Date(lead.dataCriacao).toLocaleDateString('pt-PT')}</div></div>` : '')
+                    : `<div class="form-group"><label for="lead_data_criacao">Data de criação *</label><input type="date" id="lead_data_criacao" value="${getDataHojeCRM()}" required /></div>`}
                 <div class="form-group"><label>NIF</label><input type="text" id="lead_nif" value="${lead && lead.nif ? escapeHtmlSimples(lead.nif) : ''}" /></div>
                 <div class="form-group"><label>Nome do contacto</label><input type="text" id="lead_nome_contacto" value="${lead && lead.nomeContacto ? escapeHtmlSimples(lead.nomeContacto) : ''}" /></div>
                 <div class="form-group"><label>Telefone</label><input type="text" id="lead_telefone" placeholder="+351 912345678" oninput="aplicarMascaraTelefone(this)" value="${lead && lead.telefone ? escapeHtmlSimples(lead.telefone) : ''}" /></div>
@@ -1131,7 +1134,11 @@
             let lead = id ? dados.leads?.find(l => l.id === id) : null;
             const isNovo = !lead;
             if (isNovo) {
-                lead = { id: gerarId(), adminId: tid, estado: 'novo', dataCriacao: Date.now() };
+                const campoData = document.getElementById('lead_data_criacao');
+                const data = campoData.value;
+                if (!campoData.reportValidity()) return;
+                const dataCriacao = data === getDataHojeCRM() ? Date.now() : new Date(data + 'T12:00:00').getTime();
+                lead = { id: gerarId(), adminId: tid, estado: 'novo', dataCriacao };
                 if (!dados.leads) dados.leads = [];
                 dados.leads.push(lead);
             }

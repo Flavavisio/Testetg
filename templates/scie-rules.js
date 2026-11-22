@@ -5,12 +5,15 @@ const SCIE = {
     errors(state) {
         const values = state.values || {};
         const required = [
-            'native-instalacao', 'native-morada', 'native-cliente', 'sign_tecnico_nome',
+            'native-instalacao', 'native-morada', 'native-cliente',
             'scie-tech-nif', 'scie-equipment', 'scie-company', 'scie-company-nif',
             'scie-anepc', 'native-data', 'scie-equipment-list',
             state.type === this.installation ? 'scie-certificates' : 'scie-maintenance',
         ];
         const errors = [];
+        if (!String(values.sign_tecnico_nome || '').trim()) {
+            errors.push('Preenche o nome do técnico responsável.');
+        }
         if (required.some(id => !String(values[id] || '').trim())) {
             errors.push('Preenche os dados do termo e a lista do anexo, incluindo as referências dos certificados no termo de instalação.');
         }

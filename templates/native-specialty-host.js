@@ -114,7 +114,7 @@
   type=canonical(type);const ctx=guard(osId,type),user=actor();if(!ctx)throw Error('O acesso à OS ou à especialidade mudou. Reabre o relatório.');
   const draft=msg.type==='relatorioEspecialidadeRascunho',state=msg.estadoNativo,errors=validate(type,state,!draft);
   if(!draft&&!ctx.canSign)errors.push('Não tens autorização para assinar este relatório.');
-  if(!draft&&configFor(type).scie&&(state?.values?.['scie-signer']!==user.id||state?.values?.sign_tecnico_nome!==user.nome))errors.push('O termo deve ser assinado pelo técnico responsável na sua própria sessão.');
+  if(!draft&&configFor(type).scie&&state?.values?.['scie-signer']!==user.id)errors.push('O termo deve ser assinado pelo técnico responsável na sua própria sessão.');
   const expected=selection(ctx.os,type,modelKey);
   if((separate(type)&&expected.length!==1)||JSON.stringify(state?.modelKeys)!==JSON.stringify(expected))errors.push('Os trabalhos da OS mudaram. Reabre o relatório para carregar o modelo atual.');
   if(errors.length)throw Error(errors.join(' '));

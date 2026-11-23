@@ -6819,6 +6819,53 @@ function _assistEstado(value) {
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
 
+            // Resumo de custos logo após os dados gerais da OS, para ficar visível
+            // antes das picagens/folhas. As horas vêm do apuramento por pessoa,
+            // não da soma dos tempos de equipa repetidos nas folhas.
+            const _mostrarCustosOS = !paraCliente && (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin');
+            if (_mostrarCustosOS) {
+                const _folhaIdsCustoOS = new Set(folhas.map(f => f.id));
+                const _movimentosCustoOS = (dados.movimentosStock || []).filter(m =>
+                    m.tipo === 'saida' && ((m.origemTipo === 'folha' && _folhaIdsCustoOS.has(m.origemId)) ||
+                    (m.origemTipo === 'os' && m.origemId === osId)));
+                const _quantidadesCustoOS = {};
+                _movimentosCustoOS.forEach(m => {
+                    _quantidadesCustoOS[m.artigoId] = (_quantidadesCustoOS[m.artigoId] || 0) + (Number(m.quantidade) || 0);
+                });
+                const _idsArtigosCustoOS = Object.keys(_quantidadesCustoOS).filter(id => _quantidadesCustoOS[id] > 0);
+                const _materiaisSemPrecoOS = _idsArtigosCustoOS.some(id => dados.artigos?.find(a => a.id === id)?.precoCompra == null);
+                const _custoMateriaisOS = Math.round((_idsArtigosCustoOS.reduce((total, id) =>
+                    total + (Number(dados.artigos?.find(a => a.id === id)?.precoCompra) || 0) * _quantidadesCustoOS[id], 0) + Number.EPSILON) * 100) / 100;
+                const _totalCustoOS = custosPessoasOS.total == null || _materiaisSemPrecoOS
+                    ? null : Math.round((custosPessoasOS.total + _custoMateriaisOS + Number.EPSILON) * 100) / 100;
+                if (y > 210) { doc.addPage(); y = 20; }
+                doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]);
+                doc.text('Custos de pessoal e total da OS (uso interno)', 14, y); y += 4;
+                const _linhasCustosOS = custosPessoasOS.linhas.map(r => [
+                    r.nome, _formatarTempoTrabalhado(r.horas),
+                    r.taxa != null ? _finEur(r.taxa) + '/h' : 'Por definir',
+                    r.custo != null ? _finEur(r.custo) : 'Custo em falta'
+                ]);
+                if (!_linhasCustosOS.length) _linhasCustosOS.push(['Sem técnicos com tempo registado', '—', '—', '—']);
+                _linhasCustosOS.push([
+                    custosPessoasOS.total == null ? 'SUBTOTAL PESSOAL — INCOMPLETO' : 'TOTAL CUSTO PESSOAL',
+                    _formatarTempoTrabalhado(totalHoras), '', _finEur(custosPessoasOS.subtotal)
+                ]);
+                _linhasCustosOS.push(['Materiais consumidos', '', '', _materiaisSemPrecoOS ? 'Custo incompleto' : _finEur(_custoMateriaisOS)]);
+                _linhasCustosOS.push(['CUSTO TOTAL DA OS', '', '', _totalCustoOS == null ? 'Total incompleto — faltam custos' : _finEur(_totalCustoOS)]);
+                doc.autoTable({
+                    startY: y, head: [['Técnico / resumo', 'Tempo', 'Custo/hora', 'Custo']],
+                    body: _linhasCustosOS,
+                    styles: {fontSize: 9, cellPadding: 2},
+                    headStyles: {fillColor: _corRel},
+                    didParseCell: function(d) {
+                        if (d.section === 'body' && d.row.index >= _linhasCustosOS.length - 3)
+                            d.cell.styles.fontStyle = 'bold';
+                    }
+                });
+                y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
+            }
+
             if (y > 250) { doc.addPage(); y = 20; }
             doc.setFontSize(12); doc.setTextColor(_corRel[0], _corRel[1], _corRel[2]); doc.text('Picagens (entrada / saída)', 14, y); y += 4;
             doc.autoTable({
@@ -6849,12 +6896,13 @@ function _assistEstado(value) {
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
             }
 
-            if (custosPessoasOS.linhas.length) {
+            // O interno já inclui o detalhe por técnico no resumo financeiro inicial.
+            // Para o cliente, mostrar apenas tempos, sem taxas nem custos.
+            if (paraCliente && custosPessoasOS.linhas.length) {
                 if (y > 240) { doc.addPage(); y = 20; }
-                const interno = !paraCliente && (usuarioLogado?.role === 'admin' || usuarioLogado?.role === 'subadmin');
                 doc.setFontSize(12); doc.text('Tempo por técnico', 14, y); y += 4;
-                doc.autoTable({startY: y, head: [interno ? ['Técnico', 'Tempo', 'Custo/hora', 'Custo'] : ['Técnico', 'Tempo']],
-                    body: custosPessoasOS.linhas.map(r => interno ? [r.nome, _formatarTempoTrabalhado(r.horas), r.taxa != null ? _finEur(r.taxa) + '/h' : 'Por definir', r.custo != null ? _finEur(r.custo) : 'Custo em falta'] : [r.nome, _formatarTempoTrabalhado(r.horas)]),
+                doc.autoTable({startY: y, head: [['Técnico', 'Tempo']],
+                    body: custosPessoasOS.linhas.map(r => [r.nome, _formatarTempoTrabalhado(r.horas)]),
                     styles: {fontSize:9, cellPadding:2}, headStyles:{fillColor:_corRel}});
                 y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 10;
             }

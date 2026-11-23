@@ -1931,6 +1931,20 @@
                 visitas = visitas.filter(v => v.responsavelId === usuarioLogado.id);
             }
             const meusLeads = ehGestor ? leads : leads.filter(l => l.responsavelComercial === usuarioLogado.id);
+            // Contagem por data de criação, independentemente do estado atual da lead.
+            // Semana ISO/Portugal: segunda-feira a domingo, em horário local.
+            const hojeLeads = new Date();
+            const inicioDiaLeads = new Date(hojeLeads.getFullYear(), hojeLeads.getMonth(), hojeLeads.getDate());
+            const inicioSemanaLeads = new Date(inicioDiaLeads);
+            inicioSemanaLeads.setDate(inicioSemanaLeads.getDate() - (inicioSemanaLeads.getDay() + 6) % 7);
+            const inicioMesLeads = new Date(hojeLeads.getFullYear(), hojeLeads.getMonth(), 1);
+            const inicioAnoLeads = new Date(hojeLeads.getFullYear(), 0, 1);
+            const inicioAmanhaLeads = new Date(inicioDiaLeads);
+            inicioAmanhaLeads.setDate(inicioAmanhaLeads.getDate() + 1);
+            const contarLeadsCriadas = (inicio) => meusLeads.filter(l => {
+                const data = Number(l.dataCriacao);
+                return Number.isFinite(data) && data >= inicio.getTime() && data < inicioAmanhaLeads.getTime();
+            }).length;
             const ganhas = propostas.filter(p => p.estado === 'aceite');
             const perdidas = propostas.filter(p => p.estado === 'recusada');
 
@@ -2011,6 +2025,9 @@
                     ${cartao('Vendido este mês', _fmtEuro(valorVendidoMes))}
                     ${cartao('Valor em aberto', _fmtEuro(valorEmAberto))}
                     ${cartao('Nº de Leads ativos', meusLeads.filter(l => l.estado !== 'ganho' && l.estado !== 'perdido').length)}
+                    ${cartao('Leads criadas esta semana', contarLeadsCriadas(inicioSemanaLeads))}
+                    ${cartao('Leads criadas este mês', contarLeadsCriadas(inicioMesLeads))}
+                    ${cartao('Leads criadas este ano', contarLeadsCriadas(inicioAnoLeads))}
                     ${cartao('Taxa de Conversão', taxaConversao + '%')}
                     ${cartao('Ticket Médio', _fmtEuro(ticketMedio))}
                     ${cartao('Tempo médio até fecho', tempoMedioFecho + ' dias')}

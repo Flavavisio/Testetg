@@ -155,7 +155,11 @@ async function main() {
     if (results.some(result => !result.passed)) process.exitCode = 1;
 }
 
-main().catch(error => {
-    console.error(error.message);
-    process.exitCode = 1;
-}).finally(() => db.close());
+if (require.main === module) {
+    main().catch(error => {
+        console.error(error.message);
+        process.exitCode = 1;
+    }).finally(() => db.close());
+}
+
+module.exports = { db, prepareDatabase, seed, uuid };

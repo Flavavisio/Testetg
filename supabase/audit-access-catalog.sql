@@ -30,7 +30,7 @@ with tables as (
                            and exists (
                                select 1 from unnest(p.roles) as policy_role(name)
                                where case when policy_role.name = 'public' then true
-                                          else pg_has_role(r.role_name, policy_role.name, 'MEMBER')
+                                          else pg_has_role(r.role_name, policy_role.name, 'USAGE')
                                      end
                            )
     group by t.schema_name, t.table_name, t.oid, t.rls_enabled, t.rls_forced, r.role_name, o.operation

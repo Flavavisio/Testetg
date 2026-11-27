@@ -20,13 +20,14 @@ async function prepareDatabase() {
         create role authenticated;
         create schema auth;
         create schema tg_internal;
+        create type public.user_role as enum ('superadmin', 'admin', 'encarregado', 'funcionario',
+            'subadmin', 'vendedor', 'supervisor_vigilantes', 'vigilante');
         grant usage on schema auth to anon, authenticated;
         create function auth.uid() returns uuid language sql stable as
         $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
         create table public.encarregados (id text, admin_id text);
-        create table public.funcionarios (id text, admin_id text);
         create table public.encarregado_funcionarios (encarregado_id text, funcionario_id text);
-        grant select on public.encarregados, public.funcionarios, public.encarregado_funcionarios
+        grant select on public.encarregados, public.encarregado_funcionarios
             to authenticated;
     `);
     const tables = Map.groupBy(snapshot.columns, column => column.table_name);
@@ -65,7 +66,7 @@ async function seed() {
             ('sa','a','ca'), ('sa2','a','ca2'), ('sb','b','cb');
         insert into obras (id,admin_id,cliente_id) values
             ('oa','a','ca'), ('oa2','a','ca2'), ('ob','b','cb');
-        insert into funcionarios values ('fa','a'), ('fa2','a'), ('fb','b');
+        insert into funcionarios (id,admin_id) values ('fa','a'), ('fa2','a'), ('fb','b');
         insert into encarregados values ('ea','a');
         insert into encarregado_funcionarios values ('ea','fa');
         insert into folhas_obra (id,admin_id,servico_id,funcionario_id,obra_descricao) values

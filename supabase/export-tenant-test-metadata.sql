@@ -5,7 +5,9 @@ with tables as (
     from pg_class
     where relnamespace = 'public'::regnamespace
       and relname in ('administradores', 'clientes', 'config_superadmin', 'servicos',
-                      'folhas_obra', 'licencas', 'obras', 'perfis')
+                      'folhas_obra', 'licencas', 'obras', 'perfis',
+                      'ponto', 'pedidos', 'requisicoes', 'veiculo_documentos', 'funcionarios',
+                      'relatorios_especialidade', 'encomendas', 'contratos', 'obra_documentos', 'locais')
 ), fields as (
     select t.oid, t.name as table_name, a.attnum, a.attname as field,
            format_type(a.atttypid, a.atttypmod) as data_type
@@ -33,7 +35,8 @@ select jsonb_build_object(
     'functions', (select jsonb_agg(pg_get_functiondef(p.oid) order by p.proname)
                   from pg_proc p where p.pronamespace = 'public'::regnamespace and p.pronargs = 0
                   and p.proname in ('auth_is_superadmin', 'auth_tenant_id', 'tg_admin_id',
-                                    'tg_cliente_registo_id', 'tg_e_cliente', 'tg_portal_ativo', 'tg_superadmin')),
+                                    'tg_cliente_registo_id', 'tg_e_cliente', 'tg_portal_ativo', 'tg_superadmin',
+                                    'empresa_do_utilizador_atual', 'utilizador_atual_e_superadmin')),
     'triggers', (select jsonb_agg(jsonb_build_object(
                         'definition', pg_get_functiondef(g.tgfoid), 'installation', pg_get_triggerdef(g.oid))
                         order by t.name, g.tgname)

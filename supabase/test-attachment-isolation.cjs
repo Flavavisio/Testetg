@@ -16,8 +16,8 @@ const url = name => `${base}/storage/v1/object/public/${bucket}/${name}`;
 const bytes = new Map();
 const scenarios = [];
 
-async function prepareAttachments() {
-    await db.exec(`
+async function prepareAttachments({ service = false } = {}) {
+    if (!service) await db.exec(`
         create schema storage;
         grant usage on schema storage to anon, authenticated;
         create table storage.objects (
@@ -26,21 +26,6 @@ async function prepareAttachments() {
         );
         alter table storage.objects enable row level security;
         grant select, insert, update, delete on storage.objects to anon, authenticated;
-        alter table funcionarios add column foto text;
-        create table ponto (id text, admin_id text, foto text);
-        create table pedidos (id text, admin_id text, anexo text, anexo_admin text);
-        create table requisicoes (id text, admin_id text, anexo text);
-        create table veiculo_documentos (id text, admin_id text, ficheiro text);
-        create table relatorios_especialidade (
-            id text, admin_id text, assinatura_cliente text, assinatura_tecnico text,
-            assinatura_cliente_path text, assinatura_tecnico_path text
-        );
-        create table encomendas (id text, admin_id text, fatura text);
-        create table contratos (id text, admin_id text, documento_url text);
-        create table obra_documentos (obra_id text, admin_id text, url text);
-        create table locais (cliente_id text, admin_id text, passaporte_tecnico jsonb);
-        grant select on ponto, pedidos, requisicoes, veiculo_documentos, relatorios_especialidade,
-            encomendas, contratos, obra_documentos, locais to authenticated;
     `);
     await db.exec(`create view tg_internal.ficheiros_registos with (security_invoker = true) as ${metadata.viewSql}`);
     if (metadata.internalUsage) await db.exec('grant usage on schema tg_internal to authenticated');
@@ -114,6 +99,44 @@ async function check(label, action) {
     }
 }
 
+function attachmentReferences() {
+    return [
+        ['ponto', 'pa', 'foto.jpg', 'insert into ponto (id,admin_id,foto) values ($2,\'a\',$1)', 'pa'],
+        ['pedidos', 'pea', 'pedido.pdf', 'insert into pedidos (id,admin_id,anexo_admin) values ($2,\'a\',$1)', 'pea'],
+        ['requisicoes', 'rqa', 'requisicao.pdf', 'insert into requisicoes (id,admin_id,anexo) values ($2,\'a\',$1)', 'rqa'],
+        ['veiculoDocumentos', 'va', 'documento.pdf', 'insert into veiculo_documentos (id,admin_id,ficheiro) values ($2,\'a\',$1)', 'va'],
+        ['funcionarios', 'fa', 'foto.jpg', 'update funcionarios set foto=$1 where id=$2', 'fa'],
+        ['folhasObra', 'fa-sheet', 'assinatura.png', 'update folhas_obra set assinatura=$1 where id=$2', 'fa-sheet', true],
+        ['relatoriosEspecialidade', 'ra', 'assinatura.png', 'insert into relatorios_especialidade (id,admin_id,cliente_id,servico_id,assinatura_cliente) values ($2,\'a\',\'ca\',\'sa\',$1)', 'ra', true],
+        ['encomendas', 'ena', 'fatura.pdf', 'insert into encomendas (id,admin_id,fatura) values ($2,\'a\',$1)', 'ena'],
+        ['contratos-documentos', 'cta', 'contrato.pdf', 'insert into contratos (id,admin_id,cliente_id,documento_url) values ($2,\'a\',\'ca\',$1)', 'cta'],
+        ['obras', 'oa', 'documento.pdf', 'insert into obra_documentos (id,admin_id,obra_id,url) values (\'doa\',\'a\',$2,$1)', 'oa'],
+        ['obras', 'oa', 'foto.jpg', 'update obras set fotos=jsonb_build_array($1::text) where id=$2', 'oa', true],
+        ['passaportes', 'ca', 'ficha.pdf', 'update clientes set passaporte_tecnico=jsonb_build_object(\'anexo\',$1::text) where id=$2', 'ca', true],
+        ['passaportes', 'ca', 'instalacao.pdf', 'insert into locais (id,admin_id,cliente_id,passaporte_tecnico) values (\'la\',\'a\',$2,jsonb_build_object(\'anexo\',$1::text))', 'ca', true],
+    ];
+}
+
+async function checkOtherAttachmentTypes(client, cannotOpen) {
+    for (const [type, record, file, associate, id, portalAllowed] of attachmentReferences()) {
+        const name = `a/${type}/${record}/${file}`;
+        await check(`Carregamento de ${type}/${file}`, () => storage(1).upload(name, name));
+        await check(`Associação de ${type}/${file}`, async () => {
+            const result = await db.query(associate, [url(name), id]);
+            assert.equal(result.affectedRows, 1);
+        });
+        await check(`Leitura pela empresa de ${type}/${file}`, async () => {
+            assert.equal(await (await client(3).descarregar(url(name))).text(), name);
+        });
+        await check(`Outra empresa bloqueada para ${type}/${file}`, () => cannotOpen(2, name));
+        await check(`Portal respeita permissões de ${type}/${file}`, async () => {
+            if (portalAllowed) assert.equal(await (await client(6).descarregar(url(name))).text(), name);
+            else await cannotOpen(6, name);
+        });
+        await check(`Outro cliente bloqueado para ${type}/${file}`, () => cannotOpen(7, name));
+    }
+}
+
 async function main() {
     await prepareDatabase();
     await seed();
@@ -153,11 +176,16 @@ async function main() {
         await asActor(1, "update servicos set fotos='[]' where id='sa'");
         await cannotOpen(6, a);
     });
+    await checkOtherAttachmentTypes(client, cannotOpen);
     console.log(JSON.stringify({ total: scenarios.length, passed: scenarios.filter(s => s.passed).length }));
     if (scenarios.some(s => !s.passed)) process.exitCode = 1;
 }
 
-main().catch(error => {
-    console.error(error.message);
-    process.exitCode = 1;
-}).finally(() => db.close());
+if (require.main === module) {
+    main().catch(error => {
+        console.error(error.message);
+        process.exitCode = 1;
+    }).finally(() => db.close());
+}
+
+module.exports = { attachmentReferences, prepareAttachments, url };
